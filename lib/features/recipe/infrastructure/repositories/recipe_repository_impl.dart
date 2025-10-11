@@ -14,16 +14,43 @@ class RecipeRepositoryImpl implements RecipeRepository {
   @override
   Future<List<Recipe>> getAllRecipes() async {
     try {
-      // 1. 加载所有内置菜谱
-      final manifest = await _bundledLoader.loadManifest();
       final List<Recipe> recipes = [];
+      final Set<String> loadedIds = {};
 
-      // 2. 从 manifest 批量加载菜谱
+      // 1. 加载所有用户创建/修改的菜谱
+      final modifiedBox = HiveService.getModifiedRecipesBox();
+      for (final id in modifiedBox.keys) {
+        try {
+          final recipeJson = modifiedBox.get(id) as Map<dynamic, dynamic>;
+          final convertedJson = _deepConvertMap(recipeJson);
+          final recipe = Recipe.fromJson(convertedJson);
+
+          // 合并收藏和笔记信息
+          final isFav = await isFavorite(recipe.id);
+          final note = await getUserNote(recipe.id);
+
+          recipes.add(recipe.copyWith(
+            isFavorite: isFav,
+            userNote: note,
+          ));
+          loadedIds.add(id.toString());
+        } catch (e) {
+          print('Warning: Failed to load modified recipe $id: $e');
+        }
+      }
+
+      // 2. 加载所有内置菜谱（跳过已被用户修改的）
+      final manifest = await _bundledLoader.loadManifest();
       for (final recipeIndex in manifest.recipes) {
+        // 跳过已被用户修改的菜谱（避免重复）
+        if (loadedIds.contains(recipeIndex.id)) {
+          continue;
+        }
+
         try {
           final recipe = await _bundledLoader.loadRecipe(recipeIndex.id);
 
-          // 3. 合并收藏和笔记信息
+          // 合并收藏和笔记信息
           final isFav = await isFavorite(recipe.id);
           final note = await getUserNote(recipe.id);
 
