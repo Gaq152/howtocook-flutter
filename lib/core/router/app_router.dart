@@ -5,6 +5,7 @@ import '../../features/recipe/presentation/screens/recipe_home_screen.dart';
 import '../../features/recipe/presentation/screens/recipe_detail_screen.dart';
 import '../../features/recipe/presentation/screens/recipe_search_screen.dart';
 import '../../features/recipe/presentation/screens/recipe_edit_screen.dart';
+import '../../features/recipe/presentation/screens/recipe_create_screen.dart';
 import '../../features/recipe/presentation/screens/favorite_recipes_screen.dart';
 import '../../features/recipe/presentation/screens/tips_screen.dart';
 import '../../features/ai_chat/presentation/screens/ai_chat_screen.dart';
@@ -83,17 +84,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
 
-      // 创建/编辑菜谱
+      // 创建菜谱
       GoRoute(
         path: '/create-recipe',
         name: 'create-recipe',
         builder: (context, state) {
-          return Scaffold(
-            appBar: AppBar(title: const Text('创建菜谱')),
-            body: const Center(
-              child: Text('创建菜谱\n\n（待实现）'),
-            ),
-          );
+          return const RecipeCreateScreen();
         },
       ),
 
