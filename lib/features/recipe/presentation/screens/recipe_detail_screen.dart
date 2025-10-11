@@ -301,10 +301,21 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
           label: recipe.categoryName,
           color: AppColors.secondary,
         ),
-        _InfoChip(
-          icon: Icons.speed,
-          label: AppColors.getDifficultyText(recipe.difficulty),
-          color: AppColors.getDifficultyColor(recipe.difficulty),
+        // 难度星星
+        Chip(
+          label: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(
+              recipe.difficulty.clamp(1, 5),
+              (index) => const Icon(
+                Icons.star,
+                color: Colors.orange,
+                size: 16,
+              ),
+            ),
+          ),
+          backgroundColor: Colors.orange.withValues(alpha: 0.1),
+          side: BorderSide(color: Colors.orange.withValues(alpha: 0.3)),
         ),
       ],
     );

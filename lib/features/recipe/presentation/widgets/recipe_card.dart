@@ -19,9 +19,6 @@ class RecipeCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final difficultyColor = AppColors.getDifficultyColor(recipe.difficulty);
-    final difficultyText = AppColors.getDifficultyText(recipe.difficulty);
-
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -79,20 +76,18 @@ class RecipeCard extends ConsumerWidget {
                       ),
                       const SizedBox(width: 4),
 
-                      // 难度标签
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: difficultyColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          difficultyText,
-                          style: AppTextStyles.badge.copyWith(
-                            color: difficultyColor,
+                      // 难度星星 - 固定宽度区域，保持对齐
+                      SizedBox(
+                        width: 70, // 5颗星的固定宽度 (14 * 5)
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: List.generate(
+                            recipe.difficulty.clamp(1, 5),
+                            (index) => const Icon(
+                              Icons.star,
+                              color: Colors.orange,
+                              size: 14,
+                            ),
                           ),
                         ),
                       ),
