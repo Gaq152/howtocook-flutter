@@ -5,7 +5,7 @@
   "categoryName": "饮料",
   "difficulty": 3,
   "images": [
-    "images/drink/drink_37772636_0.webp"
+    "images\\drink\\drink_37772636_0.webp"
   ],
   "ingredients": [
     "咖啡液 30ml",
@@ -27,5 +27,5 @@
   ],
   "tips": "- 咖啡液建议选用花果风味，浓缩可以用中烘豆，冷萃可以用普通水洗或者日晒\n- 倒入奶油时，高度尽量放低，让奶油能均匀漂浮在饮料表面形成奶盖\n- 用新鲜的咖啡液和菠萝汁能大大提升整体风味口感\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "e3e54324e8fbb7f5ae22b78658f5268a0482510bbb411569bd4591442278d5ff"
+  "hash": "37a81ee5e77229e024b8e47ff66bd4e906ef4528cf3f9c2ce131e8d2bf8c5706"
 }

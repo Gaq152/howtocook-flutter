@@ -5,16 +5,16 @@
   "categoryName": "素菜",
   "difficulty": 2,
   "images": [
-    "images/vegetable_dish/vegetable_dish_3248b36a_0.webp",
-    "images/vegetable_dish/vegetable_dish_3248b36a_1.webp",
-    "images/vegetable_dish/vegetable_dish_3248b36a_2.webp",
-    "images/vegetable_dish/vegetable_dish_3248b36a_3.webp",
-    "images/vegetable_dish/vegetable_dish_3248b36a_4.webp",
-    "images/vegetable_dish/vegetable_dish_3248b36a_5.webp",
-    "images/vegetable_dish/vegetable_dish_3248b36a_6.webp",
-    "images/vegetable_dish/vegetable_dish_3248b36a_7.webp",
-    "images/vegetable_dish/vegetable_dish_3248b36a_8.webp",
-    "images/vegetable_dish/vegetable_dish_3248b36a_9.webp"
+    "images\\vegetable_dish\\vegetable_dish_3248b36a_0.webp",
+    "images\\vegetable_dish\\vegetable_dish_3248b36a_1.webp",
+    "images\\vegetable_dish\\vegetable_dish_3248b36a_2.webp",
+    "images\\vegetable_dish\\vegetable_dish_3248b36a_3.webp",
+    "images\\vegetable_dish\\vegetable_dish_3248b36a_4.webp",
+    "images\\vegetable_dish\\vegetable_dish_3248b36a_5.webp",
+    "images\\vegetable_dish\\vegetable_dish_3248b36a_6.webp",
+    "images\\vegetable_dish\\vegetable_dish_3248b36a_7.webp",
+    "images\\vegetable_dish\\vegetable_dish_3248b36a_8.webp",
+    "images\\vegetable_dish\\vegetable_dish_3248b36a_9.webp"
   ],
   "ingredients": [
     "干木耳: 20g / 湿木耳: 120g",
@@ -38,5 +38,5 @@
   ],
   "tips": "* 调味品的数量可以根据个人口味进行调整, 如果不喜欢芥末, 可以不加入。\n* 等木耳冷却入味后口味更佳, 约 15 分钟。\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "aaf75a1030246a068e219a9c89ea3d855c424b2034d025fad9243674fe1feab5"
+  "hash": "18e6d2a41f05e5fec9c2b03f545f7e9559a5b09661aa7c3d138d8847cbe7e064"
 }

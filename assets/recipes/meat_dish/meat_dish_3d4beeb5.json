@@ -5,12 +5,12 @@
   "categoryName": "荤菜",
   "difficulty": 4,
   "images": [
-    "images/meat_dish/meat_dish_3d4beeb5_0.webp",
-    "images/meat_dish/meat_dish_3d4beeb5_1.webp",
-    "images/meat_dish/meat_dish_3d4beeb5_2.webp",
-    "images/meat_dish/meat_dish_3d4beeb5_3.webp",
-    "images/meat_dish/meat_dish_3d4beeb5_4.webp",
-    "images/meat_dish/meat_dish_3d4beeb5_5.webp"
+    "images\\meat_dish\\meat_dish_3d4beeb5_0.webp",
+    "images\\meat_dish\\meat_dish_3d4beeb5_1.webp",
+    "images\\meat_dish\\meat_dish_3d4beeb5_2.webp",
+    "images\\meat_dish\\meat_dish_3d4beeb5_3.webp",
+    "images\\meat_dish\\meat_dish_3d4beeb5_4.webp",
+    "images\\meat_dish\\meat_dish_3d4beeb5_5.webp"
   ],
   "ingredients": [
     "猪肉末 300g",
@@ -41,5 +41,5 @@
   ],
   "tips": "- 操作时，拿出冬瓜酿肉时注意碟子很烫，小心操作。\n- 参考资料：[b站视频](https://www.bilibili.com/video/BV1oF411F7wD?spm_id_from=333.337.search-card.all.click&vd_source=9f568660d497311d3f945e5dce319705)\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "187f1827baec8cf01f606d0cd22c75d0f0c1711494837289b1128cf5fe3cb6a9"
+  "hash": "a1574bed12e772996d30c9b60b3437a6acaf3716b0f3fdaef5e53d7695818e7f"
 }

@@ -5,8 +5,8 @@
   "categoryName": "荤菜",
   "difficulty": 4,
   "images": [
-    "images/meat_dish/meat_dish_f8a5fa31_0.webp",
-    "images/meat_dish/meat_dish_f8a5fa31_1.webp"
+    "images\\meat_dish\\meat_dish_f8a5fa31_0.webp",
+    "images\\meat_dish\\meat_dish_f8a5fa31_1.webp"
   ],
   "ingredients": [
     "排骨 300 g",
@@ -34,5 +34,5 @@
   ],
   "tips": "- 炸排骨时可根据实际情况轻撒少量干淀粉于排骨表面，以提升酥脆口感。\n- 焯水时注意火力变化：冷水下锅后先用大火至水沸腾、泡沫丰富，再转中火，最后转小火焯水；焯水后应使用开水清洗，避免因温差过大导致肉质变柴。\n- 步骤四的关键在于确保白糖完全溶解，无须过分依赖颜色变化判断。\n- 收汁时应快速翻炒，使排骨均匀裹上调料，避免长时间煮炖造成口感损失。\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "b42cd3c87338845b2e1eccf1184e325a0dd66c10c6454834cb382aeeaaec49db"
+  "hash": "01f7b5b739dd273ac44b66d0e6e3c19e9a308d58f0554d6d392b117a3b7b5a6a"
 }

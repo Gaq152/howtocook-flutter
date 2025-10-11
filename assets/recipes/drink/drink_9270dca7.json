@@ -5,7 +5,7 @@
   "categoryName": "饮料",
   "difficulty": 3,
   "images": [
-    "images/drink/drink_9270dca7_0.webp"
+    "images\\drink\\drink_9270dca7_0.webp"
   ],
   "ingredients": [
     "水(600cc)",
@@ -27,5 +27,5 @@
   ],
   "tips": "如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "601e1fbecd3f7ea97f99e6a472a5c81afa34eb16593c192583ccbcb786db0492"
+  "hash": "8eb29d4d1356c4aec7c3cf4bd142b263972d9fe842d0d7aec95dd020e87ef219"
 }

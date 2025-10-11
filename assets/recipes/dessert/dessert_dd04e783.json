@@ -5,7 +5,7 @@
   "categoryName": "甜品",
   "difficulty": 5,
   "images": [
-    "images/dessert/dessert_dd04e783_0.webp"
+    "images\\dessert\\dessert_dd04e783_0.webp"
   ],
   "ingredients": [],
   "tools": [],
@@ -28,5 +28,5 @@
   ],
   "tips": "- 发面时间并不固定, 每 1 小时看一下确认就可以, 明显发酵变大即可, 建议发酵 2 - 2.5 倍大。\n- 面团大小不会显著影响口感和烘烤效果，可根据喜好调整。\n- 参考资料：下厨房 - 脆底蜂蜜小面包\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "3d287cab40a63188e26953743f3fd54600119e48b82576b80dc992c303bf812c"
+  "hash": "1c3fb0f76de4505d5341cfe6517731767b7be6b91051719cd9df43e6648622ff"
 }

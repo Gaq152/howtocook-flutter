@@ -5,7 +5,7 @@
   "categoryName": "水产",
   "difficulty": 3,
   "images": [
-    "images/aquatic/aquatic_5ee1668c_0.webp"
+    "images\\aquatic\\aquatic_5ee1668c_0.webp"
   ],
   "ingredients": [
     "阿根廷红虾 2-3 只",
@@ -36,5 +36,5 @@
   ],
   "tips": "- 柠檬可提升虾的口感，但偏酸，可以根据喜好添加，也可以不用\n- 趁热吃\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "0e8a441bd397b24527676a810ff49a963f3b184b4c2c8feec675c066fe4b0c9e"
+  "hash": "d036dcbbc2c027557f68e014ee8038d3529a49c102844005ddcf67374f0930ee"
 }

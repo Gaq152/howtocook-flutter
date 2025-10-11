@@ -5,8 +5,8 @@
   "categoryName": "调料",
   "difficulty": 3,
   "images": [
-    "images/condiment/condiment_3b554f0d_0.webp",
-    "images/condiment/condiment_3b554f0d_1.webp"
+    "images\\condiment\\condiment_3b554f0d_0.webp",
+    "images\\condiment\\condiment_3b554f0d_1.webp"
   ],
   "ingredients": [
     "蒜头 1 个",
@@ -41,5 +41,5 @@
   ],
   "tips": "- 五香粉、草寇作为\"调料\"加入，可以增加香味，使油泼辣子更香\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "a37791340241657b6ed148a7fa4cca8267460c068e1d2793ce50bb2757aa6b17"
+  "hash": "e996de0887fdd0dffe91459b7d97e43a0512def11609e4a19deb3334e40d1ead"
 }

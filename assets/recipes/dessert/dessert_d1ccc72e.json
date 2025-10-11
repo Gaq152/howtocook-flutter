@@ -5,7 +5,7 @@
   "categoryName": "甜品",
   "difficulty": 4,
   "images": [
-    "images/dessert/dessert_d1ccc72e_0.webp"
+    "images\\dessert\\dessert_d1ccc72e_0.webp"
   ],
   "ingredients": [
     "125ml 淡奶油(whipping cream, 35% M.E)",
@@ -28,5 +28,5 @@
   ],
   "tips": "注意事项：请务必不要让液体煮沸！！！也不要冒泡泡！！！\n关于厨具清洗：建议直接用洗碗机，如果没有的话可以用温水洗。（因为 gelatin 不好清洗，洗碗机会比较好）\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "22658add8bb6600404acaa1e0a6bd7cd13325257a48cccfe59899a7c726a6cbe"
+  "hash": "647075a382159529f2b88888c0e6ec78097011584363f34726b73fd22151ab9a"
 }

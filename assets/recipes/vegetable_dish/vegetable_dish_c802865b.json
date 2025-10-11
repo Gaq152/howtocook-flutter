@@ -5,8 +5,8 @@
   "categoryName": "素菜",
   "difficulty": 2,
   "images": [
-    "images/vegetable_dish/vegetable_dish_c802865b_0.webp",
-    "images/vegetable_dish/vegetable_dish_c802865b_1.webp"
+    "images\\vegetable_dish\\vegetable_dish_c802865b_0.webp",
+    "images\\vegetable_dish\\vegetable_dish_c802865b_1.webp"
   ],
   "ingredients": [
     "闽星茶树菇 1 瓶",
@@ -31,5 +31,5 @@
   ],
   "tips": "- 焯水时的水位需要没过芹菜\n- 芹菜叶太老太硬的话可以不要\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "4b43d881e80c704d36faa18876d21817f75e70ca0b1294463c58fa437744af44"
+  "hash": "3d9811b1bd3bfc479e400d11731fab95dc14d4b44c8ddef2d279c384306a7eaa"
 }

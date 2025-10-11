@@ -5,8 +5,8 @@
   "categoryName": "水产",
   "difficulty": 2,
   "images": [
-    "images/aquatic/aquatic_c2b2b20e_0.webp",
-    "images/aquatic/aquatic_c2b2b20e_1.webp"
+    "images\\aquatic\\aquatic_c2b2b20e_0.webp",
+    "images\\aquatic\\aquatic_c2b2b20e_1.webp"
   ],
   "ingredients": [
     "海虾 8 只",
@@ -23,5 +23,5 @@
   ],
   "tips": "如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "36d8e05ce0d3e31e581e1493753fade3450522239b2f1f7e54b5593a6cf9432c"
+  "hash": "dd23b1eb3d0c3903cdad3f9c499fdb3d63dc1fcb966680dda4642e68fbf6beb4"
 }

@@ -5,7 +5,7 @@
   "categoryName": "荤菜",
   "difficulty": 4,
   "images": [
-    "images/meat_dish/meat_dish_80c5aed8_0.webp"
+    "images\\meat_dish\\meat_dish_80c5aed8_0.webp"
   ],
   "ingredients": [
     "牛蛙肉块 800g （买 3 斤活蛙，建议挑小个头的，肉质鲜嫩）",
@@ -40,5 +40,5 @@
   ],
   "tips": "- 控干水分的时候可以选择漏勺按压\n- 生粉抓揉的时候要均匀覆盖蛙肉\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "3a6032bfeb29bc05be2dbcddab98c62e84a2fff30cbeee9d1d93d3ca8685dc79"
+  "hash": "04ef577e7b3ef5cfdc272af41a6796417ab6433f9476c6b8de92547f18ac884e"
 }

@@ -5,9 +5,9 @@
   "categoryName": "主食",
   "difficulty": 1,
   "images": [
-    "images/staple/staple_5b8e7b4c_0.webp",
-    "images/staple/staple_5b8e7b4c_1.webp",
-    "images/staple/staple_5b8e7b4c_2.webp"
+    "images\\staple\\staple_5b8e7b4c_0.webp",
+    "images\\staple\\staple_5b8e7b4c_1.webp",
+    "images\\staple\\staple_5b8e7b4c_2.webp"
   ],
   "ingredients": [
     "意大利面 180 克（可以根据食量上下浮动）",
@@ -29,5 +29,5 @@
   ],
   "tips": "- 意大利面分为很多不同的粗细，煮面条之前请注意意面盒子上标注的时间\n- 意大利面酱并不是番茄酱，平常用的番茄酱准确是叫番茄沙司，而意大利面酱虽然和番茄沙司都是调味过的番茄酱，但加的调味料不同\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "767ee07eaea23b4df078ad897001e89b8ce950978ad939c074a19fd88aa057d7"
+  "hash": "cc45ee6961e2a3c8db8577e6bbd043c1ce5b03beb6bff8ad162a75d9c3971d04"
 }

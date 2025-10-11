@@ -5,7 +5,7 @@
   "categoryName": "甜品",
   "difficulty": 5,
   "images": [
-    "images/dessert/dessert_ceec2289_0.webp"
+    "images\\dessert\\dessert_ceec2289_0.webp"
   ],
   "ingredients": [
     "荔浦芋头 200g",
@@ -35,5 +35,5 @@
   ],
   "tips": "- 制作时最好佩戴不粘手套\n- 制作完即可食用，不用再加热\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "5cdd71b674f09e61d2e1d74e37d2e5b3fd22a868dba46f5628fe26179074b5e6"
+  "hash": "0dee0a4b78d52f1265309f36e780ed6f69d4a1f14c929562eed5d9d7a6d0740b"
 }

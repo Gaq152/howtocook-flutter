@@ -5,7 +5,7 @@
   "categoryName": "素菜",
   "difficulty": 2,
   "images": [
-    "images/vegetable_dish/vegetable_dish_efb666d9_0.webp"
+    "images\\vegetable_dish\\vegetable_dish_efb666d9_0.webp"
   ],
   "ingredients": [
     "西红柿 2 个（每个西红柿约 100g，共 200g）",
@@ -26,5 +26,5 @@
   ],
   "tips": "在制作过程中 请您小心使用刀具。\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "a75434bd005a15eb677ad03149b2c95f0fe8352db1c9d7064f1212a9f9529f4a"
+  "hash": "8240d0fd9657b710caee2b96d413ff609d2d09a445b0601946064d7d23cc3d30"
 }

@@ -5,7 +5,7 @@
   "categoryName": "水产",
   "difficulty": 3,
   "images": [
-    "images/aquatic/aquatic_d63cc518_0.webp"
+    "images\\aquatic\\aquatic_d63cc518_0.webp"
   ],
   "ingredients": [
     "食用油：10ml",
@@ -32,5 +32,5 @@
   ],
   "tips": "- 也可以放一些粉条，粉条先凉水/热水，需要泡软，可以和娃娃菜一起放入\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "a85581b4865e4ba912a62e0a7e3b07a68b19f993c70568fca6331245f9d08203"
+  "hash": "d247603cadb95c8dc08bb1c9ae43c822dca665c9d4b30ffcfb91d4b3adb35e1f"
 }

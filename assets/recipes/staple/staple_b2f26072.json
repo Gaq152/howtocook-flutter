@@ -5,14 +5,14 @@
   "categoryName": "主食",
   "difficulty": 3,
   "images": [
-    "images/staple/staple_b2f26072_0.webp",
-    "images/staple/staple_b2f26072_1.webp",
-    "images/staple/staple_b2f26072_2.webp",
-    "images/staple/staple_b2f26072_3.webp",
-    "images/staple/staple_b2f26072_4.webp",
-    "images/staple/staple_b2f26072_5.webp",
-    "images/staple/staple_b2f26072_6.webp",
-    "images/staple/staple_b2f26072_7.webp"
+    "images\\staple\\staple_b2f26072_0.webp",
+    "images\\staple\\staple_b2f26072_1.webp",
+    "images\\staple\\staple_b2f26072_2.webp",
+    "images\\staple\\staple_b2f26072_3.webp",
+    "images\\staple\\staple_b2f26072_4.webp",
+    "images\\staple\\staple_b2f26072_5.webp",
+    "images\\staple\\staple_b2f26072_6.webp",
+    "images\\staple\\staple_b2f26072_7.webp"
   ],
   "ingredients": [
     "米粉 250g",
@@ -34,5 +34,5 @@
   ],
   "tips": "* 用小火煎\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "a988ec63eee18231bd8f143895f5a0714833039b113cb5975eab69d5044a7811"
+  "hash": "fae287d966670bec1bdb4349f03601b93d9ce01122e268cceda0848acda4b57f"
 }

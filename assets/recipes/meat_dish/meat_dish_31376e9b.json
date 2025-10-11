@@ -5,8 +5,8 @@
   "categoryName": "荤菜",
   "difficulty": 3,
   "images": [
-    "images/meat_dish/meat_dish_31376e9b_0.webp",
-    "images/meat_dish/meat_dish_31376e9b_1.webp"
+    "images\\meat_dish\\meat_dish_31376e9b_0.webp",
+    "images\\meat_dish\\meat_dish_31376e9b_1.webp"
   ],
   "ingredients": [
     "猪五花肉：约 3~4 斤",
@@ -26,12 +26,14 @@
     "注：如果有可能，请尽量把刀磨的锋利一些。"
   ],
   "steps": [
+    "### 原材料准备",
     "`猪五花肉`切大块（约 4.5cm ，冷冻半小时至一小时更好切）",
     "`豆皮`切 2cm 的宽度",
     "`生姜`切片（每片厚度约 3mm ）",
     "`水`烧开",
     "`鹌鹑蛋`煮熟并用`叉子`/`牙签`扎孔（尽量多些好入味）",
     "`大葱`大葱白色的部分`葱白`",
+    "### 开始制作",
     "冷水锅中放入切好的`猪五花肉`，加入料酒与葱姜，煮 15 分钟去掉血腥",
     "锅中放入两片`生姜`提味",
     "开中小火后直接加入`五花肉`，不需要放入食用油，每块`五花肉`六个面都煎一下，煎至出油即可",
@@ -51,5 +53,5 @@
   ],
   "tips": "如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "b1d3c50b3da2aa7934d6229b6df939bdfc98a80a22b90ed5b87aa3de38ae9c84"
+  "hash": "a13e0a7ff4f821266e1d8d8359d7289f1e7422e0735da4344438981a819c3c08"
 }

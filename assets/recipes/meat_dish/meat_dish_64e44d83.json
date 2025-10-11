@@ -5,7 +5,7 @@
   "categoryName": "荤菜",
   "difficulty": 3,
   "images": [
-    "images/meat_dish/meat_dish_64e44d83_0.webp"
+    "images\\meat_dish\\meat_dish_64e44d83_0.webp"
   ],
   "ingredients": [
     "大鸡腿 2 个",
@@ -36,5 +36,5 @@
   ],
   "tips": "- 鸡腿去骨操作较复杂，本人经验可供参考：\n- 鸡腿于案板摆正，**骨头正对程序员**，从头部划一刀至最底部，刀口要深，确保有碰到骨头\n- 用手扒拉肉到两边\n- 用刀尖隔开骨头上沾着的肉\n- 鸡腿翻面，刀紧贴骨头插入，挑断骨头与肉的连接点\n- 用刀尖切断最后的粘连即可\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "e9f554611e5a2e5ff04a15fff9dd2b75bfa19abf1732a843f3330bbd75714d8e"
+  "hash": "67f169989861607ba972156251175be67f4b9fd287376e7e5f707d79dc4126a1"
 }

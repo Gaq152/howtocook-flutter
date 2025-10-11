@@ -5,7 +5,7 @@
   "categoryName": "荤菜",
   "difficulty": 3,
   "images": [
-    "images/meat_dish/meat_dish_2262770f_0.webp"
+    "images\\meat_dish\\meat_dish_2262770f_0.webp"
   ],
   "ingredients": [
     "豆干：150g",
@@ -36,5 +36,5 @@
   ],
   "tips": "- 如果没有买到香芹，或者用的芹菜比较粗，可以考虑焯水，放入滚水中 1 分钟捞出，冷水冲洗（保持爽脆）\n- 如果买到的豆干比较硬、紧实，也可以切条后再焯水\n- [香干芹菜炒肉教程](https://www.xiachufang.com/recipe/105987156/)\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "f6a4fa3fd97da4d85cef1fe878289415d878ec8ea6f486a94fbfd95e4c400362"
+  "hash": "1107ec025570c457fe9179ca197b55ed08e51a805105091e0409366ccbc1875b"
 }

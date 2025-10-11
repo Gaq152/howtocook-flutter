@@ -5,7 +5,7 @@
   "categoryName": "主食",
   "difficulty": 3,
   "images": [
-    "images/staple/staple_dd81a330_0.webp"
+    "images\\staple\\staple_dd81a330_0.webp"
   ],
   "ingredients": [
     "米粉（250g 记得 50 度的温水泡半小时）",
@@ -34,5 +34,5 @@
   ],
   "tips": "- 记得米粉必须是泡过的才好吃,没有泡过的话是很难吃的！\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "c2662fbf50c6c1fd6cc4f1bb762050ee552f6f2fc5e80d57dc0930311efafb32"
+  "hash": "b9e7e4a9f2894d431db9d8b4b98f7471ad28589673f3a8e169d40c7bf7ffed41"
 }

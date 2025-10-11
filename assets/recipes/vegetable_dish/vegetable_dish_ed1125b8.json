@@ -5,8 +5,8 @@
   "categoryName": "素菜",
   "difficulty": 3,
   "images": [
-    "images/vegetable_dish/vegetable_dish_ed1125b8_0.webp",
-    "images/vegetable_dish/vegetable_dish_ed1125b8_1.webp"
+    "images\\vegetable_dish\\vegetable_dish_ed1125b8_0.webp",
+    "images\\vegetable_dish\\vegetable_dish_ed1125b8_1.webp"
   ],
   "ingredients": [
     "鲜香菇 2 朵",
@@ -41,5 +41,5 @@
   ],
   "tips": "如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "aaf1f0f3582981f0786d1f050d815776b97173538d6e9546e7b42992748b4e55"
+  "hash": "51e7dd866bb90aa98573a841508c24ca7d3107c48357b4f4183f7c9b4ec08ea9"
 }

@@ -5,10 +5,10 @@
   "categoryName": "荤菜",
   "difficulty": 4,
   "images": [
-    "images/meat_dish/meat_dish_34f34b23_0.webp",
-    "images/meat_dish/meat_dish_34f34b23_1.webp",
-    "images/meat_dish/meat_dish_34f34b23_2.webp",
-    "images/meat_dish/meat_dish_34f34b23_3.webp"
+    "images\\meat_dish\\meat_dish_34f34b23_0.webp",
+    "images\\meat_dish\\meat_dish_34f34b23_1.webp",
+    "images\\meat_dish\\meat_dish_34f34b23_2.webp",
+    "images\\meat_dish\\meat_dish_34f34b23_3.webp"
   ],
   "ingredients": [
     "五花肉 200 g",
@@ -37,5 +37,5 @@
   ],
   "tips": "* 制作过程中发现，脆皮五花肉真香 Orz~\n* 不喜欢吃甜的可以去掉白砂糖，不影响主流程\n* 倒数第二个步骤，可以根据个人喜好调整时间\n* 炒干梅干菜的作用是为了后续吸油（盲猜）\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "7e5d985755019f0276bf6cd55430ae6c9fd8dc66d8976d96f458e3000a0faf1b"
+  "hash": "fddf562330d610ed2fbcb332edc15c5384dd5557e94e1664b46c837acc33d068"
 }

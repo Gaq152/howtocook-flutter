@@ -5,13 +5,12 @@
   "categoryName": "荤菜",
   "difficulty": 5,
   "images": [
-    "images/meat_dish/meat_dish_57c87c3f_0.webp",
-    "images/meat_dish/meat_dish_57c87c3f_1.webp",
-    "images/meat_dish/meat_dish_57c87c3f_2.webp",
-    "images/meat_dish/meat_dish_57c87c3f_3.webp",
-    "images/meat_dish/meat_dish_57c87c3f_4.webp",
-    "images/meat_dish/meat_dish_57c87c3f_5.webp",
-    "images/meat_dish/meat_dish_57c87c3f_6.webp"
+    "images\\meat_dish\\meat_dish_57c87c3f_0.webp",
+    "images\\meat_dish\\meat_dish_57c87c3f_1.webp",
+    "images\\meat_dish\\meat_dish_57c87c3f_2.webp",
+    "images\\meat_dish\\meat_dish_57c87c3f_3.webp",
+    "images\\meat_dish\\meat_dish_57c87c3f_4.webp",
+    "images\\meat_dish\\meat_dish_57c87c3f_5.webp"
   ],
   "ingredients": [
     "番茄 4 个",
@@ -39,5 +38,5 @@
   ],
   "tips": "这道菜是从一个巴基斯坦的朋友那里偷师而来，特地整理了笔记，绝对正宗。\n通常配以 烙饼(roti)、馕(naan) 或 米饭 食用。\n如果想做 Chicken karahi 流程几乎是一样的，除了是先用油和各种花椒胡椒煎鸡肉变黄。\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "de2f6c73ec9503dd670309abfc003aa61f947d9394edadeb87d979e66bfc0477"
+  "hash": "9a8309f576dd200c50d1ae410ff941156583c32759507a899429d6b2b4dcf16e"
 }

@@ -5,7 +5,7 @@
   "categoryName": "甜品",
   "difficulty": 3,
   "images": [
-    "images/dessert/dessert_07c13985_0.webp"
+    "images\\dessert\\dessert_07c13985_0.webp"
   ],
   "ingredients": [
     "荔浦芋头 200g",
@@ -24,5 +24,5 @@
   ],
   "tips": "- 刚做好的反沙芋头很烫，小心烫嘴哦\n- 再配上茶，啊~真惬意啊\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "e6ce45722b10e27508f176947f556b66bb75670ce9b6c2e69da501142e6684fa"
+  "hash": "d05e98b68dae0b566efc43408d125dd091e7bde940807862d0d274352b23c219"
 }

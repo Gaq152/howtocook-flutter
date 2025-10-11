@@ -5,7 +5,7 @@
   "categoryName": "水产",
   "difficulty": 3,
   "images": [
-    "images/aquatic/aquatic_45c4788b_0.webp"
+    "images\\aquatic\\aquatic_45c4788b_0.webp"
   ],
   "ingredients": [
     "鲜虾 300g",
@@ -28,5 +28,5 @@
   ],
   "tips": "- 虾开背才更好入味，不过处理时切记切记小心用刀，新手容易伤到手\n- [冯小厨的菜谱](https://www.bilibili.com/video/BV1g541177cd)\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "79b36386cfe2173835276052df16b5e1c448cde0f62465b0c0b13e09a2e9d6cf"
+  "hash": "63b9daec17fb90e9032b29010df2af04cbdc8220370c737321ee0b16c760dcdb"
 }

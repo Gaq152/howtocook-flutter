@@ -5,7 +5,7 @@
   "categoryName": "素菜",
   "difficulty": 2,
   "images": [
-    "images/vegetable_dish/vegetable_dish_b7d3f0b0_0.webp"
+    "images\\vegetable_dish\\vegetable_dish_b7d3f0b0_0.webp"
   ],
   "ingredients": [
     "毛豆 300 g",
@@ -20,5 +20,5 @@
   ],
   "tips": "如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "dda247a04c468bdd695a17efb7e85aaabf510b42912d2cd1fd619fa0f805b42f"
+  "hash": "67fbaae769b4e4f577c8af559f5891b359d7d15125c7d3faa27aea1e645ee27b"
 }

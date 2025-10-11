@@ -5,9 +5,9 @@
   "categoryName": "汤粥",
   "difficulty": 3,
   "images": [
-    "images/soup/soup_c43fdbeb_0.webp",
-    "images/soup/soup_c43fdbeb_1.webp",
-    "images/soup/soup_c43fdbeb_2.webp"
+    "images\\soup\\soup_c43fdbeb_0.webp",
+    "images\\soup\\soup_c43fdbeb_1.webp",
+    "images\\soup\\soup_c43fdbeb_2.webp"
   ],
   "ingredients": [
     "鲜香菇 2 朵",
@@ -29,5 +29,5 @@
   ],
   "tips": "如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "b3f0c61d73336313f987d7946793fb6f39a290ec0a3bc09956290b48359e4fa4"
+  "hash": "ee4be96250f5040b19bfe6f4004e2621cbec3844e4ea9fd2652da1b6beb31ba8"
 }

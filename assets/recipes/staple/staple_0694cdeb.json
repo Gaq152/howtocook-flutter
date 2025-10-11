@@ -5,7 +5,7 @@
   "categoryName": "主食",
   "difficulty": 3,
   "images": [
-    "images/staple/staple_0694cdeb_0.webp"
+    "images\\staple\\staple_0694cdeb_0.webp"
   ],
   "ingredients": [],
   "tools": [],
@@ -17,5 +17,5 @@
   ],
   "tips": "- 如果没有电饼铛，也可以用平底锅\n- 芝麻如果没有也可不用，一样好吃\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "d2aa7fcde0972a55401fddcd1fb240c8cd797e37b0c721fa65130fe50229a832"
+  "hash": "10079600967e2bacae85d496bc8ad2e55479edb3cab8569056c9e04bee2f18fd"
 }

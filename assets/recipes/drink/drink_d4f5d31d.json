@@ -5,7 +5,7 @@
   "categoryName": "饮料",
   "difficulty": 2,
   "images": [
-    "images/drink/drink_d4f5d31d_0.webp"
+    "images\\drink\\drink_d4f5d31d_0.webp"
   ],
   "ingredients": [
     "耙耙柑 1~2 个（200 克以上）",
@@ -27,9 +27,10 @@
     "取 130 克果肉和 130 毫升茉莉绿茶放入搅拌机中",
     "倒入 10 克蔗糖糖浆（可选，如果喜甜可放）",
     "封盖启动搅拌机，搅拌 20 秒后将搅拌产物倒入杯中",
-    "取一点果肉撕碎撒在液面上"
+    "取一点果肉撕碎撒在液面上",
+    "开始享受"
   ],
   "tips": "- 耙耙柑可以用其他容易分离果肉的柑橘替代，比如丑橘\n- 果肉和茶水比例为 1 : 1，如果需要配置更大的分量，可按比例提升用量\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "4985b1d6459d1e8e51d5186d05ea8cf8b2aaef54099ed84804a120fc33d56d49"
+  "hash": "40b5eb126fa1cb39cba7a744c6e68afb3e9b06f8decf40474e40214a8e4acdde"
 }

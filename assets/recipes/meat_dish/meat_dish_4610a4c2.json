@@ -5,7 +5,7 @@
   "categoryName": "荤菜",
   "difficulty": 3,
   "images": [
-    "images/meat_dish/meat_dish_4610a4c2_0.webp"
+    "images\\meat_dish\\meat_dish_4610a4c2_0.webp"
   ],
   "ingredients": [
     "纯瘦肉 200g",
@@ -29,5 +29,5 @@
   ],
   "tips": "- 土豆片焯水注意不宜太久，防止土豆片变软\n- 腌制瘦肉要搅拌均匀\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "56e2bd906653c3c801911fbcb3142996daf6657ad9527a6a0122ff12ceaf0b82"
+  "hash": "46d884484b705136d4cf41d4cfcfb055b3fa0dc0d652af5bcc5183d1448a8e6c"
 }
