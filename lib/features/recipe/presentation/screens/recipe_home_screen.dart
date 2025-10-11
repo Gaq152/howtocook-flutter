@@ -20,6 +20,9 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
   /// 当前选中的分类ID，null表示"全部"
   String? _selectedCategory;
 
+  /// 当前选中的难度，null表示"全部"
+  int? _selectedDifficulty;
+
   @override
   Widget build(BuildContext context) {
     // 根据选中的分类获取菜谱列表
@@ -43,10 +46,18 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
         children: [
           // 分类筛选栏
           _buildCategoryFilter(),
+          // 筛选栏（包含难度下拉菜单）
+          _buildFilterBar(),
           // 菜谱列表
           Expanded(
             child: recipesAsync.when(
-              data: (recipes) => _buildRecipeList(context, recipes),
+              data: (recipes) {
+                // 根据难度筛选
+                final filteredRecipes = _selectedDifficulty == null
+                    ? recipes
+                    : recipes.where((r) => r.difficulty == _selectedDifficulty).toList();
+                return _buildRecipeList(context, filteredRecipes);
+              },
               loading: () => _buildLoadingState(),
               error: (error, stack) => _buildErrorState(context, error),
             ),
@@ -55,7 +66,7 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // TODO: 导航到创建菜谱页面
+          context.push('/create-recipe');
         },
         child: const Icon(Icons.add),
       ),
@@ -113,7 +124,7 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
                   });
                 },
                 selectedColor: AppColors.primary.withValues(alpha: 0.2),
-                checkmarkColor: AppColors.primary,
+                showCheckmark: false, // 不显示勾选标记
                 labelPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               );
@@ -126,6 +137,80 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
         child: Center(child: CircularProgressIndicator()),
       ),
       error: (error, stack) => const SizedBox.shrink(),
+    );
+  }
+
+  /// 构建筛选栏
+  Widget _buildFilterBar() {
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.black.withValues(alpha: 0.05),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Text(
+            '难度',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey,
+            ),
+          ),
+          const SizedBox(width: 12),
+          // 小巧的下拉菜单
+          Container(
+            height: 32,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<int?>(
+                value: _selectedDifficulty,
+                isDense: true,
+                style: const TextStyle(fontSize: 13, color: Colors.black87),
+                icon: const Icon(Icons.arrow_drop_down, size: 20),
+                items: [
+                  const DropdownMenuItem<int?>(
+                    value: null,
+                    child: Text('全部'),
+                  ),
+                  ...List.generate(5, (index) {
+                    final difficulty = index + 1;
+                    return DropdownMenuItem<int?>(
+                      value: difficulty,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: List.generate(
+                          difficulty,
+                          (i) => const Icon(
+                            Icons.star,
+                            color: Colors.orange,
+                            size: 14,
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _selectedDifficulty = value;
+                  });
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -146,7 +231,7 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
         padding: const EdgeInsets.all(16),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: _getCrossAxisCount(context),
-          childAspectRatio: 0.58,
+          childAspectRatio: 0.75, // 调整为0.75，卡片更短更紧凑
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
         ),
