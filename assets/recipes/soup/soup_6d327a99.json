@@ -5,7 +5,7 @@
   "categoryName": "汤粥",
   "difficulty": 3,
   "images": [
-    "images/soup/soup_6d327a99_0.webp"
+    "images\\soup\\soup_6d327a99_0.webp"
   ],
   "ingredients": [
     "羊肉 300g",
@@ -31,5 +31,5 @@
   ],
   "tips": "- 加入开水时，注意要开大火，使油脂与汤汁更好的融合\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "d15be1e7c277b6500b52565796aa9f8903ca9ed13fb96c471c9c4f443197fc70"
+  "hash": "cc7d9eea2a48ef925118f788ce1454abef26548bc6a33e7137c990e366ebca1d"
 }

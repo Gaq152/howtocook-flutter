@@ -5,7 +5,7 @@
   "categoryName": "水产",
   "difficulty": 3,
   "images": [
-    "images/aquatic/aquatic_d4c3eb44_0.webp"
+    "images\\aquatic\\aquatic_d4c3eb44_0.webp"
   ],
   "ingredients": [
     "鳊鱼：550 克",
@@ -37,5 +37,5 @@
   ],
   "tips": "- 鱼的两面，各煎 2-4 分钟即可\n- 煎鱼的时候全程中小火\n- 最后出锅时，加入一些切碎的大蒜，味道会更好\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "97a5c432782b71cc347c31f627485f4268b863d8b2073b3a950212106a605570"
+  "hash": "2935f0c1e5223144d181458f9482ca955b38a100888df7d77ae21541634fdd61"
 }

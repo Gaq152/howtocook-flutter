@@ -5,7 +5,7 @@
   "categoryName": "荤菜",
   "difficulty": 4,
   "images": [
-    "images/meat_dish/meat_dish_89adeae2_0.webp"
+    "images\\meat_dish\\meat_dish_89adeae2_0.webp"
   ],
   "ingredients": [
     "猪蹄：2~3 根",
@@ -23,6 +23,7 @@
   ],
   "tools": [],
   "steps": [
+    "### 开始制作",
     "冷水锅中放入热心摊主剁好的猪蹄，加入 20 ml 料酒与葱姜，煮 15 分钟去掉血腥",
     "热锅冷油，倒入 30ml 食用油，放入 7-8 粒冰糖，开小火，熬成糖色，期间用锅铲把冰糖压碎，大概熬 2 分钟",
     "熬成糖色后，放入焯过水的猪蹄，继续小火，翻炒猪蹄，直至所有猪蹄两面微黄",
@@ -34,5 +35,5 @@
   ],
   "tips": "如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "edf0369d3d8c1f3c8d7074414719affe145aefe46385b2d008a7b3bffbb35dc1"
+  "hash": "186377d7c5187839f82cbf97e47967836f370748f409e096a5bfc56b9292a5ff"
 }

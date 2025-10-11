@@ -5,7 +5,7 @@
   "categoryName": "素菜",
   "difficulty": 3,
   "images": [
-    "images/vegetable_dish/vegetable_dish_a9895d68_0.webp"
+    "images\\vegetable_dish\\vegetable_dish_a9895d68_0.webp"
   ],
   "ingredients": [
     "青椒 5 个，长度在 10-15cm 的最为合适",
@@ -32,5 +32,5 @@
   ],
   "tips": "如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "ac9fd7afb8540087978cebd847fb03a0a6654b363e2177dc9d9563059e98a8e6"
+  "hash": "5ee1a13e344dd3e08d7cc02464c26f566a1bb526a95360db19a838b414f63709"
 }

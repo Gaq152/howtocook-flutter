@@ -5,7 +5,7 @@
   "categoryName": "主食",
   "difficulty": 2,
   "images": [
-    "images/staple/staple_b2db871d_0.webp"
+    "images\\staple\\staple_b2db871d_0.webp"
   ],
   "ingredients": [
     "鲣鱼海苔碎 20g",
@@ -20,5 +20,5 @@
   ],
   "tips": "- 使用米家小饭煲煮东北米的话，水没过米 3 毫米就行，太多水煮出来不是一粒一粒的饭\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "9efe0595e122344b3f02f3d11d0e4767d42d346d0da17020339301e3f9c3d242"
+  "hash": "50e1f15a5977b979b5e8b6def1c24db65525b0a0f43e8dfda93d6dd495003d31"
 }

@@ -5,9 +5,9 @@
   "categoryName": "早餐",
   "difficulty": 3,
   "images": [
-    "images/breakfast/breakfast_3e582990_0.webp",
-    "images/breakfast/breakfast_3e582990_1.webp",
-    "images/breakfast/breakfast_3e582990_2.webp"
+    "images\\breakfast\\breakfast_3e582990_0.webp",
+    "images\\breakfast\\breakfast_3e582990_1.webp",
+    "images\\breakfast\\breakfast_3e582990_2.webp"
   ],
   "ingredients": [
     "鸡蛋 50g（约 1 颗）",
@@ -30,5 +30,5 @@
   ],
   "tips": "- 芝士片、培根片、手抓饼直接淘宝购买即可\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "0fd48fa7d22c92055e5241f705b559a97307438077ef47e2a93fc49d0464a5ff"
+  "hash": "6dcc3d00c214ace6c482660b8e9f2e35305a322560f6fc9fb78649a57768fe0f"
 }

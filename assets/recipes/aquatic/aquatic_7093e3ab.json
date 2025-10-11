@@ -5,7 +5,7 @@
   "categoryName": "水产",
   "difficulty": 4,
   "images": [
-    "images/aquatic/aquatic_7093e3ab_0.webp"
+    "images\\aquatic\\aquatic_7093e3ab_0.webp"
   ],
   "ingredients": [
     "翘嘴鱼：2 斤最佳",
@@ -37,5 +37,5 @@
   ],
   "tips": "- 切记鱼是开背杀，腌制时，鱼表面涂抹均匀食盐即可，腌制时间，晾晒时间 1-2 天即可\n- 煎鱼全程小火，刚入锅时不要移动鱼，会破皮\n- 青椒断放入后注意观察熟透程度，里面的青椒很好吃，另外香菜最后放\n- 注意火候的切换，豆瓣酱，白糖的调鲜效果，与陈醋的增香效果\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "ad1fdd68bf8add39509f8a256b43e0d91a275b0759977dbef803c83ce188db77"
+  "hash": "e103f5a51ac9b50b1b3ee428ffbc41fd3a39ce2fd408ff753052670e14ef5472"
 }

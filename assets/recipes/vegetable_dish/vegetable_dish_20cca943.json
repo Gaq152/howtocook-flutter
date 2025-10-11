@@ -5,7 +5,7 @@
   "categoryName": "素菜",
   "difficulty": 2,
   "images": [
-    "images/vegetable_dish/vegetable_dish_20cca943_0.webp"
+    "images\\vegetable_dish\\vegetable_dish_20cca943_0.webp"
   ],
   "ingredients": [
     "莴笋 1 根",
@@ -26,5 +26,5 @@
   ],
   "tips": "* 萝卜非必须，只是为了增加菜色\n* 端盘后，可以根据个人口味，额外增加生抽、白砂糖、香醋、芝麻等佐料\n* 莴笋条的大小看个人口感决定，但莴笋皮要尽量多削点，不然真的影响口感\n* 冰镇效果更加\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "22925211231ee563456888945ac37be43757bda1fe1fbcb0c8a0e61f9d4c299b"
+  "hash": "e58aec7ec32c3848599da7d9bf061e8a169519dec4b1a4295d6533f3d3ae3635"
 }

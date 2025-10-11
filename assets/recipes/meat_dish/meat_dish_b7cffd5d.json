@@ -5,8 +5,8 @@
   "categoryName": "荤菜",
   "difficulty": 4,
   "images": [
-    "images/meat_dish/meat_dish_b7cffd5d_0.webp",
-    "images/meat_dish/meat_dish_b7cffd5d_1.webp"
+    "images\\meat_dish\\meat_dish_b7cffd5d_0.webp",
+    "images\\meat_dish\\meat_dish_b7cffd5d_1.webp"
   ],
   "ingredients": [
     "两个火枪腿的鸡肉（这大约是 1kg ）",
@@ -29,9 +29,10 @@
     "放入 5g 盐，生抽 7ml，蚝油 10g ，料酒 100g，倒入 1 升清水，料酒可以用啤酒代替",
     "调至中火，将水烧开，调制中小火慢炖入味",
     "当水收至鸡肉即将露出时，将土豆放在锅表面：注意不要翻动土豆，就盖在表面，不然翻到下面容易粘锅，继续盖锅盖炖，炖一会后将大葱，菜椒和甜椒放入，继续炖。",
-    "炖到汁收的差不多时可以进行翻面，将土豆与汤汁相吸，最后关火盛出。"
+    "炖到汁收的差不多时可以进行翻面，将土豆与汤汁相吸，最后关火盛出。",
+    "**另：此做法可以吃面，买粗面剂子，将粗面剂子压扁，然后用手拉成宽面，一定要是宽面，下好后可以放入到大盘鸡中，与汤汁搅拌味道极佳！**"
   ],
   "tips": "如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "8d86f070d174eec56b7e256eb76f77b639b520db92b14c612ac77b5b488caf71"
+  "hash": "9c6ba39fa608286bfc007070515265da0ce28b1537c7ece0db3e3a7b344bebf8"
 }

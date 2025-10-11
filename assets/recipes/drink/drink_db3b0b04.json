@@ -5,8 +5,8 @@
   "categoryName": "饮料",
   "difficulty": 3,
   "images": [
-    "images/drink/drink_db3b0b04_0.webp",
-    "images/drink/drink_db3b0b04_1.webp"
+    "images\\drink\\drink_db3b0b04_0.webp",
+    "images\\drink\\drink_db3b0b04_1.webp"
   ],
   "ingredients": [
     "基于茉莉绿茶版本准备，一杯分量，约 380 毫升",
@@ -42,9 +42,10 @@
     "将之前准备的一片橙子贴杯内壁放置",
     "将一次分量的腌制百香果浇在冰上",
     "缓慢注入茉莉绿茶直至满杯，便于分层",
-    "在液面放置好装饰用的绿叶（可选）"
+    "在液面放置好装饰用的绿叶（可选）",
+    "搅拌均匀后享用"
   ],
   "tips": "如果缺少或不喜欢茉莉绿茶，可以使用苏打气泡水代替，免去茉莉绿茶的调配流程\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "3f587337936521a1415be900ce2a3ec9d1c0cf8d584ad40458fe3af4d4448fa3"
+  "hash": "b00abd220031fc382916e3e7d29566c10b9208cdc55b83528932d9d5e97a9839"
 }

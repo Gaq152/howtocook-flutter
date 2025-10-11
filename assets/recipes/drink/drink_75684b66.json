@@ -5,7 +5,7 @@
   "categoryName": "饮料",
   "difficulty": 1,
   "images": [
-    "images/drink/drink_75684b66_0.webp"
+    "images\\drink\\drink_75684b66_0.webp"
   ],
   "ingredients": [
     "饮用水 700ml",
@@ -29,5 +29,5 @@
   ],
   "tips": "- 关于白砂糖的量：全糖为 12g，可根据个人情况在 0-12g 中调整\n- 本品是仿照宜家的奇异果菠菜汁自己研制的，没有宜家的好喝，但也不错\n- 欢迎改进！\n### 成品\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "33270333329a49c45f6b0e343bc08d116ba8c6c17183e22410660b2430f23601"
+  "hash": "db2421eb293dca0a7a4ad1fa76e64a388b6602a836a2fb7ae388386e8ec1aa4b"
 }

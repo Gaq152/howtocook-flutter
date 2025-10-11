@@ -5,7 +5,7 @@
   "categoryName": "甜品",
   "difficulty": 3,
   "images": [
-    "images/dessert/dessert_f4064f61_0.webp"
+    "images\\dessert\\dessert_f4064f61_0.webp"
   ],
   "ingredients": [
     "无盐黄油 40g",
@@ -29,5 +29,5 @@
   ],
   "tips": "- 最简单的分切方案是擀成圆形面皮，用刀切成 6 个扇形\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "0206e73c89fffe5ebcfa281876f78ddb0f0beb2607622281515ec5cecdf3c348"
+  "hash": "a6e0570dd71ac1bc5177a1603b210daa70d40b4cbba28cbe3a559b2c081ad05f"
 }

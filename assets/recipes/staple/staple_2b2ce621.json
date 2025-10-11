@@ -5,8 +5,7 @@
   "categoryName": "主食",
   "difficulty": 3,
   "images": [
-    "images/staple/staple_2b2ce621_0.webp",
-    "images/staple/staple_2b2ce621_1.webp"
+    "images\\staple\\staple_2b2ce621_0.webp"
   ],
   "ingredients": [
     "凉粉 500g",
@@ -33,5 +32,5 @@
   ],
   "tips": "- 选择凉粉时最好选用豌豆淀粉制作成的凉粉，条件不允许的话红薯淀粉或其他也可\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "d3af4408333d8ac606fbd35f11f6b238ea3f063670950158bbc1eee9c56d0cca"
+  "hash": "c71d830bf6bf47c8cd90c6cdae46fa355e4a3ca0f45c9b6357ce4088d6f311fe"
 }

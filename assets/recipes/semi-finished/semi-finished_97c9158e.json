@@ -5,7 +5,7 @@
   "categoryName": "半成品",
   "difficulty": 3,
   "images": [
-    "images/semi-finished/semi-finished_97c9158e_0.webp"
+    "images\\semi-finished\\semi-finished_97c9158e_0.webp"
   ],
   "ingredients": [
     "蛋挞皮 1 个",
@@ -22,5 +22,5 @@
   ],
   "tips": "- 操作时，可以根据焦褐斑大小适当调整时间，如果需要\n- 可以在蛋挞中加 10g 碎芝士，就是一道芝士蛋挞啦~\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "780e7ae05bf27d653deca8f55debf693dabe38bda0168cee15ac5b3241d9c069"
+  "hash": "4cddacbc15ebdbb9c27a9f884c1ea7bf0bfad5de8882750568f6ff31b1511b4d"
 }

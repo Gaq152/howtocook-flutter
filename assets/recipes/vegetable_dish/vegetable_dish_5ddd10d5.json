@@ -5,7 +5,7 @@
   "categoryName": "素菜",
   "difficulty": 2,
   "images": [
-    "images/vegetable_dish/vegetable_dish_5ddd10d5_0.webp"
+    "images\\vegetable_dish\\vegetable_dish_5ddd10d5_0.webp"
   ],
   "ingredients": [
     "鸡蛋 2 个 * 份数",
@@ -32,5 +32,5 @@
   ],
   "tips": "- 鸡蛋 1 个约为 50±5g。若使用其他品种蛋品可按比例增减水量。\n- 一定要确保将鸡蛋打散，否则可能会发生轻度鸡蛋爆炸。\n- 鸡蛋和水不能超过碗容量的 2/3，否则可能发生溢出。\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "58b015c0e66431a37f61628b89699f03d57355b34b0f1fb5d8e3118cac43d8cd"
+  "hash": "3d96e0d14b2968f0041672e012eebd75b241f8920569a2e2b65264e48af4acd4"
 }

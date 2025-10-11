@@ -5,13 +5,13 @@
   "categoryName": "荤菜",
   "difficulty": 4,
   "images": [
-    "images/meat_dish/meat_dish_636dd586_0.webp",
-    "images/meat_dish/meat_dish_636dd586_1.webp",
-    "images/meat_dish/meat_dish_636dd586_2.webp",
-    "images/meat_dish/meat_dish_636dd586_3.webp",
-    "images/meat_dish/meat_dish_636dd586_4.webp",
-    "images/meat_dish/meat_dish_636dd586_5.webp",
-    "images/meat_dish/meat_dish_636dd586_6.webp"
+    "images\\meat_dish\\meat_dish_636dd586_0.webp",
+    "images\\meat_dish\\meat_dish_636dd586_1.webp",
+    "images\\meat_dish\\meat_dish_636dd586_2.webp",
+    "images\\meat_dish\\meat_dish_636dd586_3.webp",
+    "images\\meat_dish\\meat_dish_636dd586_4.webp",
+    "images\\meat_dish\\meat_dish_636dd586_5.webp",
+    "images\\meat_dish\\meat_dish_636dd586_6.webp"
   ],
   "ingredients": [
     "鲜香菇 2 朵",
@@ -44,5 +44,5 @@
   ],
   "tips": "* 更多情况下，福州当地会选用马蹄（解腻）和马铃薯（洗油），因为疫情期间买不到，所以选用了凤梨\n* 闽菜以甜为主，如果吃不惯的可以放弃白糖\n* 可以通过勺子敲打瘦肉块，听到声响来判断是否炸透瘦肉\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "b0633e9406314559198f1657b59c8d2abfe329482bd27cfdcb7501b35ca4815d"
+  "hash": "f0f56d00bd6d458ff471460820fd809a12e8bcd9d1972dbc4343cc7f4659be35"
 }

@@ -5,8 +5,8 @@
   "categoryName": "素菜",
   "difficulty": 3,
   "images": [
-    "images/vegetable_dish/vegetable_dish_e376aaf7_0.webp",
-    "images/vegetable_dish/vegetable_dish_e376aaf7_1.webp"
+    "images\\vegetable_dish\\vegetable_dish_e376aaf7_0.webp",
+    "images\\vegetable_dish\\vegetable_dish_e376aaf7_1.webp"
   ],
   "ingredients": [
     "冬瓜 300 g",
@@ -33,5 +33,5 @@
   ],
   "tips": "如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "ded90e366ac1d0999bb7455f3c2bfe5a63c74afd2b9e460e82457cf2f5e22260"
+  "hash": "b72220199be486ed87edd6297c304a89c83c7f13dcc5011fa38a77de30ec64c1"
 }

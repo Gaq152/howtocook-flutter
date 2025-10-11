@@ -5,7 +5,7 @@
   "categoryName": "荤菜",
   "difficulty": 3,
   "images": [
-    "images/meat_dish/meat_dish_4bfb3820_0.webp"
+    "images\\meat_dish\\meat_dish_4bfb3820_0.webp"
   ],
   "ingredients": [
     "生鸡肝 5 个（约 800g）",
@@ -48,5 +48,5 @@
   ],
   "tips": "- 焯水时，需要注意观察沸腾的水位线，不要让水溢出避免发生危险。\n- 焯完水的鸡肝建议用凉水冲洗，更推荐冰水，可以让口感更好。\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "8126d6d6e5d3712dc4d349bbd45ead84e1c0a6ee3a2e7be525dddb1059c96162"
+  "hash": "87b8953bb0446f7bf0c9881ddb0e82d33a2a1bd384966777cb023d91595b1250"
 }

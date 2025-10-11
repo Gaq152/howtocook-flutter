@@ -5,7 +5,7 @@
   "categoryName": "荤菜",
   "difficulty": 4,
   "images": [
-    "images/meat_dish/meat_dish_fd11a11f_0.webp"
+    "images\\meat_dish\\meat_dish_fd11a11f_0.webp"
   ],
   "ingredients": [
     "排骨 200 g",
@@ -32,5 +32,5 @@
   ],
   "tips": "* 鱼露，又称鱼酱油，是一种广东，福建等地常见的调味品。效果类似于生抽\n* 本次制作过程中，由于疫情原因没有雨露，只能用老抽代替，所以排骨颜色偏黑，正常是金黄色\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "7bcf6df5ea14f48e42c79593606cd6e5704770ba7320de5645311b677c5d50d9"
+  "hash": "93e45fabc8621429732d57e7d60afdb71461e13af54d8fe5ef36db7a56433fc0"
 }

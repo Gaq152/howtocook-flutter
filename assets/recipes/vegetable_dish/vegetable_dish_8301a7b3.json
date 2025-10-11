@@ -5,7 +5,7 @@
   "categoryName": "素菜",
   "difficulty": 2,
   "images": [
-    "images/vegetable_dish/vegetable_dish_8301a7b3_0.webp"
+    "images\\vegetable_dish\\vegetable_dish_8301a7b3_0.webp"
   ],
   "ingredients": [
     "新鲜空心菜 250 g",
@@ -28,5 +28,5 @@
   ],
   "tips": "* 空心菜尽量选择新鲜，鲜嫩的，否则炒出来口感可能会比较老\n* 实际放入空心菜的量可以根据锅的大小决定，建议不超过一个锅，否则太多的话开始的翻动阶段和后续的翻炒，容易掉出少量空心菜到灶台\n* 炒空心菜时，一定要**开大火**，这样空心菜才能快速变软的同时保持脆嫩的口感，大火也有利于炒出生抽的香味。\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "1949946928405298d6e4d16c3698c367bbc57860d711fe96ff3527e3bef411f0"
+  "hash": "de1a67df566d4307f5576119fe91de55fea9949c6b28f665618b8830879ab7dd"
 }

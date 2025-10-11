@@ -5,10 +5,10 @@
   "categoryName": "素菜",
   "difficulty": 3,
   "images": [
-    "images/vegetable_dish/vegetable_dish_17333c69_0.webp",
-    "images/vegetable_dish/vegetable_dish_17333c69_1.webp",
-    "images/vegetable_dish/vegetable_dish_17333c69_2.webp",
-    "images/vegetable_dish/vegetable_dish_17333c69_3.webp"
+    "images\\vegetable_dish\\vegetable_dish_17333c69_0.webp",
+    "images\\vegetable_dish\\vegetable_dish_17333c69_1.webp",
+    "images\\vegetable_dish\\vegetable_dish_17333c69_2.webp",
+    "images\\vegetable_dish\\vegetable_dish_17333c69_3.webp"
   ],
   "ingredients": [
     "土豆 2 个",
@@ -29,5 +29,5 @@
   ],
   "tips": "* 土豆煎炸不可太熟透，否则在拔丝端盘时不容易定型，影响美观\n* 对于使用剩余的食用油，可以考虑重新收集到油壶。\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "e53025f26fd17a38c9befa28c0027e725f3c74bdeb1f13250f3e5a3e2eaa8e08"
+  "hash": "eeef6274d1e346f2555d0028c253035e532f810deb2629a3abcd30adf7a21b00"
 }

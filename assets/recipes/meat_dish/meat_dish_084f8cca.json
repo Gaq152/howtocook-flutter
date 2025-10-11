@@ -5,18 +5,18 @@
   "categoryName": "荤菜",
   "difficulty": 3,
   "images": [
-    "images/meat_dish/meat_dish_084f8cca_0.webp",
-    "images/meat_dish/meat_dish_084f8cca_1.webp",
-    "images/meat_dish/meat_dish_084f8cca_2.webp",
-    "images/meat_dish/meat_dish_084f8cca_3.webp",
-    "images/meat_dish/meat_dish_084f8cca_4.webp",
-    "images/meat_dish/meat_dish_084f8cca_5.webp",
-    "images/meat_dish/meat_dish_084f8cca_6.webp",
-    "images/meat_dish/meat_dish_084f8cca_7.webp",
-    "images/meat_dish/meat_dish_084f8cca_8.webp",
-    "images/meat_dish/meat_dish_084f8cca_9.webp",
-    "images/meat_dish/meat_dish_084f8cca_10.webp",
-    "images/meat_dish/meat_dish_084f8cca_11.webp"
+    "images\\meat_dish\\meat_dish_084f8cca_0.webp",
+    "images\\meat_dish\\meat_dish_084f8cca_1.webp",
+    "images\\meat_dish\\meat_dish_084f8cca_2.webp",
+    "images\\meat_dish\\meat_dish_084f8cca_3.webp",
+    "images\\meat_dish\\meat_dish_084f8cca_4.webp",
+    "images\\meat_dish\\meat_dish_084f8cca_5.webp",
+    "images\\meat_dish\\meat_dish_084f8cca_6.webp",
+    "images\\meat_dish\\meat_dish_084f8cca_7.webp",
+    "images\\meat_dish\\meat_dish_084f8cca_8.webp",
+    "images\\meat_dish\\meat_dish_084f8cca_9.webp",
+    "images\\meat_dish\\meat_dish_084f8cca_10.webp",
+    "images\\meat_dish\\meat_dish_084f8cca_11.webp"
   ],
   "ingredients": [
     "牛肉 300g",
@@ -48,5 +48,5 @@
   ],
   "tips": "- 参考: [水煮牛肉的详细步骤](https://www.zhms.cn/recipe/blrqm.html?source=2)\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "1611ae232f7b8c1ac024f834a082116b81b43907b0c5a3df35b95d4ecdfa0e20"
+  "hash": "39342f2c01e2d7527c30463f41552c4c46b7c1a043fe1e2b3a444a8178be40b3"
 }

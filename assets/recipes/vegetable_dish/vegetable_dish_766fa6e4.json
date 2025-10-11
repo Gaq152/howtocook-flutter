@@ -5,7 +5,7 @@
   "categoryName": "素菜",
   "difficulty": 2,
   "images": [
-    "images/vegetable_dish/vegetable_dish_766fa6e4_0.webp"
+    "images\\vegetable_dish\\vegetable_dish_766fa6e4_0.webp"
   ],
   "ingredients": [
     "西葫芦 500g",
@@ -28,5 +28,5 @@
   ],
   "tips": "如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "2051580846f580914655ac4c65f8dca6516ab9872a5a7ad1cda1abd5f34bd063"
+  "hash": "e3194fb2ed1587958db3de10a237b52a301f44d789a8c87b56e22581b116a0a4"
 }

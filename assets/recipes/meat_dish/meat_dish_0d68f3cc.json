@@ -5,7 +5,7 @@
   "categoryName": "荤菜",
   "difficulty": 3,
   "images": [
-    "images/meat_dish/meat_dish_0d68f3cc_0.webp"
+    "images\\meat_dish\\meat_dish_0d68f3cc_0.webp"
   ],
   "ingredients": [
     "食用油   20ml",
@@ -40,5 +40,5 @@
   ],
   "tips": "- 口水鸡第二种做法待更\n- 如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "960a0a6f105e94390b50f00c7c29129ef138be2322025c77cc4c23f75a1d82ec"
+  "hash": "467b48b301d5bb42ed003da5a4eb5390309086e589d2399790d4656277297d8b"
 }

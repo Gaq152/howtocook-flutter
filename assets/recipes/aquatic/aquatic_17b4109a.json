@@ -5,7 +5,7 @@
   "categoryName": "水产",
   "difficulty": 2,
   "images": [
-    "images/aquatic/aquatic_17b4109a_0.webp"
+    "images\\aquatic\\aquatic_17b4109a_0.webp"
   ],
   "ingredients": [
     "大虾 8-10 只（约 200g）",
@@ -31,5 +31,5 @@
   ],
   "tips": "- 虾不宜过度烹饪，否则会变硬\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "9272917954ca5137e2f96476d329ea83b05444a9faf82015289595712caae6f5"
+  "hash": "049e1515ae25d2c312f17f40cf4628bd96c126e381e9f866fc541e864a8fa929"
 }

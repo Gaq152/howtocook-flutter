@@ -5,9 +5,9 @@
   "categoryName": "荤菜",
   "difficulty": 3,
   "images": [
-    "images/meat_dish/meat_dish_ae21bab1_0.webp",
-    "images/meat_dish/meat_dish_ae21bab1_1.webp",
-    "images/meat_dish/meat_dish_ae21bab1_2.webp"
+    "images\\meat_dish\\meat_dish_ae21bab1_0.webp",
+    "images\\meat_dish\\meat_dish_ae21bab1_1.webp",
+    "images\\meat_dish\\meat_dish_ae21bab1_2.webp"
   ],
   "ingredients": [
     "鸡胸肉 200 克",
@@ -37,5 +37,5 @@
   ],
   "tips": "- 这道菜是隔离期间用现有材料做的，有条件可以加入香菜、小葱等进行调味，喜欢吃辣的可以加入辣椒油\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "ed5e79d9e566d855aa4e29eeeb55013fdf93141bcd951d7c3e02ad393536cbc8"
+  "hash": "d943cb680db2b8e4f11c345cad1c6c6a39b82c10c748cc308bd7b16a37b5c32e"
 }

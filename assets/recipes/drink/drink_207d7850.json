@@ -5,7 +5,7 @@
   "categoryName": "饮料",
   "difficulty": 1,
   "images": [
-    "images/drink/drink_207d7850_0.webp"
+    "images\\drink\\drink_207d7850_0.webp"
   ],
   "ingredients": [
     "瓶装椰子汁 500ml",
@@ -23,5 +23,5 @@
   ],
   "tips": "- 在以上步骤中，瓶装椰汁可以提前冰冻，但是不宜超过 7 天，否则有变质风险。\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "c75be303d5fce6ffc43b6e0751235afe5b49d03a1910a2648ba1947d460b7dba"
+  "hash": "f43810229f1b5c354f73430bc628db75d83e5be589bf8cc1cd5dccae26afd964"
 }

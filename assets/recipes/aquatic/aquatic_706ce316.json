@@ -5,7 +5,7 @@
   "categoryName": "水产",
   "difficulty": 4,
   "images": [
-    "images/aquatic/aquatic_706ce316_0.webp"
+    "images\\aquatic\\aquatic_706ce316_0.webp"
   ],
   "ingredients": [
     "草鱼 大约三斤",
@@ -53,5 +53,5 @@
   ],
   "tips": "- 技术总结：上述\n- 这道菜的食盐，胡椒粉，孜然粉，食用油，生抽，白糖等的使用量，根据个人口味和食材比例做决定，并不需要严格按照上述分量来做。\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "6ccb32b4225d6a05c9874e95164bd22e893e4a0c753ecdc3637d166d041b854a"
+  "hash": "83a2e18d01c67019746942ae87ff185b1a709a8e169a92d5f4e87a84dfd56c01"
 }

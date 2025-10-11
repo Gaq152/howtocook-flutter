@@ -5,7 +5,7 @@
   "categoryName": "甜品",
   "difficulty": 4,
   "images": [
-    "images/dessert/dessert_6b3856a6_0.webp"
+    "images\\dessert\\dessert_6b3856a6_0.webp"
   ],
   "ingredients": [
     "马斯卡彭芝士 450g",
@@ -34,5 +34,5 @@
   ],
   "tips": "- [下厨房蛋白打发具体教程](https://www.xiachufang.com/recipe/101779500/)\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "06ec4e264fbe650e1a7521b22f180b8df41224d6dd70212e32e2b9837a61ec81"
+  "hash": "64a38c48fdc312ad152858e6eee65a7e6b53e04558246404bb1f1aa59db764e7"
 }

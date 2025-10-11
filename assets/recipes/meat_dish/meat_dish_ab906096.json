@@ -5,22 +5,22 @@
   "categoryName": "荤菜",
   "difficulty": 4,
   "images": [
-    "images/meat_dish/meat_dish_ab906096_0.webp",
-    "images/meat_dish/meat_dish_ab906096_1.webp",
-    "images/meat_dish/meat_dish_ab906096_2.webp",
-    "images/meat_dish/meat_dish_ab906096_3.webp",
-    "images/meat_dish/meat_dish_ab906096_4.webp",
-    "images/meat_dish/meat_dish_ab906096_5.webp",
-    "images/meat_dish/meat_dish_ab906096_6.webp",
-    "images/meat_dish/meat_dish_ab906096_7.webp",
-    "images/meat_dish/meat_dish_ab906096_8.webp",
-    "images/meat_dish/meat_dish_ab906096_9.webp",
-    "images/meat_dish/meat_dish_ab906096_10.webp",
-    "images/meat_dish/meat_dish_ab906096_11.webp",
-    "images/meat_dish/meat_dish_ab906096_12.webp",
-    "images/meat_dish/meat_dish_ab906096_13.webp",
-    "images/meat_dish/meat_dish_ab906096_14.webp",
-    "images/meat_dish/meat_dish_ab906096_15.webp"
+    "images\\meat_dish\\meat_dish_ab906096_0.webp",
+    "images\\meat_dish\\meat_dish_ab906096_1.webp",
+    "images\\meat_dish\\meat_dish_ab906096_2.webp",
+    "images\\meat_dish\\meat_dish_ab906096_3.webp",
+    "images\\meat_dish\\meat_dish_ab906096_4.webp",
+    "images\\meat_dish\\meat_dish_ab906096_5.webp",
+    "images\\meat_dish\\meat_dish_ab906096_6.webp",
+    "images\\meat_dish\\meat_dish_ab906096_7.webp",
+    "images\\meat_dish\\meat_dish_ab906096_8.webp",
+    "images\\meat_dish\\meat_dish_ab906096_9.webp",
+    "images\\meat_dish\\meat_dish_ab906096_10.webp",
+    "images\\meat_dish\\meat_dish_ab906096_11.webp",
+    "images\\meat_dish\\meat_dish_ab906096_12.webp",
+    "images\\meat_dish\\meat_dish_ab906096_13.webp",
+    "images\\meat_dish\\meat_dish_ab906096_14.webp",
+    "images\\meat_dish\\meat_dish_ab906096_15.webp"
   ],
   "ingredients": [
     "牛腩 500-600g",
@@ -78,5 +78,5 @@
   ],
   "tips": "- 参考: [柱候牛腩+茅根马蹄竹蔗水教程](https://www.bilibili.com/video/BV12C4y1W7ox)\n- 操作高压锅要注意安全哦！\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "7ac4b2676e299e3cf438191aaf589b8fd36bf1d077e0ba7a33bab3b10d4fc466"
+  "hash": "15bff5579b152160934350518d5170ca3edbdb8142e422375c0aae5a2c5dc023"
 }

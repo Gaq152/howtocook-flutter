@@ -5,7 +5,7 @@
   "categoryName": "素菜",
   "difficulty": 3,
   "images": [
-    "images/vegetable_dish/vegetable_dish_275fbd17_0.webp"
+    "images\\vegetable_dish\\vegetable_dish_275fbd17_0.webp"
   ],
   "ingredients": [
     "茄子 1 个 （大约 200g）",
@@ -32,5 +32,5 @@
   ],
   "tips": "最终成品和楼下烧烤摊的烤茄子差不多，太香了！\n**注意事项：**\n茄子表面有水分、未涂满食用油或未使用叉子扎孔可能导致**茄子在烤制的过程中爆裂**\n**可以改进的环节：**\n第一次用刀划口子的时候，可以直接将茄子竖直切成两半，然后切割出纹路后涂抹上酱料\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "59eff471c7e0c25225ae3186c17fd6585ae13e826f07b2b9ad3b2e0f0ce64dcd"
+  "hash": "87033d1bece3a0ef6cf2b2d528e81b19eff51e8fc404d390320c987f72de6e10"
 }

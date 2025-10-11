@@ -5,9 +5,9 @@
   "categoryName": "水产",
   "difficulty": 3,
   "images": [
-    "images/aquatic/aquatic_43c732f1_0.webp",
-    "images/aquatic/aquatic_43c732f1_1.webp",
-    "images/aquatic/aquatic_43c732f1_2.webp"
+    "images\\aquatic\\aquatic_43c732f1_0.webp",
+    "images\\aquatic\\aquatic_43c732f1_1.webp",
+    "images\\aquatic\\aquatic_43c732f1_2.webp"
   ],
   "ingredients": [
     "蛏子 200 g",
@@ -28,5 +28,5 @@
   ],
   "tips": "* 更多情况下，福州当地会选用马蹄（解腻）和马铃薯（洗油），因为疫情期间买不到，所以选用了凤梨\n* 闽菜以甜为主，如果吃不惯的可以放弃白糖\n* 可以通过勺子敲打瘦肉块，听到声响来判断是否炸透瘦肉\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "db52ae4a536d687e291e25e3e778de8c6ca88bb524b81308b5a867e4fe74191a"
+  "hash": "f1b90dcbe6d2aaa48012e9f9607dbf1af7443cbe157c7050cbae1728506b2fd0"
 }

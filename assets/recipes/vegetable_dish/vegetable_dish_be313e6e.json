@@ -5,7 +5,7 @@
   "categoryName": "素菜",
   "difficulty": 3,
   "images": [
-    "images/vegetable_dish/vegetable_dish_be313e6e_0.webp"
+    "images\\vegetable_dish\\vegetable_dish_be313e6e_0.webp"
   ],
   "ingredients": [
     "四季豆 220g",
@@ -30,5 +30,5 @@
   ],
   "tips": "如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "f2f61a4605f8f7f6e4674108c00659f9266a11b1da981de24f0428cdd234164b"
+  "hash": "0834e4cb483dd77f748f622c0015006ee4f04f8b393eddfd0e2a7f311347b9ef"
 }

@@ -5,13 +5,13 @@
   "categoryName": "荤菜",
   "difficulty": 3,
   "images": [
-    "images/meat_dish/meat_dish_4c4e57de_0.webp",
-    "images/meat_dish/meat_dish_4c4e57de_1.webp",
-    "images/meat_dish/meat_dish_4c4e57de_2.webp",
-    "images/meat_dish/meat_dish_4c4e57de_3.webp",
-    "images/meat_dish/meat_dish_4c4e57de_4.webp",
-    "images/meat_dish/meat_dish_4c4e57de_5.webp",
-    "images/meat_dish/meat_dish_4c4e57de_6.webp"
+    "images\\meat_dish\\meat_dish_4c4e57de_0.webp",
+    "images\\meat_dish\\meat_dish_4c4e57de_1.webp",
+    "images\\meat_dish\\meat_dish_4c4e57de_2.webp",
+    "images\\meat_dish\\meat_dish_4c4e57de_3.webp",
+    "images\\meat_dish\\meat_dish_4c4e57de_4.webp",
+    "images\\meat_dish\\meat_dish_4c4e57de_5.webp",
+    "images\\meat_dish\\meat_dish_4c4e57de_6.webp"
   ],
   "ingredients": [
     "茄子 2 根",
@@ -38,5 +38,5 @@
   ],
   "tips": "- 茄子看个人喜好，可以去皮，肉沫也可以多放一点。\n- 参考: [鱼香茄子详细步骤](https://www.zhms.cn/recipe/kbbrl.html?source=2)\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "69277ab7cc9e59f3deba65e5d118511727a25a4d57befe1b89d60847d254ae44"
+  "hash": "782fb6462a09d567d3b4a5d68fa09178211ccafd61b38d3af2598f735a5b03a4"
 }

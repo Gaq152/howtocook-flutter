@@ -5,7 +5,7 @@
   "categoryName": "甜品",
   "difficulty": 2,
   "images": [
-    "images/dessert/dessert_448181d9_0.webp"
+    "images\\dessert\\dessert_448181d9_0.webp"
   ],
   "ingredients": [],
   "tools": [],
@@ -20,5 +20,5 @@
   ],
   "tips": "- 烤箱出来成品抖动是正常的，放凉后口感还不是最好的，一定要冷藏才好吃！\n- 参考资料：下厨房 - 巴斯克芝士蛋糕『最简单的蛋糕』零失败芝士控\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "7d9f4b5036c173a7c80d719746fbbbff4fde33d4ccfe1942d4ce79790a8f5d10"
+  "hash": "24130b95c56a5bb111e48825b90abac8cf1c860f1a58a1aad6b9ee74f2f66f02"
 }

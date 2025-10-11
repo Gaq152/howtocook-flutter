@@ -5,7 +5,7 @@
   "categoryName": "主食",
   "difficulty": 4,
   "images": [
-    "images/staple/staple_04eb8c97_0.webp"
+    "images\\staple\\staple_04eb8c97_0.webp"
   ],
   "ingredients": [
     "面粉 125g x 4= 500g，",
@@ -36,5 +36,5 @@
   ],
   "tips": "- 一定要注意水的比例\n- 烤箱品质层次不齐，第一次做注意观察火候对披萨的影响\n- 一般不特别标注是低筋或高筋面粉，基本都是中筋面粉\n- 容易出水的水果不能作为食材，比如西瓜、橘子等\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "0b637184c977548eeeae95665fc1f74e54ccf6ba2f62356a62fd935ccbc7bd36"
+  "hash": "09c49f73e8024c275362fb1c96c8220302ec7d764cd70c6d122ec3bfc6318b0d"
 }

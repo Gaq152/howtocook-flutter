@@ -5,8 +5,8 @@
   "categoryName": "荤菜",
   "difficulty": 2,
   "images": [
-    "images/meat_dish/meat_dish_75c92169_0.webp",
-    "images/meat_dish/meat_dish_75c92169_1.webp"
+    "images\\meat_dish\\meat_dish_75c92169_0.webp",
+    "images\\meat_dish\\meat_dish_75c92169_1.webp"
   ],
   "ingredients": [
     "荷兰豆大约 50 个",
@@ -25,5 +25,5 @@
   ],
   "tips": "- 在制作过程中没有放盐，是因为腊肠本身会有一些味道，同时生抽也会有一些咸味。\n- 腊肠虽然味道不错，但属于不太健康的食物，建议少放。\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "f6763894359642cb65a0e900960481a4c85f02ca1e010680987e3d847d3421d3"
+  "hash": "c15fa912e5187004310b58af459bade676c967040cadad9857b4fec8287fc9ac"
 }

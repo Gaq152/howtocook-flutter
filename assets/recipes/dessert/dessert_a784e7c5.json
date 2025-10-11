@@ -5,7 +5,7 @@
   "categoryName": "甜品",
   "difficulty": 4,
   "images": [
-    "images/dessert/dessert_a784e7c5_0.webp"
+    "images\\dessert\\dessert_a784e7c5_0.webp"
   ],
   "ingredients": [
     "蛋挞皮 品牌不限 整包蛋挞皮约为 30 只",
@@ -34,5 +34,5 @@
   ],
   "tips": "操作时 请务必小心烤箱高温 防止烫伤\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "004e87bafa4ca90f945940b4706c3af345be3bf88a491487ea3c932f79856f94"
+  "hash": "e8709131a966385a3460553e3721f7b5abbc5b3b9631a527c610b1ecfde6a508"
 }

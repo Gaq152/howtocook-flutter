@@ -5,7 +5,7 @@
   "categoryName": "荤菜",
   "difficulty": 5,
   "images": [
-    "images/meat_dish/meat_dish_f1f10752_0.webp"
+    "images\\meat_dish\\meat_dish_f1f10752_0.webp"
   ],
   "ingredients": [
     "牛腱子肉 2000 克",
@@ -36,5 +36,5 @@
   ],
   "tips": "- 操作时，需要注意观察沸腾的水位线，如发现低于 2/3 的食材应加热水至没过食材（约每 30 分钟确认一次）。\n- 用保鲜膜紧密包裹牛肉，放入冰箱冷藏数小时，可以使得切片肉质紧实不散。\n- 用牙签或者叉子在牛肉表面扎孔可以破坏筋膜，便于入味。\n### 参考资料\n- [下厨房app中的食谱](http://www.xiachufang.com/recipe/106670199/)\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "e44a7ca899179658e8bae7e74e2d6f89dac0422bb7bcb6148d2483ec89bcbe1f"
+  "hash": "ed7e7080a542483d5b48e371f917b1be03eb73215f79001353c1b5bb6eb1f408"
 }

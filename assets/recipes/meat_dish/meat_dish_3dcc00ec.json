@@ -5,7 +5,7 @@
   "categoryName": "荤菜",
   "difficulty": 5,
   "images": [
-    "images/meat_dish/meat_dish_3dcc00ec_0.webp"
+    "images\\meat_dish\\meat_dish_3dcc00ec_0.webp"
   ],
   "ingredients": [
     "主料:猪皮 1kg、水 4kg",
@@ -23,5 +23,5 @@
   ],
   "tips": "- 操作时，需要注意，做猪皮冻，直接下锅煮就“废”了，也是最忌讳的，一定要用白醋和盐不断搓洗猪皮，这样保证煮好的猪皮晶莹剔透，而且还没腥味\n- 参考资料：[铭哥说美食](https://www.bilibili.com/video/BV1hh41117TL?spm_id_from=333.999.0.0)\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "9622501acd28fed6d4ea60b64ad1992c111bd036883572ce683c92c2b6f4a7f3"
+  "hash": "3566edfb9239d0b6242e3444029f3a1ea26c3b39c418f863cf14478c6b3fb2f1"
 }

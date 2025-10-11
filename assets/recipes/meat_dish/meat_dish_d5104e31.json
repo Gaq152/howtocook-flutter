@@ -5,7 +5,7 @@
   "categoryName": "荤菜",
   "difficulty": 4,
   "images": [
-    "images/meat_dish/meat_dish_d5104e31_0.webp"
+    "images\\meat_dish\\meat_dish_d5104e31_0.webp"
   ],
   "ingredients": [
     "鸭肉半只（约 1kg）",
@@ -35,5 +35,5 @@
   ],
   "tips": "- 啤酒的量一定要足够把所有鸭肉没过，啤酒最好选择清香型的。\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "c314c50617e5c3983b0b09806a6e814ccaa3854683868bb35ccbb4192d5dd42f"
+  "hash": "444094cd54604eb4da76e76e54744aefda9241367222ae6d7fb38e7d5d44cade"
 }

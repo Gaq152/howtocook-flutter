@@ -5,7 +5,7 @@
   "categoryName": "荤菜",
   "difficulty": 4,
   "images": [
-    "images/meat_dish/meat_dish_bf17c0af_0.webp"
+    "images\\meat_dish\\meat_dish_bf17c0af_0.webp"
   ],
   "ingredients": [
     "香叶 1 片",
@@ -29,5 +29,5 @@
   ],
   "tips": "- 咖喱块不用捣碎，直接整块投入即可。\n- 操作时，需要注意搅拌食材，避免食材调味料不均匀。\n如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "21ff4c2a561d6c14ad40244477dfc06511eb53beeaebb233189cb2aee0ca0af5"
+  "hash": "5733848c201a26b124fd5be03a568bf4844ce060e8af3d61eab37c0ba6b41589"
 }

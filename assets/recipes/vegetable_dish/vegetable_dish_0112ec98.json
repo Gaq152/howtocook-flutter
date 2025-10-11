@@ -5,7 +5,7 @@
   "categoryName": "素菜",
   "difficulty": 2,
   "images": [
-    "images/vegetable_dish/vegetable_dish_0112ec98_0.webp"
+    "images\\vegetable_dish\\vegetable_dish_0112ec98_0.webp"
   ],
   "ingredients": [
     "菠菜 350g",
@@ -26,5 +26,5 @@
   ],
   "tips": "如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "f851d0d16e8b13c4d2aa304f82ae2a76412e19c1298630ec1d67476f4736ec17"
+  "hash": "4ea3cbbdd08997c336904adea945d0e0e0e040db21a7c12479d3dbf6042dc65c"
 }

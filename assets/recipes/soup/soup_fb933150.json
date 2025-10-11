@@ -5,9 +5,9 @@
   "categoryName": "汤粥",
   "difficulty": 3,
   "images": [
-    "images/soup/soup_fb933150_0.webp",
-    "images/soup/soup_fb933150_1.webp",
-    "images/soup/soup_fb933150_2.webp"
+    "images\\soup\\soup_fb933150_0.webp",
+    "images\\soup\\soup_fb933150_1.webp",
+    "images\\soup\\soup_fb933150_2.webp"
   ],
   "ingredients": [
     "昂刺鱼或者沙光鱼 一条",
@@ -29,5 +29,5 @@
   ],
   "tips": "如果您遵循本指南的制作流程而发现有问题或可以改进的流程，请提出 Issue 或 Pull request 。",
   "warnings": [],
-  "hash": "44c2580b8c4e98ea8393b7bbce9c0f7090ce74b93263ff471d0fb5c74008e76c"
+  "hash": "4c69dbe97f89dccaa290bea2f405b5beb504b4fafcac9d5931a2aa40222ea420"
 }
