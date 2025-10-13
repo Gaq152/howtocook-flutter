@@ -35,7 +35,15 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
         title: const Text('菜谱'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.qr_code_scanner),
+            tooltip: '扫一扫',
+            onPressed: () {
+              context.push('/qr-scanner');
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.search),
+            tooltip: '搜索',
             onPressed: () {
               context.push('/search');
             },
