@@ -57,6 +57,15 @@ class UserScreen extends StatelessWidget {
           ),
           _buildMenuItem(
             context,
+            icon: Icons.qr_code_scanner,
+            title: '扫一扫',
+            subtitle: '扫描二维码导入食谱',
+            onTap: () {
+              context.push('/qr-scanner');
+            },
+          ),
+          _buildMenuItem(
+            context,
             icon: Icons.model_training,
             title: '模型管理',
             onTap: () {
@@ -102,11 +111,13 @@ class UserScreen extends StatelessWidget {
     BuildContext context, {
     required IconData icon,
     required String title,
+    String? subtitle,
     required VoidCallback onTap,
   }) {
     return ListTile(
       leading: Icon(icon),
       title: Text(title),
+      subtitle: subtitle != null ? Text(subtitle) : null,
       trailing: const Icon(Icons.chevron_right),
       onTap: onTap,
     );
