@@ -8,16 +8,46 @@ part 'chat_message.g.dart';
 class ChatMessage with _$ChatMessage {
   const factory ChatMessage({
     required String id,
-    required String content,
     required MessageRole role,
+    required List<MessageContent> content,
     required DateTime timestamp,
-    List<String>? imageUrls,                     // 图片 URL 列表
-    List<String>? localImagePaths,               // 本地图片路径（用于历史记录）
-    List<RecipeCard>? recipeCards,               // 菜谱卡片
     @Default(MessageStatus.sent) MessageStatus status,
+    String? modelId, // 消息使用的模型ID（用于显示模型名称）
+    List<RecipeCard>? recipeCards, // 菜谱卡片（UI 展示用）
   }) = _ChatMessage;
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => _$ChatMessageFromJson(json);
+}
+
+/// 消息内容（支持多模态）
+@freezed
+class MessageContent with _$MessageContent {
+  /// 文本内容
+  const factory MessageContent.text({
+    required String text,
+  }) = TextContent;
+
+  /// 图片内容
+  const factory MessageContent.image({
+    required String data, // Base64 编码的图片数据
+    String? mimeType, // MIME 类型（如 image/jpeg）
+    String? localPath, // 本地路径（用于历史记录）
+  }) = ImageContent;
+
+  /// 工具使用（AI 调用工具）
+  const factory MessageContent.toolUse({
+    required String toolUseId,
+    required String name,
+    required Map<String, dynamic> input,
+  }) = ToolUseContent;
+
+  /// 工具结果（工具调用返回结果）
+  const factory MessageContent.toolResult({
+    required String toolUseId,
+    required Map<String, dynamic> result,
+  }) = ToolResultContent;
+
+  factory MessageContent.fromJson(Map<String, dynamic> json) => _$MessageContentFromJson(json);
 }
 
 /// 消息角色
@@ -32,9 +62,9 @@ enum MessageRole {
 
 /// 消息状态
 enum MessageStatus {
-  sending,   // 发送中
-  sent,      // 已发送
-  error,     // 发送失败
+  sending, // 发送中
+  sent, // 已发送
+  error, // 发送失败
 }
 
 /// 菜谱卡片实体（嵌入在聊天消息中）

@@ -21,16 +21,13 @@ ChatMessage _$ChatMessageFromJson(Map<String, dynamic> json) {
 /// @nodoc
 mixin _$ChatMessage {
   String get id => throw _privateConstructorUsedError;
-  String get content => throw _privateConstructorUsedError;
   MessageRole get role => throw _privateConstructorUsedError;
+  List<MessageContent> get content => throw _privateConstructorUsedError;
   DateTime get timestamp => throw _privateConstructorUsedError;
-  List<String>? get imageUrls =>
-      throw _privateConstructorUsedError; // 图片 URL 列表
-  List<String>? get localImagePaths =>
-      throw _privateConstructorUsedError; // 本地图片路径（用于历史记录）
-  List<RecipeCard>? get recipeCards =>
-      throw _privateConstructorUsedError; // 菜谱卡片
   MessageStatus get status => throw _privateConstructorUsedError;
+  String? get modelId =>
+      throw _privateConstructorUsedError; // 消息使用的模型ID（用于显示模型名称）
+  List<RecipeCard>? get recipeCards => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
@@ -46,13 +43,12 @@ abstract class $ChatMessageCopyWith<$Res> {
   @useResult
   $Res call(
       {String id,
-      String content,
       MessageRole role,
+      List<MessageContent> content,
       DateTime timestamp,
-      List<String>? imageUrls,
-      List<String>? localImagePaths,
-      List<RecipeCard>? recipeCards,
-      MessageStatus status});
+      MessageStatus status,
+      String? modelId,
+      List<RecipeCard>? recipeCards});
 }
 
 /// @nodoc
@@ -69,47 +65,42 @@ class _$ChatMessageCopyWithImpl<$Res, $Val extends ChatMessage>
   @override
   $Res call({
     Object? id = null,
-    Object? content = null,
     Object? role = null,
+    Object? content = null,
     Object? timestamp = null,
-    Object? imageUrls = freezed,
-    Object? localImagePaths = freezed,
-    Object? recipeCards = freezed,
     Object? status = null,
+    Object? modelId = freezed,
+    Object? recipeCards = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
               as String,
-      content: null == content
-          ? _value.content
-          : content // ignore: cast_nullable_to_non_nullable
-              as String,
       role: null == role
           ? _value.role
           : role // ignore: cast_nullable_to_non_nullable
               as MessageRole,
+      content: null == content
+          ? _value.content
+          : content // ignore: cast_nullable_to_non_nullable
+              as List<MessageContent>,
       timestamp: null == timestamp
           ? _value.timestamp
           : timestamp // ignore: cast_nullable_to_non_nullable
               as DateTime,
-      imageUrls: freezed == imageUrls
-          ? _value.imageUrls
-          : imageUrls // ignore: cast_nullable_to_non_nullable
-              as List<String>?,
-      localImagePaths: freezed == localImagePaths
-          ? _value.localImagePaths
-          : localImagePaths // ignore: cast_nullable_to_non_nullable
-              as List<String>?,
-      recipeCards: freezed == recipeCards
-          ? _value.recipeCards
-          : recipeCards // ignore: cast_nullable_to_non_nullable
-              as List<RecipeCard>?,
       status: null == status
           ? _value.status
           : status // ignore: cast_nullable_to_non_nullable
               as MessageStatus,
+      modelId: freezed == modelId
+          ? _value.modelId
+          : modelId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      recipeCards: freezed == recipeCards
+          ? _value.recipeCards
+          : recipeCards // ignore: cast_nullable_to_non_nullable
+              as List<RecipeCard>?,
     ) as $Val);
   }
 }
@@ -124,13 +115,12 @@ abstract class _$$ChatMessageImplCopyWith<$Res>
   @useResult
   $Res call(
       {String id,
-      String content,
       MessageRole role,
+      List<MessageContent> content,
       DateTime timestamp,
-      List<String>? imageUrls,
-      List<String>? localImagePaths,
-      List<RecipeCard>? recipeCards,
-      MessageStatus status});
+      MessageStatus status,
+      String? modelId,
+      List<RecipeCard>? recipeCards});
 }
 
 /// @nodoc
@@ -145,47 +135,42 @@ class __$$ChatMessageImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
-    Object? content = null,
     Object? role = null,
+    Object? content = null,
     Object? timestamp = null,
-    Object? imageUrls = freezed,
-    Object? localImagePaths = freezed,
-    Object? recipeCards = freezed,
     Object? status = null,
+    Object? modelId = freezed,
+    Object? recipeCards = freezed,
   }) {
     return _then(_$ChatMessageImpl(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
               as String,
-      content: null == content
-          ? _value.content
-          : content // ignore: cast_nullable_to_non_nullable
-              as String,
       role: null == role
           ? _value.role
           : role // ignore: cast_nullable_to_non_nullable
               as MessageRole,
+      content: null == content
+          ? _value._content
+          : content // ignore: cast_nullable_to_non_nullable
+              as List<MessageContent>,
       timestamp: null == timestamp
           ? _value.timestamp
           : timestamp // ignore: cast_nullable_to_non_nullable
               as DateTime,
-      imageUrls: freezed == imageUrls
-          ? _value._imageUrls
-          : imageUrls // ignore: cast_nullable_to_non_nullable
-              as List<String>?,
-      localImagePaths: freezed == localImagePaths
-          ? _value._localImagePaths
-          : localImagePaths // ignore: cast_nullable_to_non_nullable
-              as List<String>?,
-      recipeCards: freezed == recipeCards
-          ? _value._recipeCards
-          : recipeCards // ignore: cast_nullable_to_non_nullable
-              as List<RecipeCard>?,
       status: null == status
           ? _value.status
           : status // ignore: cast_nullable_to_non_nullable
               as MessageStatus,
+      modelId: freezed == modelId
+          ? _value.modelId
+          : modelId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      recipeCards: freezed == recipeCards
+          ? _value._recipeCards
+          : recipeCards // ignore: cast_nullable_to_non_nullable
+              as List<RecipeCard>?,
     ));
   }
 }
@@ -195,15 +180,13 @@ class __$$ChatMessageImplCopyWithImpl<$Res>
 class _$ChatMessageImpl implements _ChatMessage {
   const _$ChatMessageImpl(
       {required this.id,
-      required this.content,
       required this.role,
+      required final List<MessageContent> content,
       required this.timestamp,
-      final List<String>? imageUrls,
-      final List<String>? localImagePaths,
-      final List<RecipeCard>? recipeCards,
-      this.status = MessageStatus.sent})
-      : _imageUrls = imageUrls,
-        _localImagePaths = localImagePaths,
+      this.status = MessageStatus.sent,
+      this.modelId,
+      final List<RecipeCard>? recipeCards})
+      : _content = content,
         _recipeCards = recipeCards;
 
   factory _$ChatMessageImpl.fromJson(Map<String, dynamic> json) =>
@@ -212,36 +195,25 @@ class _$ChatMessageImpl implements _ChatMessage {
   @override
   final String id;
   @override
-  final String content;
-  @override
   final MessageRole role;
+  final List<MessageContent> _content;
+  @override
+  List<MessageContent> get content {
+    if (_content is EqualUnmodifiableListView) return _content;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_content);
+  }
+
   @override
   final DateTime timestamp;
-  final List<String>? _imageUrls;
   @override
-  List<String>? get imageUrls {
-    final value = _imageUrls;
-    if (value == null) return null;
-    if (_imageUrls is EqualUnmodifiableListView) return _imageUrls;
-    // ignore: implicit_dynamic_type
-    return EqualUnmodifiableListView(value);
-  }
-
-// 图片 URL 列表
-  final List<String>? _localImagePaths;
-// 图片 URL 列表
+  @JsonKey()
+  final MessageStatus status;
   @override
-  List<String>? get localImagePaths {
-    final value = _localImagePaths;
-    if (value == null) return null;
-    if (_localImagePaths is EqualUnmodifiableListView) return _localImagePaths;
-    // ignore: implicit_dynamic_type
-    return EqualUnmodifiableListView(value);
-  }
-
-// 本地图片路径（用于历史记录）
+  final String? modelId;
+// 消息使用的模型ID（用于显示模型名称）
   final List<RecipeCard>? _recipeCards;
-// 本地图片路径（用于历史记录）
+// 消息使用的模型ID（用于显示模型名称）
   @override
   List<RecipeCard>? get recipeCards {
     final value = _recipeCards;
@@ -251,14 +223,9 @@ class _$ChatMessageImpl implements _ChatMessage {
     return EqualUnmodifiableListView(value);
   }
 
-// 菜谱卡片
-  @override
-  @JsonKey()
-  final MessageStatus status;
-
   @override
   String toString() {
-    return 'ChatMessage(id: $id, content: $content, role: $role, timestamp: $timestamp, imageUrls: $imageUrls, localImagePaths: $localImagePaths, recipeCards: $recipeCards, status: $status)';
+    return 'ChatMessage(id: $id, role: $role, content: $content, timestamp: $timestamp, status: $status, modelId: $modelId, recipeCards: $recipeCards)';
   }
 
   @override
@@ -267,17 +234,14 @@ class _$ChatMessageImpl implements _ChatMessage {
         (other.runtimeType == runtimeType &&
             other is _$ChatMessageImpl &&
             (identical(other.id, id) || other.id == id) &&
-            (identical(other.content, content) || other.content == content) &&
             (identical(other.role, role) || other.role == role) &&
+            const DeepCollectionEquality().equals(other._content, _content) &&
             (identical(other.timestamp, timestamp) ||
                 other.timestamp == timestamp) &&
+            (identical(other.status, status) || other.status == status) &&
+            (identical(other.modelId, modelId) || other.modelId == modelId) &&
             const DeepCollectionEquality()
-                .equals(other._imageUrls, _imageUrls) &&
-            const DeepCollectionEquality()
-                .equals(other._localImagePaths, _localImagePaths) &&
-            const DeepCollectionEquality()
-                .equals(other._recipeCards, _recipeCards) &&
-            (identical(other.status, status) || other.status == status));
+                .equals(other._recipeCards, _recipeCards));
   }
 
   @JsonKey(ignore: true)
@@ -285,13 +249,12 @@ class _$ChatMessageImpl implements _ChatMessage {
   int get hashCode => Object.hash(
       runtimeType,
       id,
-      content,
       role,
+      const DeepCollectionEquality().hash(_content),
       timestamp,
-      const DeepCollectionEquality().hash(_imageUrls),
-      const DeepCollectionEquality().hash(_localImagePaths),
-      const DeepCollectionEquality().hash(_recipeCards),
-      status);
+      status,
+      modelId,
+      const DeepCollectionEquality().hash(_recipeCards));
 
   @JsonKey(ignore: true)
   @override
@@ -310,13 +273,12 @@ class _$ChatMessageImpl implements _ChatMessage {
 abstract class _ChatMessage implements ChatMessage {
   const factory _ChatMessage(
       {required final String id,
-      required final String content,
       required final MessageRole role,
+      required final List<MessageContent> content,
       required final DateTime timestamp,
-      final List<String>? imageUrls,
-      final List<String>? localImagePaths,
-      final List<RecipeCard>? recipeCards,
-      final MessageStatus status}) = _$ChatMessageImpl;
+      final MessageStatus status,
+      final String? modelId,
+      final List<RecipeCard>? recipeCards}) = _$ChatMessageImpl;
 
   factory _ChatMessage.fromJson(Map<String, dynamic> json) =
       _$ChatMessageImpl.fromJson;
@@ -324,22 +286,885 @@ abstract class _ChatMessage implements ChatMessage {
   @override
   String get id;
   @override
-  String get content;
-  @override
   MessageRole get role;
+  @override
+  List<MessageContent> get content;
   @override
   DateTime get timestamp;
   @override
-  List<String>? get imageUrls;
-  @override // 图片 URL 列表
-  List<String>? get localImagePaths;
-  @override // 本地图片路径（用于历史记录）
-  List<RecipeCard>? get recipeCards;
-  @override // 菜谱卡片
   MessageStatus get status;
+  @override
+  String? get modelId;
+  @override // 消息使用的模型ID（用于显示模型名称）
+  List<RecipeCard>? get recipeCards;
   @override
   @JsonKey(ignore: true)
   _$$ChatMessageImplCopyWith<_$ChatMessageImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+MessageContent _$MessageContentFromJson(Map<String, dynamic> json) {
+  switch (json['runtimeType']) {
+    case 'text':
+      return TextContent.fromJson(json);
+    case 'image':
+      return ImageContent.fromJson(json);
+    case 'toolUse':
+      return ToolUseContent.fromJson(json);
+    case 'toolResult':
+      return ToolResultContent.fromJson(json);
+
+    default:
+      throw CheckedFromJsonException(json, 'runtimeType', 'MessageContent',
+          'Invalid union type "${json['runtimeType']}"!');
+  }
+}
+
+/// @nodoc
+mixin _$MessageContent {
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String text) text,
+    required TResult Function(String data, String? mimeType, String? localPath)
+        image,
+    required TResult Function(
+            String toolUseId, String name, Map<String, dynamic> input)
+        toolUse,
+    required TResult Function(String toolUseId, Map<String, dynamic> result)
+        toolResult,
+  }) =>
+      throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String text)? text,
+    TResult? Function(String data, String? mimeType, String? localPath)? image,
+    TResult? Function(
+            String toolUseId, String name, Map<String, dynamic> input)?
+        toolUse,
+    TResult? Function(String toolUseId, Map<String, dynamic> result)?
+        toolResult,
+  }) =>
+      throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String text)? text,
+    TResult Function(String data, String? mimeType, String? localPath)? image,
+    TResult Function(String toolUseId, String name, Map<String, dynamic> input)?
+        toolUse,
+    TResult Function(String toolUseId, Map<String, dynamic> result)? toolResult,
+    required TResult orElse(),
+  }) =>
+      throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(TextContent value) text,
+    required TResult Function(ImageContent value) image,
+    required TResult Function(ToolUseContent value) toolUse,
+    required TResult Function(ToolResultContent value) toolResult,
+  }) =>
+      throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(TextContent value)? text,
+    TResult? Function(ImageContent value)? image,
+    TResult? Function(ToolUseContent value)? toolUse,
+    TResult? Function(ToolResultContent value)? toolResult,
+  }) =>
+      throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(TextContent value)? text,
+    TResult Function(ImageContent value)? image,
+    TResult Function(ToolUseContent value)? toolUse,
+    TResult Function(ToolResultContent value)? toolResult,
+    required TResult orElse(),
+  }) =>
+      throw _privateConstructorUsedError;
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $MessageContentCopyWith<$Res> {
+  factory $MessageContentCopyWith(
+          MessageContent value, $Res Function(MessageContent) then) =
+      _$MessageContentCopyWithImpl<$Res, MessageContent>;
+}
+
+/// @nodoc
+class _$MessageContentCopyWithImpl<$Res, $Val extends MessageContent>
+    implements $MessageContentCopyWith<$Res> {
+  _$MessageContentCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+}
+
+/// @nodoc
+abstract class _$$TextContentImplCopyWith<$Res> {
+  factory _$$TextContentImplCopyWith(
+          _$TextContentImpl value, $Res Function(_$TextContentImpl) then) =
+      __$$TextContentImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({String text});
+}
+
+/// @nodoc
+class __$$TextContentImplCopyWithImpl<$Res>
+    extends _$MessageContentCopyWithImpl<$Res, _$TextContentImpl>
+    implements _$$TextContentImplCopyWith<$Res> {
+  __$$TextContentImplCopyWithImpl(
+      _$TextContentImpl _value, $Res Function(_$TextContentImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? text = null,
+  }) {
+    return _then(_$TextContentImpl(
+      text: null == text
+          ? _value.text
+          : text // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$TextContentImpl implements TextContent {
+  const _$TextContentImpl({required this.text, final String? $type})
+      : $type = $type ?? 'text';
+
+  factory _$TextContentImpl.fromJson(Map<String, dynamic> json) =>
+      _$$TextContentImplFromJson(json);
+
+  @override
+  final String text;
+
+  @JsonKey(name: 'runtimeType')
+  final String $type;
+
+  @override
+  String toString() {
+    return 'MessageContent.text(text: $text)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$TextContentImpl &&
+            (identical(other.text, text) || other.text == text));
+  }
+
+  @JsonKey(ignore: true)
+  @override
+  int get hashCode => Object.hash(runtimeType, text);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$TextContentImplCopyWith<_$TextContentImpl> get copyWith =>
+      __$$TextContentImplCopyWithImpl<_$TextContentImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String text) text,
+    required TResult Function(String data, String? mimeType, String? localPath)
+        image,
+    required TResult Function(
+            String toolUseId, String name, Map<String, dynamic> input)
+        toolUse,
+    required TResult Function(String toolUseId, Map<String, dynamic> result)
+        toolResult,
+  }) {
+    return text(this.text);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String text)? text,
+    TResult? Function(String data, String? mimeType, String? localPath)? image,
+    TResult? Function(
+            String toolUseId, String name, Map<String, dynamic> input)?
+        toolUse,
+    TResult? Function(String toolUseId, Map<String, dynamic> result)?
+        toolResult,
+  }) {
+    return text?.call(this.text);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String text)? text,
+    TResult Function(String data, String? mimeType, String? localPath)? image,
+    TResult Function(String toolUseId, String name, Map<String, dynamic> input)?
+        toolUse,
+    TResult Function(String toolUseId, Map<String, dynamic> result)? toolResult,
+    required TResult orElse(),
+  }) {
+    if (text != null) {
+      return text(this.text);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(TextContent value) text,
+    required TResult Function(ImageContent value) image,
+    required TResult Function(ToolUseContent value) toolUse,
+    required TResult Function(ToolResultContent value) toolResult,
+  }) {
+    return text(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(TextContent value)? text,
+    TResult? Function(ImageContent value)? image,
+    TResult? Function(ToolUseContent value)? toolUse,
+    TResult? Function(ToolResultContent value)? toolResult,
+  }) {
+    return text?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(TextContent value)? text,
+    TResult Function(ImageContent value)? image,
+    TResult Function(ToolUseContent value)? toolUse,
+    TResult Function(ToolResultContent value)? toolResult,
+    required TResult orElse(),
+  }) {
+    if (text != null) {
+      return text(this);
+    }
+    return orElse();
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$TextContentImplToJson(
+      this,
+    );
+  }
+}
+
+abstract class TextContent implements MessageContent {
+  const factory TextContent({required final String text}) = _$TextContentImpl;
+
+  factory TextContent.fromJson(Map<String, dynamic> json) =
+      _$TextContentImpl.fromJson;
+
+  String get text;
+  @JsonKey(ignore: true)
+  _$$TextContentImplCopyWith<_$TextContentImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$ImageContentImplCopyWith<$Res> {
+  factory _$$ImageContentImplCopyWith(
+          _$ImageContentImpl value, $Res Function(_$ImageContentImpl) then) =
+      __$$ImageContentImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({String data, String? mimeType, String? localPath});
+}
+
+/// @nodoc
+class __$$ImageContentImplCopyWithImpl<$Res>
+    extends _$MessageContentCopyWithImpl<$Res, _$ImageContentImpl>
+    implements _$$ImageContentImplCopyWith<$Res> {
+  __$$ImageContentImplCopyWithImpl(
+      _$ImageContentImpl _value, $Res Function(_$ImageContentImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? data = null,
+    Object? mimeType = freezed,
+    Object? localPath = freezed,
+  }) {
+    return _then(_$ImageContentImpl(
+      data: null == data
+          ? _value.data
+          : data // ignore: cast_nullable_to_non_nullable
+              as String,
+      mimeType: freezed == mimeType
+          ? _value.mimeType
+          : mimeType // ignore: cast_nullable_to_non_nullable
+              as String?,
+      localPath: freezed == localPath
+          ? _value.localPath
+          : localPath // ignore: cast_nullable_to_non_nullable
+              as String?,
+    ));
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$ImageContentImpl implements ImageContent {
+  const _$ImageContentImpl(
+      {required this.data, this.mimeType, this.localPath, final String? $type})
+      : $type = $type ?? 'image';
+
+  factory _$ImageContentImpl.fromJson(Map<String, dynamic> json) =>
+      _$$ImageContentImplFromJson(json);
+
+  @override
+  final String data;
+// Base64 编码的图片数据
+  @override
+  final String? mimeType;
+// MIME 类型（如 image/jpeg）
+  @override
+  final String? localPath;
+
+  @JsonKey(name: 'runtimeType')
+  final String $type;
+
+  @override
+  String toString() {
+    return 'MessageContent.image(data: $data, mimeType: $mimeType, localPath: $localPath)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$ImageContentImpl &&
+            (identical(other.data, data) || other.data == data) &&
+            (identical(other.mimeType, mimeType) ||
+                other.mimeType == mimeType) &&
+            (identical(other.localPath, localPath) ||
+                other.localPath == localPath));
+  }
+
+  @JsonKey(ignore: true)
+  @override
+  int get hashCode => Object.hash(runtimeType, data, mimeType, localPath);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$ImageContentImplCopyWith<_$ImageContentImpl> get copyWith =>
+      __$$ImageContentImplCopyWithImpl<_$ImageContentImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String text) text,
+    required TResult Function(String data, String? mimeType, String? localPath)
+        image,
+    required TResult Function(
+            String toolUseId, String name, Map<String, dynamic> input)
+        toolUse,
+    required TResult Function(String toolUseId, Map<String, dynamic> result)
+        toolResult,
+  }) {
+    return image(data, mimeType, localPath);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String text)? text,
+    TResult? Function(String data, String? mimeType, String? localPath)? image,
+    TResult? Function(
+            String toolUseId, String name, Map<String, dynamic> input)?
+        toolUse,
+    TResult? Function(String toolUseId, Map<String, dynamic> result)?
+        toolResult,
+  }) {
+    return image?.call(data, mimeType, localPath);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String text)? text,
+    TResult Function(String data, String? mimeType, String? localPath)? image,
+    TResult Function(String toolUseId, String name, Map<String, dynamic> input)?
+        toolUse,
+    TResult Function(String toolUseId, Map<String, dynamic> result)? toolResult,
+    required TResult orElse(),
+  }) {
+    if (image != null) {
+      return image(data, mimeType, localPath);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(TextContent value) text,
+    required TResult Function(ImageContent value) image,
+    required TResult Function(ToolUseContent value) toolUse,
+    required TResult Function(ToolResultContent value) toolResult,
+  }) {
+    return image(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(TextContent value)? text,
+    TResult? Function(ImageContent value)? image,
+    TResult? Function(ToolUseContent value)? toolUse,
+    TResult? Function(ToolResultContent value)? toolResult,
+  }) {
+    return image?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(TextContent value)? text,
+    TResult Function(ImageContent value)? image,
+    TResult Function(ToolUseContent value)? toolUse,
+    TResult Function(ToolResultContent value)? toolResult,
+    required TResult orElse(),
+  }) {
+    if (image != null) {
+      return image(this);
+    }
+    return orElse();
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$ImageContentImplToJson(
+      this,
+    );
+  }
+}
+
+abstract class ImageContent implements MessageContent {
+  const factory ImageContent(
+      {required final String data,
+      final String? mimeType,
+      final String? localPath}) = _$ImageContentImpl;
+
+  factory ImageContent.fromJson(Map<String, dynamic> json) =
+      _$ImageContentImpl.fromJson;
+
+  String get data; // Base64 编码的图片数据
+  String? get mimeType; // MIME 类型（如 image/jpeg）
+  String? get localPath;
+  @JsonKey(ignore: true)
+  _$$ImageContentImplCopyWith<_$ImageContentImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$ToolUseContentImplCopyWith<$Res> {
+  factory _$$ToolUseContentImplCopyWith(_$ToolUseContentImpl value,
+          $Res Function(_$ToolUseContentImpl) then) =
+      __$$ToolUseContentImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({String toolUseId, String name, Map<String, dynamic> input});
+}
+
+/// @nodoc
+class __$$ToolUseContentImplCopyWithImpl<$Res>
+    extends _$MessageContentCopyWithImpl<$Res, _$ToolUseContentImpl>
+    implements _$$ToolUseContentImplCopyWith<$Res> {
+  __$$ToolUseContentImplCopyWithImpl(
+      _$ToolUseContentImpl _value, $Res Function(_$ToolUseContentImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? toolUseId = null,
+    Object? name = null,
+    Object? input = null,
+  }) {
+    return _then(_$ToolUseContentImpl(
+      toolUseId: null == toolUseId
+          ? _value.toolUseId
+          : toolUseId // ignore: cast_nullable_to_non_nullable
+              as String,
+      name: null == name
+          ? _value.name
+          : name // ignore: cast_nullable_to_non_nullable
+              as String,
+      input: null == input
+          ? _value._input
+          : input // ignore: cast_nullable_to_non_nullable
+              as Map<String, dynamic>,
+    ));
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$ToolUseContentImpl implements ToolUseContent {
+  const _$ToolUseContentImpl(
+      {required this.toolUseId,
+      required this.name,
+      required final Map<String, dynamic> input,
+      final String? $type})
+      : _input = input,
+        $type = $type ?? 'toolUse';
+
+  factory _$ToolUseContentImpl.fromJson(Map<String, dynamic> json) =>
+      _$$ToolUseContentImplFromJson(json);
+
+  @override
+  final String toolUseId;
+  @override
+  final String name;
+  final Map<String, dynamic> _input;
+  @override
+  Map<String, dynamic> get input {
+    if (_input is EqualUnmodifiableMapView) return _input;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableMapView(_input);
+  }
+
+  @JsonKey(name: 'runtimeType')
+  final String $type;
+
+  @override
+  String toString() {
+    return 'MessageContent.toolUse(toolUseId: $toolUseId, name: $name, input: $input)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$ToolUseContentImpl &&
+            (identical(other.toolUseId, toolUseId) ||
+                other.toolUseId == toolUseId) &&
+            (identical(other.name, name) || other.name == name) &&
+            const DeepCollectionEquality().equals(other._input, _input));
+  }
+
+  @JsonKey(ignore: true)
+  @override
+  int get hashCode => Object.hash(runtimeType, toolUseId, name,
+      const DeepCollectionEquality().hash(_input));
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$ToolUseContentImplCopyWith<_$ToolUseContentImpl> get copyWith =>
+      __$$ToolUseContentImplCopyWithImpl<_$ToolUseContentImpl>(
+          this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String text) text,
+    required TResult Function(String data, String? mimeType, String? localPath)
+        image,
+    required TResult Function(
+            String toolUseId, String name, Map<String, dynamic> input)
+        toolUse,
+    required TResult Function(String toolUseId, Map<String, dynamic> result)
+        toolResult,
+  }) {
+    return toolUse(toolUseId, name, input);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String text)? text,
+    TResult? Function(String data, String? mimeType, String? localPath)? image,
+    TResult? Function(
+            String toolUseId, String name, Map<String, dynamic> input)?
+        toolUse,
+    TResult? Function(String toolUseId, Map<String, dynamic> result)?
+        toolResult,
+  }) {
+    return toolUse?.call(toolUseId, name, input);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String text)? text,
+    TResult Function(String data, String? mimeType, String? localPath)? image,
+    TResult Function(String toolUseId, String name, Map<String, dynamic> input)?
+        toolUse,
+    TResult Function(String toolUseId, Map<String, dynamic> result)? toolResult,
+    required TResult orElse(),
+  }) {
+    if (toolUse != null) {
+      return toolUse(toolUseId, name, input);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(TextContent value) text,
+    required TResult Function(ImageContent value) image,
+    required TResult Function(ToolUseContent value) toolUse,
+    required TResult Function(ToolResultContent value) toolResult,
+  }) {
+    return toolUse(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(TextContent value)? text,
+    TResult? Function(ImageContent value)? image,
+    TResult? Function(ToolUseContent value)? toolUse,
+    TResult? Function(ToolResultContent value)? toolResult,
+  }) {
+    return toolUse?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(TextContent value)? text,
+    TResult Function(ImageContent value)? image,
+    TResult Function(ToolUseContent value)? toolUse,
+    TResult Function(ToolResultContent value)? toolResult,
+    required TResult orElse(),
+  }) {
+    if (toolUse != null) {
+      return toolUse(this);
+    }
+    return orElse();
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$ToolUseContentImplToJson(
+      this,
+    );
+  }
+}
+
+abstract class ToolUseContent implements MessageContent {
+  const factory ToolUseContent(
+      {required final String toolUseId,
+      required final String name,
+      required final Map<String, dynamic> input}) = _$ToolUseContentImpl;
+
+  factory ToolUseContent.fromJson(Map<String, dynamic> json) =
+      _$ToolUseContentImpl.fromJson;
+
+  String get toolUseId;
+  String get name;
+  Map<String, dynamic> get input;
+  @JsonKey(ignore: true)
+  _$$ToolUseContentImplCopyWith<_$ToolUseContentImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$ToolResultContentImplCopyWith<$Res> {
+  factory _$$ToolResultContentImplCopyWith(_$ToolResultContentImpl value,
+          $Res Function(_$ToolResultContentImpl) then) =
+      __$$ToolResultContentImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({String toolUseId, Map<String, dynamic> result});
+}
+
+/// @nodoc
+class __$$ToolResultContentImplCopyWithImpl<$Res>
+    extends _$MessageContentCopyWithImpl<$Res, _$ToolResultContentImpl>
+    implements _$$ToolResultContentImplCopyWith<$Res> {
+  __$$ToolResultContentImplCopyWithImpl(_$ToolResultContentImpl _value,
+      $Res Function(_$ToolResultContentImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? toolUseId = null,
+    Object? result = null,
+  }) {
+    return _then(_$ToolResultContentImpl(
+      toolUseId: null == toolUseId
+          ? _value.toolUseId
+          : toolUseId // ignore: cast_nullable_to_non_nullable
+              as String,
+      result: null == result
+          ? _value._result
+          : result // ignore: cast_nullable_to_non_nullable
+              as Map<String, dynamic>,
+    ));
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$ToolResultContentImpl implements ToolResultContent {
+  const _$ToolResultContentImpl(
+      {required this.toolUseId,
+      required final Map<String, dynamic> result,
+      final String? $type})
+      : _result = result,
+        $type = $type ?? 'toolResult';
+
+  factory _$ToolResultContentImpl.fromJson(Map<String, dynamic> json) =>
+      _$$ToolResultContentImplFromJson(json);
+
+  @override
+  final String toolUseId;
+  final Map<String, dynamic> _result;
+  @override
+  Map<String, dynamic> get result {
+    if (_result is EqualUnmodifiableMapView) return _result;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableMapView(_result);
+  }
+
+  @JsonKey(name: 'runtimeType')
+  final String $type;
+
+  @override
+  String toString() {
+    return 'MessageContent.toolResult(toolUseId: $toolUseId, result: $result)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$ToolResultContentImpl &&
+            (identical(other.toolUseId, toolUseId) ||
+                other.toolUseId == toolUseId) &&
+            const DeepCollectionEquality().equals(other._result, _result));
+  }
+
+  @JsonKey(ignore: true)
+  @override
+  int get hashCode => Object.hash(
+      runtimeType, toolUseId, const DeepCollectionEquality().hash(_result));
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$ToolResultContentImplCopyWith<_$ToolResultContentImpl> get copyWith =>
+      __$$ToolResultContentImplCopyWithImpl<_$ToolResultContentImpl>(
+          this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String text) text,
+    required TResult Function(String data, String? mimeType, String? localPath)
+        image,
+    required TResult Function(
+            String toolUseId, String name, Map<String, dynamic> input)
+        toolUse,
+    required TResult Function(String toolUseId, Map<String, dynamic> result)
+        toolResult,
+  }) {
+    return toolResult(toolUseId, result);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String text)? text,
+    TResult? Function(String data, String? mimeType, String? localPath)? image,
+    TResult? Function(
+            String toolUseId, String name, Map<String, dynamic> input)?
+        toolUse,
+    TResult? Function(String toolUseId, Map<String, dynamic> result)?
+        toolResult,
+  }) {
+    return toolResult?.call(toolUseId, result);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String text)? text,
+    TResult Function(String data, String? mimeType, String? localPath)? image,
+    TResult Function(String toolUseId, String name, Map<String, dynamic> input)?
+        toolUse,
+    TResult Function(String toolUseId, Map<String, dynamic> result)? toolResult,
+    required TResult orElse(),
+  }) {
+    if (toolResult != null) {
+      return toolResult(toolUseId, result);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(TextContent value) text,
+    required TResult Function(ImageContent value) image,
+    required TResult Function(ToolUseContent value) toolUse,
+    required TResult Function(ToolResultContent value) toolResult,
+  }) {
+    return toolResult(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(TextContent value)? text,
+    TResult? Function(ImageContent value)? image,
+    TResult? Function(ToolUseContent value)? toolUse,
+    TResult? Function(ToolResultContent value)? toolResult,
+  }) {
+    return toolResult?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(TextContent value)? text,
+    TResult Function(ImageContent value)? image,
+    TResult Function(ToolUseContent value)? toolUse,
+    TResult Function(ToolResultContent value)? toolResult,
+    required TResult orElse(),
+  }) {
+    if (toolResult != null) {
+      return toolResult(this);
+    }
+    return orElse();
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$ToolResultContentImplToJson(
+      this,
+    );
+  }
+}
+
+abstract class ToolResultContent implements MessageContent {
+  const factory ToolResultContent(
+      {required final String toolUseId,
+      required final Map<String, dynamic> result}) = _$ToolResultContentImpl;
+
+  factory ToolResultContent.fromJson(Map<String, dynamic> json) =
+      _$ToolResultContentImpl.fromJson;
+
+  String get toolUseId;
+  Map<String, dynamic> get result;
+  @JsonKey(ignore: true)
+  _$$ToolResultContentImplCopyWith<_$ToolResultContentImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 

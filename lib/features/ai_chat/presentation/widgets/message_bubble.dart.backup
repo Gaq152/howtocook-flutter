@@ -1,0 +1,358 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
+import '../../domain/entities/chat_message.dart';
+
+/// 消息气泡组件
+///
+/// 用于显示聊天消息，支持：
+/// - 左右布局（用户消息靠右，AI消息靠左）
+/// - Markdown 渲染
+/// - 图片展示
+/// - 时间戳显示
+/// - 操作按钮（复制、重试、编辑、删除）
+/// - 模型头像显示
+/// - 流式打字效果
+class MessageBubble extends StatefulWidget {
+  final ChatMessage message;
+  final VoidCallback? onDelete;
+  final VoidCallback? onCopy;
+  final VoidCallback? onRetry;
+  final VoidCallback? onEdit;
+  final String? modelName;
+  final bool isStreaming;
+  final String? streamingText;
+
+  const MessageBubble({
+    super.key,
+    required this.message,
+    this.onDelete,
+    this.onCopy,
+    this.onRetry,
+    this.onEdit,
+    this.modelName,
+    this.isStreaming = false,
+    this.streamingText,
+  });
+
+  @override
+  State<MessageBubble> createState() => _MessageBubbleState();
+}
+
+class _MessageBubbleState extends State<MessageBubble> {
+  bool _showActions = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isUser = message.role == MessageRole.user;
+
+    // 提取文本内容用于复制
+    final textContent = message.content
+        .whereType<TextContent>()
+        .map((c) => c.text)
+        .join('\n');
+
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: GestureDetector(
+        onLongPress: () {
+          _showMessageOptions(context, textContent, isUser);
+        },
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.75,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // AI头像（左侧）
+              if (!isUser) ...[
+                _buildAvatar(isUser),
+                const SizedBox(width: 8),
+              ],
+
+              // 消息内容
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                  children: [
+                    // 消息气泡
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: isUser ? AppColors.primary : Colors.grey[200],
+                        borderRadius: BorderRadius.circular(16).copyWith(
+                          topRight: isUser ? const Radius.circular(4) : null,
+                          topLeft: isUser ? null : const Radius.circular(4),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            offset: const Offset(0, 2),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // 渲染所有内容
+                          ...message.content.map((content) => content.when(
+                            text: (text) => _buildTextContent(text, isUser),
+                            image: (data, mimeType, localPath) => _buildImageContent(localPath ?? data, isUser),
+                            toolUse: (toolUseId, name, input) => _buildToolUseContent(name, isUser),
+                            toolResult: (toolUseId, result) => _buildToolResultContent(result, isUser),
+                          )),
+                        ],
+                      ),
+                    ),
+
+                    // 时间戳和模型名称
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _formatTime(message.timestamp),
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        if (!isUser && modelName != null) ...[
+                          const SizedBox(width: 4),
+                          Text(
+                            '· $modelName',
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: AppColors.textSecondary,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // 用户头像（右侧）
+              if (isUser) ...[
+                const SizedBox(width: 8),
+                _buildAvatar(isUser),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 构建头像
+  Widget _buildAvatar(bool isUser) {
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: isUser ? AppColors.primary : Colors.grey[300],
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        isUser ? Icons.person : Icons.smart_toy,
+        color: isUser ? Colors.white : AppColors.textSecondary,
+        size: 20,
+      ),
+    );
+  }
+
+  /// 显示消息操作选项
+  void _showMessageOptions(BuildContext context, String textContent, bool isUser) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (textContent.isNotEmpty)
+                ListTile(
+                  leading: const Icon(Icons.copy),
+                  title: const Text('复制'),
+                  onTap: () {
+                    if (onCopy != null) {
+                      onCopy!();
+                    } else {
+                      // 默认复制行为
+                      Clipboard.setData(ClipboardData(text: textContent));
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('已复制')),
+                      );
+                    }
+                  },
+                ),
+              ListTile(
+                leading: Icon(Icons.delete, color: AppColors.error),
+                title: Text('删除', style: TextStyle(color: AppColors.error)),
+                onTap: () {
+                  Navigator.pop(context);
+                  if (onDelete != null) {
+                    onDelete!();
+                  }
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// 构建文本内容
+  Widget _buildTextContent(String text, bool isUser) {
+    return MarkdownBody(
+      data: text,
+      styleSheet: MarkdownStyleSheet(
+        p: TextStyle(
+          color: isUser ? Colors.white : AppColors.textPrimary,
+          fontSize: 15,
+          height: 1.5,
+        ),
+        code: TextStyle(
+          backgroundColor: isUser
+              ? Colors.white.withValues(alpha: 0.2)
+              : Colors.grey[300],
+          color: isUser ? Colors.white : AppColors.textPrimary,
+          fontFamily: 'monospace',
+        ),
+        codeblockDecoration: BoxDecoration(
+          color: isUser
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.grey[300],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        h1: TextStyle(
+          color: isUser ? Colors.white : AppColors.textPrimary,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
+        h2: TextStyle(
+          color: isUser ? Colors.white : AppColors.textPrimary,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
+        h3: TextStyle(
+          color: isUser ? Colors.white : AppColors.textPrimary,
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+        ),
+        listBullet: TextStyle(
+          color: isUser ? Colors.white : AppColors.textPrimary,
+        ),
+        tableBody: TextStyle(
+          color: isUser ? Colors.white : AppColors.textPrimary,
+        ),
+        blockquote: TextStyle(
+          color: isUser ? Colors.white70 : AppColors.textSecondary,
+          fontStyle: FontStyle.italic,
+        ),
+        strong: TextStyle(
+          color: isUser ? Colors.white : AppColors.textPrimary,
+          fontWeight: FontWeight.bold,
+        ),
+        em: TextStyle(
+          color: isUser ? Colors.white : AppColors.textPrimary,
+          fontStyle: FontStyle.italic,
+        ),
+      ),
+      onTapLink: (text, url, title) {
+        // 处理链接点击（如果需要）
+        if (url != null) {
+          debugPrint('Link tapped: $url');
+        }
+      },
+    );
+  }
+
+  /// 构建图片内容
+  Widget _buildImageContent(String imagePath, bool isUser) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          imagePath,
+          width: 200,
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              width: 200,
+              height: 150,
+              color: Colors.grey[300],
+              child: const Icon(Icons.broken_image, size: 48),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  /// 构建工具使用内容
+  Widget _buildToolUseContent(String toolName, bool isUser) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: isUser
+            ? Colors.white.withValues(alpha: 0.1)
+            : Colors.grey[300],
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.settings,
+            size: 16,
+            color: isUser ? Colors.white70 : AppColors.textSecondary,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            '调用工具: $toolName',
+            style: TextStyle(
+              color: isUser ? Colors.white70 : AppColors.textSecondary,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 构建工具结果内容
+  Widget _buildToolResultContent(Map<String, dynamic> result, bool isUser) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: isUser
+            ? Colors.white.withValues(alpha: 0.1)
+            : Colors.grey[300],
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        '工具结果: ${result.toString()}',
+        style: TextStyle(
+          color: isUser ? Colors.white70 : AppColors.textSecondary,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+
+  /// 格式化时间（HH:mm）
+  String _formatTime(DateTime time) {
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+  }
+}

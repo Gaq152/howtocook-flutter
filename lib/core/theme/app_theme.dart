@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 import 'app_text_styles.dart';
 
@@ -10,6 +11,9 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
+
+      // 字体配置 - 使用 Noto Sans SC 支持中文
+      fontFamily: GoogleFonts.notoSansSc().fontFamily,
 
       // 颜色方案
       colorScheme: ColorScheme.fromSeed(
@@ -215,6 +219,9 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
+
+      // 字体配置 - 使用 Noto Sans SC 支持中文
+      fontFamily: GoogleFonts.notoSansSc().fontFamily,
 
       // 颜色方案
       colorScheme: ColorScheme.fromSeed(

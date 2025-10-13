@@ -751,11 +751,90 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
         context.push('/recipe/${recipe.id}/edit');
         break;
       case 'share':
-        // TODO: 实现分享功能
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('分享功能将在后续版本实现')),
-        );
+        _showShareDialog(context, recipe);
         break;
+    }
+  }
+
+  /// 显示分享选项对话框
+  void _showShareDialog(BuildContext context, Recipe recipe) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.content_copy),
+              title: const Text('复制文字'),
+              subtitle: const Text('将菜谱复制到剪贴板'),
+              onTap: () async {
+                Navigator.pop(context);
+                await _shareAsText(recipe);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.image),
+              title: const Text('生成图片'),
+              subtitle: const Text('将菜谱转换为精美图片'),
+              onTap: () {
+                Navigator.pop(context);
+                _shareAsImage(recipe);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.qr_code),
+              title: const Text('生成二维码'),
+              subtitle: const Text('生成二维码分享菜谱'),
+              onTap: () {
+                Navigator.pop(context);
+                _shareAsQRCode(recipe);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 分享为纯文本
+  Future<void> _shareAsText(Recipe recipe) async {
+    // TODO: 导入RecipeShareService
+    // final shareService = RecipeShareService();
+    // final result = await shareService.shareAsText(recipe);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('纯文本分享功能待实现'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    }
+  }
+
+  /// 分享为图片
+  void _shareAsImage(Recipe recipe) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('图片分享功能待实现'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    }
+  }
+
+  /// 分享为二维码
+  void _shareAsQRCode(Recipe recipe) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('二维码分享功能待实现'),
+          duration: Duration(seconds: 1),
+        ),
+      );
     }
   }
 }
