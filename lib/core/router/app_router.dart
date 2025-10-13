@@ -8,6 +8,9 @@ import '../../features/recipe/presentation/screens/recipe_edit_screen.dart';
 import '../../features/recipe/presentation/screens/recipe_create_screen.dart';
 import '../../features/recipe/presentation/screens/favorite_recipes_screen.dart';
 import '../../features/recipe/presentation/screens/tips_screen.dart';
+import '../../features/recipe/presentation/screens/qr_scanner_screen.dart';
+import '../../features/recipe/presentation/screens/recipe_preview_screen.dart';
+import '../../features/recipe/domain/entities/recipe.dart';
 import '../../features/ai_chat/presentation/screens/ai_chat_screen.dart';
 import '../../features/user/presentation/screens/user_screen.dart';
 import '../widgets/main_scaffold.dart';
@@ -157,6 +160,25 @@ final routerProvider = Provider<GoRouter>((ref) {
             category: category,
             tipsId: tipsId,
           );
+        },
+      ),
+
+      // 二维码扫描
+      GoRoute(
+        path: '/qr-scanner',
+        name: 'qr-scanner',
+        builder: (context, state) {
+          return const QRScannerScreen();
+        },
+      ),
+
+      // 食谱预览（扫码导入）
+      GoRoute(
+        path: '/recipe/preview',
+        name: 'recipe-preview',
+        builder: (context, state) {
+          final recipe = state.extra as Recipe;
+          return RecipePreviewScreen(recipe: recipe);
         },
       ),
     ],

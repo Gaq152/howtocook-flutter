@@ -1,15 +1,27 @@
 import 'dart:io';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:screenshot/screenshot.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:gal/gal.dart';
 import '../../application/providers/recipe_providers.dart';
 import '../../domain/entities/recipe.dart';
+import '../../infrastructure/services/recipe_share_service.dart';
+import '../../presentation/widgets/recipe_share_card.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/linkable_text.dart';
+
+/// Provider for RecipeShareService
+final recipeShareServiceProvider = Provider<RecipeShareService>((ref) {
+  return RecipeShareService();
+});
 
 /// 菜谱详情页面
 ///
@@ -114,59 +126,17 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
         background: _buildHeaderImage(recipe),
       ),
       actions: [
-        // 收藏按钮
-        isFavoriteAsync.when(
-          data: (isFavorite) => IconButton(
-            icon: Icon(
-              isFavorite ? Icons.favorite : Icons.favorite_border,
-              color: isFavorite ? AppColors.error : Colors.white,
-            ),
-            onPressed: () => _toggleFavorite(recipe.id),
-          ),
-          loading: () => const SizedBox(
-            width: 48,
-            child: Center(
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-          error: (_, __) => IconButton(
-            icon: const Icon(Icons.favorite_border, color: Colors.white),
-            onPressed: () => _toggleFavorite(recipe.id),
-          ),
+        // 编辑按钮
+        IconButton(
+          icon: const Icon(Icons.edit_outlined, color: Colors.white),
+          tooltip: '编辑菜谱',
+          onPressed: () => context.push('/recipe/${recipe.id}/edit'),
         ),
-        // 更多菜单
-        PopupMenuButton<String>(
-          icon: const Icon(Icons.more_vert, color: Colors.white),
-          onSelected: (value) => _handleMenuAction(context, recipe, value),
-          itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: 'edit',
-              child: Row(
-                children: [
-                  Icon(Icons.edit),
-                  SizedBox(width: 8),
-                  Text('编辑菜谱'),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'share',
-              child: Row(
-                children: [
-                  Icon(Icons.share),
-                  SizedBox(width: 8),
-                  Text('分享'),
-                ],
-              ),
-            ),
-          ],
+        // 分享按钮
+        IconButton(
+          icon: const Icon(Icons.share, color: Colors.white),
+          tooltip: '分享菜谱',
+          onPressed: () => _showShareDialog(context, recipe),
         ),
       ],
     );
@@ -292,9 +262,12 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
 
   /// 构建元信息
   Widget _buildMetaInfo(Recipe recipe) {
+    final isFavoriteAsync = ref.watch(isFavoriteProvider(widget.recipeId));
+
     return Wrap(
       spacing: 12,
       runSpacing: 12,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         _InfoChip(
           icon: Icons.category,
@@ -316,6 +289,48 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
           ),
           backgroundColor: Colors.orange.withValues(alpha: 0.1),
           side: BorderSide(color: Colors.orange.withValues(alpha: 0.3)),
+        ),
+        // 收藏按钮
+        isFavoriteAsync.when(
+          data: (isFavorite) => ActionChip(
+            avatar: Icon(
+              isFavorite ? Icons.favorite : Icons.favorite_border,
+              color: isFavorite ? AppColors.error : AppColors.textSecondary,
+              size: 18,
+            ),
+            label: Text(
+              isFavorite ? '已收藏' : '收藏',
+              style: TextStyle(
+                color: isFavorite ? AppColors.error : AppColors.textPrimary,
+                fontWeight: isFavorite ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+            backgroundColor: isFavorite
+                ? AppColors.error.withValues(alpha: 0.1)
+                : AppColors.surface,
+            side: BorderSide(
+              color: isFavorite
+                  ? AppColors.error.withValues(alpha: 0.3)
+                  : AppColors.textSecondary.withValues(alpha: 0.3),
+            ),
+            onPressed: () => _toggleFavorite(recipe.id),
+          ),
+          loading: () => const SizedBox(
+            width: 80,
+            height: 32,
+            child: Center(
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          ),
+          error: (_, __) => ActionChip(
+            avatar: const Icon(Icons.favorite_border, size: 18),
+            label: const Text('收藏'),
+            onPressed: () => _toggleFavorite(recipe.id),
+          ),
         ),
       ],
     );
@@ -764,8 +779,16 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                '分享菜谱',
+                style: AppTextStyles.h3,
+              ),
+            ),
+            const Divider(height: 1),
             ListTile(
-              leading: const Icon(Icons.content_copy),
+              leading: const Icon(Icons.content_copy, color: AppColors.primary),
               title: const Text('复制文字'),
               subtitle: const Text('将菜谱复制到剪贴板'),
               onTap: () async {
@@ -774,21 +797,12 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.image),
+              leading: const Icon(Icons.image, color: AppColors.secondary),
               title: const Text('生成图片'),
-              subtitle: const Text('将菜谱转换为精美图片'),
+              subtitle: const Text('带二维码的精美卡片，可保存或分享'),
               onTap: () {
                 Navigator.pop(context);
-                _shareAsImage(recipe);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.qr_code),
-              title: const Text('生成二维码'),
-              subtitle: const Text('生成二维码分享菜谱'),
-              onTap: () {
-                Navigator.pop(context);
-                _shareAsQRCode(recipe);
+                _showImageShareOptions(recipe); // 不传递context
               },
             ),
             const SizedBox(height: 8),
@@ -798,43 +812,288 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     );
   }
 
-  /// 分享为纯文本
-  Future<void> _shareAsText(Recipe recipe) async {
-    // TODO: 导入RecipeShareService
-    // final shareService = RecipeShareService();
-    // final result = await shareService.shareAsText(recipe);
+  /// 显示图片分享预览（生成图片并显示预览对话框）
+  Future<void> _showImageShareOptions(Recipe recipe) async {
+    // 不再接受context参数，直接使用widget的context
+    if (!mounted) return;
 
-    if (mounted) {
+    // 显示加载对话框
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('正在生成图片...'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    Uint8List? imageBytes;
+    bool hasError = false;
+    String? errorMessage;
+
+    try {
+      // 生成图片
+      final shareService = ref.read(recipeShareServiceProvider);
+      final qrData = shareService.generateQRData(recipe);
+
+      final screenshotController = ScreenshotController();
+      imageBytes = await screenshotController.captureFromWidget(
+        // ✨ 长截图方案：使用UnconstrainedBox移除所有父级约束
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: UnconstrainedBox(
+            child: SizedBox(
+              width: 375, // 只约束宽度
+              child: MediaQuery(
+                data: const MediaQueryData(
+                  size: Size(375, 50000), // 提供超大高度空间
+                  devicePixelRatio: 2.0,
+                  textScaleFactor: 1.0,
+                ),
+                child: RecipeShareCard(
+                  recipe: recipe,
+                  qrData: qrData,
+                ),
+              ),
+            ),
+          ),
+        ),
+        delay: const Duration(milliseconds: 800), // 确保二维码渲染完成
+        pixelRatio: 2.0, // 提高图片质量
+      );
+    } catch (e) {
+      debugPrint('生成图片异常: $e');
+      hasError = true;
+      errorMessage = e.toString();
+    }
+
+    // 关闭加载对话框（使用try-catch确保安全）
+    if (!mounted) return;
+
+    try {
+      if (Navigator.canPop(context)) {
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      debugPrint('关闭对话框失败: $e');
+    }
+
+    if (!mounted) return;
+
+    // 处理错误情况
+    if (hasError || imageBytes == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('纯文本分享功能待实现'),
-          duration: Duration(seconds: 1),
+        SnackBar(
+          content: Text('生成图片失败: ${errorMessage ?? "未知错误"}'),
+          backgroundColor: AppColors.error,
+          duration: const Duration(seconds: 3),
         ),
       );
+      return;
+    }
+
+    // 显示预览对话框（再次检查mounted）
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      builder: (dialogContext) => _ImageSharePreviewDialog(
+        imageBytes: imageBytes!,
+        recipe: recipe,
+        onSave: () => _saveImageToGallery(imageBytes!, recipe),
+        onShare: () => _shareImageBytes(imageBytes!, recipe),
+      ),
+    );
+  }
+
+  /// 保存图片字节到相册
+  Future<void> _saveImageToGallery(Uint8List imageBytes, Recipe recipe) async {
+    try {
+      await Gal.putImageBytes(
+        imageBytes,
+        name: 'recipe_${recipe.id}_${DateTime.now().millisecondsSinceEpoch}.png',
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ 图片已保存到相册'),
+            backgroundColor: AppColors.success,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('保存失败: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  /// 分享图片字节
+  Future<void> _shareImageBytes(Uint8List imageBytes, Recipe recipe) async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final file = File(
+        '${tempDir.path}/recipe_${recipe.id}_${DateTime.now().millisecondsSinceEpoch}.png',
+      );
+      await file.writeAsBytes(imageBytes);
+
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: '分享食谱：${recipe.name}',
+      );
+
+      // 清理临时文件
+      try {
+        await file.delete();
+      } catch (e) {
+        debugPrint('清理临时文件失败: $e');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('分享失败: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  /// 分享为纯文本
+  Future<void> _shareAsText(Recipe recipe) async {
+    try {
+      // 导入分享服务
+      final shareService = ref.read(recipeShareServiceProvider);
+      final result = await shareService.shareAsText(recipe);
+
+      if (!mounted) return;
+
+      switch (result) {
+        case RecipeShareResult.success:
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ 已复制到剪贴板'),
+              duration: Duration(seconds: 2),
+              backgroundColor: AppColors.success,
+            ),
+          );
+          break;
+        case RecipeShareResult.failed:
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('❌ 复制失败，请重试'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+          break;
+        case RecipeShareResult.cancelled:
+          break;
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('分享失败: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
     }
   }
 
   /// 分享为图片
-  void _shareAsImage(Recipe recipe) {
+  Future<void> _shareAsImage(Recipe recipe, {bool saveOnly = false}) async {
+    // 显示加载提示
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('图片分享功能待实现'),
-          duration: Duration(seconds: 1),
+        SnackBar(
+          content: Row(
+            children: [
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              ),
+              const SizedBox(width: 12),
+              Text(saveOnly ? '正在生成并保存图片...' : '正在生成图片...'),
+            ],
+          ),
+          duration: const Duration(seconds: 10), // 较长的持续时间
         ),
       );
     }
-  }
 
-  /// 分享为二维码
-  void _shareAsQRCode(Recipe recipe) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('二维码分享功能待实现'),
-          duration: Duration(seconds: 1),
-        ),
-      );
+    try {
+      // 导入分享服务
+      final shareService = ref.read(recipeShareServiceProvider);
+      final result = await shareService.shareAsImage(recipe, saveOnly: saveOnly);
+
+      if (!mounted) return;
+
+      // 关闭加载提示
+      ScaffoldMessenger.of(context).clearSnackBars();
+
+      switch (result) {
+        case RecipeShareResult.success:
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(saveOnly ? '✅ 图片已保存到相册' : '✅ 分享成功'),
+              duration: const Duration(seconds: 2),
+              backgroundColor: AppColors.success,
+            ),
+          );
+          break;
+        case RecipeShareResult.failed:
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(saveOnly ? '❌ 保存失败，请检查相册权限' : '❌ 分享失败，请重试'),
+              backgroundColor: AppColors.error,
+              action: SnackBarAction(
+                label: '重试',
+                textColor: Colors.white,
+                onPressed: () => _shareAsImage(recipe, saveOnly: saveOnly),
+              ),
+            ),
+          );
+          break;
+        case RecipeShareResult.cancelled:
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('已取消分享'),
+              duration: Duration(seconds: 1),
+            ),
+          );
+          break;
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('操作失败: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
     }
   }
 }
@@ -909,6 +1168,190 @@ class _StepCard extends StatelessWidget {
               child: LinkableTextRich(
                 description,
                 style: AppTextStyles.cookingStep,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 图片分享预览对话框
+class _ImageSharePreviewDialog extends StatelessWidget {
+  final Uint8List imageBytes;
+  final Recipe recipe;
+  final VoidCallback onSave;
+  final VoidCallback onShare;
+
+  const _ImageSharePreviewDialog({
+    required this.imageBytes,
+    required this.recipe,
+    required this.onSave,
+    required this.onShare,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 顶部标题栏
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Text(
+                  '分享预览',
+                  style: AppTextStyles.h3,
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+
+          // 图片预览区域
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.memory(
+                    imageBytes,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // 底部操作按钮区域
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              border: Border(
+                top: BorderSide(color: Colors.grey.shade200),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 第一行：保存到相册
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      onSave();
+                    },
+                    icon: const Icon(Icons.save_alt),
+                    label: const Text('保存到相册'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.success,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // 第二行：分享图标按钮
+                Row(
+                  children: [
+                    Expanded(
+                      child: _ShareButton(
+                        icon: Icons.wechat,
+                        label: '微信',
+                        color: const Color(0xFF07C160),
+                        onTap: () {
+                          Navigator.pop(context);
+                          onShare();
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _ShareButton(
+                        icon: Icons.chat_bubble,
+                        label: 'QQ',
+                        color: const Color(0xFF12B7F5),
+                        onTap: () {
+                          Navigator.pop(context);
+                          onShare();
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _ShareButton(
+                        icon: Icons.share,
+                        label: '更多',
+                        color: AppColors.secondary,
+                        onTap: () {
+                          Navigator.pop(context);
+                          onShare();
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 分享按钮组件
+class _ShareButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ShareButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 28),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: color,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ],
