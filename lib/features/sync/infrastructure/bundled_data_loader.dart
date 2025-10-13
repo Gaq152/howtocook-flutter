@@ -12,8 +12,8 @@ class BundledDataLoader {
   /// 从 manifest.json 加载菜谱索引清单
   Future<Manifest> loadManifest() async {
     try {
-      // 注意：rootBundle 会自动添加 assets/ 前缀（特别是在 Web 平台）
-      final jsonString = await rootBundle.loadString('manifest.json');
+      // manifest.json 是单个文件声明，需要完整路径
+      final jsonString = await rootBundle.loadString('assets/manifest.json');
       final jsonData = jsonDecode(jsonString) as Map<String, dynamic>;
       return Manifest.fromJson(jsonData);
     } catch (e) {
@@ -24,25 +24,31 @@ class BundledDataLoader {
   /// 加载单个菜谱
   ///
   /// 根据菜谱 ID 加载对应的 JSON 文件
-  /// 路径格式: recipes/{category}/{id}.json
+  /// 路径格式: assets/recipes/{category}/{id}.json
   ///
-  /// 例如: aquatic_17b4109a → recipes/aquatic/aquatic_17b4109a.json
+  /// 例如: aquatic_17b4109a → assets/recipes/aquatic/aquatic_17b4109a.json
   Future<Recipe> loadRecipe(String recipeId) async {
     try {
       // 从 ID 提取分类（ID 格式: {category}_{hash}）
       final category = _extractCategory(recipeId);
-      // 注意：rootBundle 会自动添加 assets/ 前缀（特别是在 Web 平台）
-      final path = 'recipes/$category/$recipeId.json';
+      // 路径必须与 pubspec.yaml 声明一致，包含 assets/ 前缀
+      final path = 'assets/recipes/$category/$recipeId.json';
 
       final jsonString = await rootBundle.loadString(path);
       final jsonData = jsonDecode(jsonString) as Map<String, dynamic>;
 
-      // 规范化图片路径（将反斜杠转换为正斜杠）
+      // 规范化图片路径（将反斜杠转换为正斜杠，并添加 assets/ 前缀）
       if (jsonData['images'] is List) {
         final images = jsonData['images'] as List;
         jsonData['images'] = images.map((img) {
           if (img is String) {
-            return img.replaceAll('\\', '/');
+            // 转换反斜杠为正斜杠
+            var path = img.replaceAll('\\', '/');
+            // 添加 assets/ 前缀（如果还没有的话）
+            if (!path.startsWith('assets/')) {
+              path = 'assets/$path';
+            }
+            return path;
           }
           return img;
         }).toList();
@@ -120,11 +126,13 @@ class BundledDataLoader {
   /// 获取图片资源路径
   ///
   /// 将相对路径转换为完整的 assets 路径
-  /// 例如: images/aquatic/aquatic_17b4109a_0.webp → assets/images/aquatic/aquatic_17b4109a_0.webp
+  /// 例如: images/aquatic/xxx.webp → assets/images/aquatic/xxx.webp
   String getImagePath(String relativePath) {
+    // 如果已经有 assets/ 前缀，直接返回
     if (relativePath.startsWith('assets/')) {
       return relativePath;
     }
+    // 否则添加 assets/ 前缀
     return 'assets/$relativePath';
   }
 }

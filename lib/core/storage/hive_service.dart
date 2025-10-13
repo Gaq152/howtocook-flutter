@@ -127,4 +127,81 @@ class HiveService {
     await Hive.deleteBoxFromDisk(chatHistoryBox);
     await Hive.deleteBoxFromDisk(modifiedRecipesBox);
   }
+
+  // ========== 便捷方法 ==========
+
+  /// 获取聊天历史
+  Future<List<Map<String, dynamic>>?> getChatHistory() async {
+    final box = getSettingsBox();  // 使用 settings box，它支持任意类型
+    final data = box.get('chat_messages');
+
+    if (data == null) return null;
+
+    // 转换 List<dynamic> 为 List<Map<String, dynamic>>
+    if (data is List) {
+      return data.map((item) {
+        if (item is Map) {
+          // 深度转换所有嵌套的 Map 和 List
+          return _deepConvertMap(item);
+        }
+        return <String, dynamic>{};
+      }).toList();
+    }
+
+    return null;
+  }
+
+  /// 深度转换 Map（处理 Hive 返回的 LinkedMap）
+  static Map<String, dynamic> _deepConvertMap(Map<dynamic, dynamic> source) {
+    final result = <String, dynamic>{};
+    source.forEach((key, value) {
+      final stringKey = key.toString();
+      if (value is Map) {
+        result[stringKey] = _deepConvertMap(value);
+      } else if (value is List) {
+        result[stringKey] = _deepConvertList(value);
+      } else {
+        result[stringKey] = value;
+      }
+    });
+    return result;
+  }
+
+  /// 深度转换 List
+  static List<dynamic> _deepConvertList(List<dynamic> source) {
+    return source.map((item) {
+      if (item is Map) {
+        return _deepConvertMap(item);
+      } else if (item is List) {
+        return _deepConvertList(item);
+      } else {
+        return item;
+      }
+    }).toList();
+  }
+
+  /// 保存聊天历史
+  Future<void> saveChatHistory(List<Map<String, dynamic>> messages) async {
+    final box = getSettingsBox();  // 使用 settings box
+    await box.put('chat_messages', messages);
+  }
+
+  /// 获取设置值
+  Future<T?> getSetting<T>(String key, {T? defaultValue}) async {
+    final box = getSettingsBox();
+    final value = box.get(key, defaultValue: defaultValue);
+    return value as T?;
+  }
+
+  /// 保存设置值
+  Future<void> saveSetting(String key, dynamic value) async {
+    final box = getSettingsBox();
+    await box.put(key, value);
+  }
+
+  /// 删除设置值
+  Future<void> deleteSetting(String key) async {
+    final box = getSettingsBox();
+    await box.delete(key);
+  }
 }
