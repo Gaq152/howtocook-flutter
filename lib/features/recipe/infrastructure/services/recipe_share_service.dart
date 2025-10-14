@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:screenshot/screenshot.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:gal/gal.dart';
 import 'package:archive/archive.dart';
@@ -104,44 +105,23 @@ class RecipeShareService {
   /// 分享为图片
   ///
   /// 生成菜谱卡片图片（底部内嵌 App 专用二维码）
+  /// [context] 必须是一个有效的 BuildContext，用于访问 Overlay
   /// [saveOnly] 为true时仅保存到相册,为false时打开系统分享面板
   Future<RecipeShareResult> shareAsImage(
-    Recipe recipe, {
+    Recipe recipe,
+    BuildContext context, {
     bool saveOnly = false,
   }) async {
     try {
       // 1. 生成二维码数据
       final qrData = _generateCustomScheme(recipe);
-      debugPrint('🔄 开始生成分享图片...');
+      debugPrint('🔄 开始生成分享图片（Overlay方案）...');
 
-      // 2. 创建截图控制器
-      final screenshotController = ScreenshotController();
-
-      // 3. 使用 screenshot 包捕获 Widget 为图片（长截图）
-      // ✨ 使用UnconstrainedBox移除所有父级约束
-      final Uint8List? imageBytes = await screenshotController.captureFromWidget(
-        Directionality(
-          textDirection: TextDirection.ltr,
-          child: UnconstrainedBox(
-            child: SizedBox(
-              width: 375, // 只约束宽度
-              child: MediaQuery(
-                data: const MediaQueryData(
-                  size: Size(375, 50000), // 提供超大高度空间
-                  devicePixelRatio: 2.0,
-                  textScaleFactor: 1.0,
-                ),
-                child: RecipeShareCard(
-                  recipe: recipe,
-                  qrData: qrData,
-                ),
-              ),
-            ),
-          ),
-        ),
-        delay: const Duration(milliseconds: 800), // 确保二维码渲染完成
-        context: null,
-        pixelRatio: 2.0, // 提高图片质量
+      // 2. 使用 Overlay + RepaintBoundary + toImage() 捕获完整长截图
+      final Uint8List? imageBytes = await _captureWidgetAsImage(
+        recipe: recipe,
+        qrData: qrData,
+        context: context,
       );
 
       if (imageBytes == null) {
@@ -157,7 +137,7 @@ class RecipeShareService {
         try {
           await Gal.putImageBytes(
             imageBytes,
-            name: 'recipe_${recipe.id}_${DateTime.now().millisecondsSinceEpoch}.png',
+            name: 'recipe_${recipe.id}_${DateTime.now().millisecondsSinceEpoch}', // gal 会自动添加 .png
           );
           debugPrint('图片已保存到相册');
           return RecipeShareResult.success;
@@ -198,19 +178,6 @@ class RecipeShareService {
     }
   }
 
-  /// 分享为二维码
-  ///
-  /// 生成包含菜谱完整信息的二维码
-  /// 扫描后能查看完整菜谱
-  Future<RecipeShareResult> shareAsQRCode(Recipe recipe) async {
-    // TODO: 实现二维码分享功能
-    // 1. 将菜谱数据编码为JSON
-    // 2. 使用 qr_flutter 生成二维码
-    // 3. 显示二维码或保存图片
-    debugPrint('二维码分享功能待实现');
-    return RecipeShareResult.failed;
-  }
-
   /// 生成二维码数据（公共方法供外部调用）
   ///
   /// 返回包含菜谱完整信息的 Custom Scheme 格式数据
@@ -219,10 +186,31 @@ class RecipeShareService {
     return _generateCustomScheme(recipe);
   }
 
+  /// 生成菜谱卡片图片字节（公共方法供预览使用）
+  ///
+  /// 返回 PNG 格式的图片字节数据，如果生成失败返回 null
+  /// [context] 必须是一个有效的 BuildContext，用于访问 Overlay
+  Future<Uint8List?> generateRecipeImageBytes(
+    Recipe recipe,
+    BuildContext context,
+  ) async {
+    final qrData = _generateCustomScheme(recipe);
+    return await _captureWidgetAsImage(
+      recipe: recipe,
+      qrData: qrData,
+      context: context,
+    );
+  }
+
   /// 生成 Custom Scheme 二维码数据（智能压缩策略）
   ///
+  /// 根据食谱来源生成不同格式的二维码数据：
+  /// - bundled: 只包含 ID 和基本信息（扫描后直接跳详情页）
+  /// - userModified: 包含基础 ID + 改动字段（扫描后预览修改版）
+  /// - userCreated/scanned/aiGenerated: 包含完整信息（扫描后预览）
+  ///
   /// 使用短键命名以减小数据量：
-  /// n=name, d=difficulty, c=category, i=ingredients, s=steps, t=tips
+  /// src=source, n=name, d=difficulty, c=category, i=ingredients, s=steps, t=tips
   ///
   /// 智能压缩策略（基于数据大小）：
   /// - 小数据（<1000字节）：不压缩，使用 Base64URL（避免压缩开销）
@@ -231,20 +219,95 @@ class RecipeShareService {
   /// 注意：增加 800ms 渲染延迟可彻底解决二维码乱码问题
   String _generateCustomScheme(Recipe recipe) {
     try {
-      // 1. 构建精简的 JSON 数据（使用短键）
-      final payload = {
-        'n': recipe.name,                      // name
-        'd': recipe.difficulty,                // difficulty
-        'c': recipe.category,                  // category
-        'cn': recipe.categoryName,             // categoryName
-        'i': recipe.ingredients.map((ing) => ing.text).toList(),  // ingredients
-        's': recipe.steps.map((step) => step.description).toList(), // steps
-        if (recipe.tips != null && recipe.tips!.isNotEmpty) 't': recipe.tips, // tips
-        if (recipe.warnings.isNotEmpty) 'w': recipe.warnings,  // warnings
-        // 可选：用于版本追踪
-        if (recipe.id.isNotEmpty) 'baseId': recipe.id,
-        if (recipe.hash != null && recipe.hash!.isNotEmpty) 'hash': recipe.hash,
-      };
+      // 1. 根据食谱来源构建不同格式的 JSON 数据
+      final Map<String, dynamic> payload;
+
+      switch (recipe.source) {
+        case RecipeSource.bundled:
+          // 内置食谱：只包含 ID 和基本信息
+          payload = {
+            'src': 'b',  // bundled
+            'id': recipe.id,
+            'n': recipe.name,  // 用于显示
+            if (recipe.hash != null && recipe.hash!.isNotEmpty) 'hash': recipe.hash,
+          };
+          debugPrint('📦 生成内置食谱二维码: ${recipe.name}');
+          break;
+
+        case RecipeSource.userModified:
+          // 修改的内置食谱：包含基础 ID + 所有字段（简化处理，不做 diff）
+          // TODO: 未来可以优化为只传递改动字段
+          payload = {
+            'src': 'm',  // modified
+            'id': recipe.id,
+            'n': recipe.name,
+            'd': recipe.difficulty,
+            'c': recipe.category,
+            'cn': recipe.categoryName,
+            'i': recipe.ingredients.map((ing) => ing.text).toList(),
+            's': recipe.steps.map((step) => step.description).toList(),
+            if (recipe.tips != null && recipe.tips!.isNotEmpty) 't': recipe.tips,
+            if (recipe.warnings.isNotEmpty) 'w': recipe.warnings,
+            if (recipe.hash != null && recipe.hash!.isNotEmpty) 'hash': recipe.hash,
+          };
+          debugPrint('✏️  生成修改版食谱二维码: ${recipe.name}');
+          break;
+
+        case RecipeSource.userCreated:
+          // 用户创建：完整信息
+          payload = {
+            'src': 'u',  // user
+            'id': recipe.id,
+            'n': recipe.name,
+            'd': recipe.difficulty,
+            'c': recipe.category,
+            'cn': recipe.categoryName,
+            'i': recipe.ingredients.map((ing) => ing.text).toList(),
+            's': recipe.steps.map((step) => step.description).toList(),
+            if (recipe.tips != null && recipe.tips!.isNotEmpty) 't': recipe.tips,
+            if (recipe.warnings.isNotEmpty) 'w': recipe.warnings,
+            if (recipe.hash != null && recipe.hash!.isNotEmpty) 'hash': recipe.hash,
+          };
+          debugPrint('👤 生成用户创建食谱二维码: ${recipe.name}');
+          break;
+
+        case RecipeSource.aiGenerated:
+          // AI 生成：完整信息
+          payload = {
+            'src': 'a',  // ai
+            'id': recipe.id,
+            'n': recipe.name,
+            'd': recipe.difficulty,
+            'c': recipe.category,
+            'cn': recipe.categoryName,
+            'i': recipe.ingredients.map((ing) => ing.text).toList(),
+            's': recipe.steps.map((step) => step.description).toList(),
+            if (recipe.tips != null && recipe.tips!.isNotEmpty) 't': recipe.tips,
+            if (recipe.warnings.isNotEmpty) 'w': recipe.warnings,
+            if (recipe.hash != null && recipe.hash!.isNotEmpty) 'hash': recipe.hash,
+          };
+          debugPrint('🤖 生成 AI 创建食谱二维码: ${recipe.name}');
+          break;
+
+        case RecipeSource.scanned:
+        case RecipeSource.cloud:
+        default:
+          // 扫码导入/云端下载：完整信息（兼容旧版，默认当作用户创建处理）
+          payload = {
+            'src': 'u',  // 默认当作用户创建
+            'id': recipe.id,
+            'n': recipe.name,
+            'd': recipe.difficulty,
+            'c': recipe.category,
+            'cn': recipe.categoryName,
+            'i': recipe.ingredients.map((ing) => ing.text).toList(),
+            's': recipe.steps.map((step) => step.description).toList(),
+            if (recipe.tips != null && recipe.tips!.isNotEmpty) 't': recipe.tips,
+            if (recipe.warnings.isNotEmpty) 'w': recipe.warnings,
+            if (recipe.hash != null && recipe.hash!.isNotEmpty) 'hash': recipe.hash,
+          };
+          debugPrint('📥 生成扫码/云端食谱二维码: ${recipe.name}');
+      }
 
       // 2. 转为 JSON 字符串
       final jsonString = jsonEncode(payload);
@@ -282,6 +345,90 @@ class RecipeShareService {
     } catch (e) {
       debugPrint('生成 Custom Scheme 失败: $e');
       return _fallbackScheme(recipe);
+    }
+  }
+
+  /// 使用 Overlay + RepaintBoundary 捕获 Widget 为图片（真正的长截图）
+  ///
+  /// 此方法在真实渲染树中渲染 widget（通过 Overlay），避免离屏渲染的复杂性
+  /// [context] 必须是一个有效的 BuildContext
+  Future<Uint8List?> _captureWidgetAsImage({
+    required Recipe recipe,
+    required String qrData,
+    required BuildContext context,
+  }) async {
+    try {
+      // 创建 GlobalKey 用于获取 RepaintBoundary
+      final GlobalKey repaintBoundaryKey = GlobalKey();
+      OverlayEntry? overlayEntry;
+
+      // 创建 Overlay Widget（在屏幕外渲染，用户不可见）
+      overlayEntry = OverlayEntry(
+        builder: (overlayContext) => Positioned(
+          left: -10000, // 放在屏幕外，用户看不到
+          top: 0,
+          child: RepaintBoundary(
+            key: repaintBoundaryKey,
+            child: SizedBox(
+              width: 375,
+              child: MediaQuery(
+                data: const MediaQueryData(
+                  size: Size(375, 10000),
+                  devicePixelRatio: 2.0,
+                  textScaler: TextScaler.linear(1.0),
+                ),
+                child: Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: RecipeShareCard(
+                    recipe: recipe,
+                    qrData: qrData,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // 插入到 Overlay（使用传入的 context）
+      Overlay.of(context, rootOverlay: true).insert(overlayEntry);
+
+      // 等待渲染完成（包括二维码）
+      await Future.delayed(const Duration(milliseconds: 1000));
+
+      // 获取 RenderRepaintBoundary
+      final RenderObject? renderObject =
+          repaintBoundaryKey.currentContext?.findRenderObject();
+
+      if (renderObject is! RenderRepaintBoundary) {
+        debugPrint('❌ 无法获取 RenderRepaintBoundary，类型: ${renderObject.runtimeType}');
+        overlayEntry.remove();
+        return null;
+      }
+
+      final size = renderObject.size;
+      debugPrint('📐 渲染尺寸: ${size.width} x ${size.height}');
+
+      // 转换为图片
+      final image = await renderObject.toImage(pixelRatio: 2.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+
+      // 移除 Overlay
+      overlayEntry.remove();
+
+      if (byteData == null) {
+        debugPrint('❌ 无法转换图片为字节数据');
+        return null;
+      }
+
+      final bytes = byteData.buffer.asUint8List();
+      debugPrint('✅ Overlay截图成功: ${bytes.length} 字节, 图片尺寸: ${image.width}x${image.height}');
+
+      return bytes;
+    } catch (e, stackTrace) {
+      debugPrint('❌ Overlay截图失败: $e');
+      debugPrint('堆栈: $stackTrace');
+      return null;
     }
   }
 
