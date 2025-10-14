@@ -262,9 +262,31 @@ class RecipeRepositoryImpl implements RecipeRepository {
 
   @override
   Future<void> deleteRecipe(String id) async {
-    // T102 不实现删除功能
-    // 这将在后续任务中实现
-    throw UnimplementedError('Delete recipe will be implemented later');
+    try {
+      final modifiedBox = HiveService.getModifiedRecipesBox();
+
+      // 检查该食谱是否存在于用户食谱中
+      if (!modifiedBox.containsKey(id)) {
+        // 不存在，可能是内置食谱或不存在的食谱
+        throw Exception('Recipe not found: $id');
+      }
+
+      // 删除用户食谱
+      await modifiedBox.delete(id);
+
+      // 同时清理相关的收藏和笔记
+      final favBox = HiveService.getFavoritesBox();
+      if (favBox.containsKey(id)) {
+        await favBox.delete(id);
+      }
+
+      final noteBox = HiveService.getUserNotesBox();
+      if (noteBox.containsKey(id)) {
+        await noteBox.delete(id);
+      }
+    } catch (e) {
+      throw Exception('Failed to delete recipe $id: $e');
+    }
   }
 
   @override
