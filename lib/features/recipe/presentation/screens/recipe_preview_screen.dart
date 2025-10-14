@@ -25,7 +25,17 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
   bool _isSaving = false;
 
   @override
+  void initState() {
+    super.initState();
+    debugPrint('🎬 RecipePreviewScreen initState');
+    debugPrint('  - Recipe ID: ${widget.recipe.id}');
+    debugPrint('  - Recipe Name: ${widget.recipe.name}');
+  }
+
+  @override
   Widget build(BuildContext context) {
+    debugPrint('🎨 RecipePreviewScreen build');
+    debugPrint('  - Recipe ID: ${widget.recipe.id}');
     return Scaffold(
       appBar: AppBar(
         title: const Text('食谱预览'),
@@ -140,8 +150,14 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
               children: [
                 // 分类
                 Chip(
-                  avatar: const Icon(Icons.category, size: 16),
-                  label: Text(widget.recipe.categoryName),
+                  avatar: Icon(Icons.category, size: 16, color: AppColors.secondary),
+                  label: Text(
+                    widget.recipe.categoryName,
+                    style: TextStyle(
+                      color: AppColors.secondary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   backgroundColor: AppColors.secondary.withValues(alpha: 0.1),
                   side: BorderSide(color: AppColors.secondary.withValues(alpha: 0.3)),
                 ),
@@ -163,13 +179,8 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
                   side: BorderSide(color: Colors.orange.withValues(alpha: 0.3)),
                 ),
 
-                // 来源标记
-                Chip(
-                  avatar: const Icon(Icons.qr_code_scanner, size: 16),
-                  label: const Text('扫码导入'),
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                  side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
-                ),
+                // 来源标记（根据食谱来源显示不同的徽章）
+                _buildSourceChip(),
               ],
             ),
           ],
@@ -360,6 +371,53 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
     );
   }
 
+  /// 构建来源标记徽章
+  Widget _buildSourceChip() {
+    IconData icon;
+    String label;
+    Color color;
+
+    switch (widget.recipe.source) {
+      case RecipeSource.userModified:
+        icon = Icons.edit;
+        label = '修改版';
+        color = Colors.purple;
+        break;
+      case RecipeSource.userCreated:
+        icon = Icons.person;
+        label = '用户创建';
+        color = Colors.blue;
+        break;
+      case RecipeSource.aiGenerated:
+        icon = Icons.auto_awesome;
+        label = 'AI 生成';
+        color = Colors.green;
+        break;
+      case RecipeSource.scanned:
+        icon = Icons.qr_code_scanner;
+        label = '扫码导入';
+        color = AppColors.primary;
+        break;
+      default:
+        icon = Icons.qr_code_scanner;
+        label = '扫码导入';
+        color = AppColors.primary;
+    }
+
+    return Chip(
+      avatar: Icon(icon, size: 16, color: color),
+      label: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      backgroundColor: color.withValues(alpha: 0.1),
+      side: BorderSide(color: color.withValues(alpha: 0.3)),
+    );
+  }
+
   /// 构建底部操作栏
   Widget _buildBottomBar() {
     return Container(
@@ -403,7 +461,11 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
                         ),
                       )
                     : const Icon(Icons.save),
-                label: Text(_isSaving ? '保存中...' : '保存到我的食谱'),
+                label: Text(_isSaving
+                    ? '保存中...'
+                    : widget.recipe.source == RecipeSource.userModified
+                        ? '更新到我的食谱'
+                        : '保存到我的食谱'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
@@ -419,6 +481,10 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
 
   /// 保存食谱到本地
   Future<void> _saveRecipe() async {
+    debugPrint('💾 开始保存食谱...');
+    debugPrint('  - Recipe ID: ${widget.recipe.id}');
+    debugPrint('  - Recipe Name: ${widget.recipe.name}');
+
     setState(() {
       _isSaving = true;
     });
@@ -427,46 +493,106 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
       final repository = ref.read(recipeRepositoryProvider);
 
       // 检查是否已存在相同的食谱（通过 hash 或 baseId）
+      // 注意：跳过临时 ID（preview_ 开头）的查询
       Recipe? existingRecipe;
-      if (widget.recipe.id.isNotEmpty) {
-        final recipeAsync = await ref.read(recipeByIdProvider(widget.recipe.id).future);
-        existingRecipe = recipeAsync;
+      debugPrint('🔍 检查食谱是否已存在...');
+      debugPrint('  - ID 非空: ${widget.recipe.id.isNotEmpty}');
+      debugPrint('  - 是否临时 ID: ${widget.recipe.id.startsWith('preview_')}');
+
+      if (widget.recipe.id.isNotEmpty && !widget.recipe.id.startsWith('preview_')) {
+        try {
+          debugPrint('📡 查询现有食谱: ${widget.recipe.id}');
+          final recipeAsync = await ref.read(recipeByIdProvider(widget.recipe.id).future);
+          existingRecipe = recipeAsync;
+          debugPrint('✅ 找到现有食谱: ${existingRecipe?.name}');
+        } catch (e) {
+          // 如果查询失败（如 ID 格式不合法），忽略错误，当作新食谱处理
+          debugPrint('⚠️  查询现有食谱失败: $e');
+        }
+      } else {
+        debugPrint('⏭️  跳过现有食谱查询（临时 ID 或空 ID）');
       }
 
       if (existingRecipe != null) {
-        // 食谱已存在，询问是否更新
-        if (mounted) {
-          final shouldUpdate = await showDialog<bool>(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('食谱已存在'),
-              content: Text('「${widget.recipe.name}」已在您的食谱库中，是否更新为最新版本？'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('取消'),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text('更新'),
-                ),
-              ],
-            ),
+        // 检查现有食谱的来源
+        if (existingRecipe.source == RecipeSource.bundled) {
+          // 内置食谱不能更新，需要保存为副本
+          debugPrint('📦 现有食谱是内置食谱，将保存为新副本');
+
+          // 生成新的 ID
+          final timestamp = DateTime.now().millisecondsSinceEpoch;
+          final newId = 'scanned_${widget.recipe.category}_${timestamp.toRadixString(16)}';
+
+          // 创建副本（保留扫码来源标记）
+          final copiedRecipe = widget.recipe.copyWith(
+            id: newId,
+            source: RecipeSource.scanned,
           );
 
-          if (shouldUpdate != true) {
-            setState(() {
-              _isSaving = false;
-            });
-            return;
-          }
+          await repository.saveRecipe(copiedRecipe);
 
-          // 更新食谱（保留原 ID）
-          await repository.saveRecipe(widget.recipe);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('✅ 已保存为我的食谱（内置食谱已复制）'),
+                backgroundColor: AppColors.success,
+              ),
+            );
+          }
+        } else {
+          // 用户创建或之前扫码的食谱，可以更新
+          debugPrint('👤 现有食谱是用户食谱，询问是否更新');
+
+          if (mounted) {
+            final shouldUpdate = await showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: Text(
+                  '食谱已存在',
+                  style: AppTextStyles.h3.copyWith(
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                content: Text(
+                  '「${widget.recipe.name}」已在您的食谱库中，是否更新为最新版本？',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('取消'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('更新'),
+                  ),
+                ],
+              ),
+            );
+
+            if (shouldUpdate != true) {
+              setState(() {
+                _isSaving = false;
+              });
+              return;
+            }
+
+            // 更新食谱（保留原 ID 和 source）
+            final updatedRecipe = widget.recipe.copyWith(
+              source: existingRecipe.source, // 保留原有的 source
+            );
+            await repository.saveRecipe(updatedRecipe);
+          }
         }
       } else {
-        // 新食谱，保存到数据库
-        await repository.saveRecipe(widget.recipe);
+        // 新食谱，确保有正确的 source 标记
+        final recipeToSave = widget.recipe.source == RecipeSource.bundled ||
+                widget.recipe.source == RecipeSource.cloud
+            ? widget.recipe.copyWith(source: RecipeSource.scanned)
+            : widget.recipe;
+        await repository.saveRecipe(recipeToSave);
       }
 
       // 刷新食谱列表
