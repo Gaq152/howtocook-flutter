@@ -333,8 +333,8 @@ class RecipeShareCard extends StatelessWidget {
             child: QrImageView(
               data: qrData,
               version: QrVersions.auto,
-              size: 120,
-              errorCorrectionLevel: QrErrorCorrectLevel.M,
+              size: 200, // 增大二维码尺寸从 120 → 200（图片中将是 400x400）
+              errorCorrectionLevel: QrErrorCorrectLevel.M, // 保持中等纠错级别，平衡尺寸和容错
               backgroundColor: Colors.white,
             ),
           ),
