@@ -6,14 +6,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:screenshot/screenshot.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:gal/gal.dart';
 import '../../application/providers/recipe_providers.dart';
 import '../../domain/entities/recipe.dart';
 import '../../infrastructure/services/recipe_share_service.dart';
-import '../../presentation/widgets/recipe_share_card.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/linkable_text.dart';
@@ -830,7 +828,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               children: [
                 CircularProgressIndicator(),
                 SizedBox(height: 16),
-                Text('正在生成图片...'),
+                Text('正在生成图片（Overlay方案）...'),
               ],
             ),
           ),
@@ -843,35 +841,14 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     String? errorMessage;
 
     try {
-      // 生成图片
+      // 使用 RecipeShareService 的 Overlay 方法生成图片
       final shareService = ref.read(recipeShareServiceProvider);
-      final qrData = shareService.generateQRData(recipe);
+      imageBytes = await shareService.generateRecipeImageBytes(recipe, context);
 
-      final screenshotController = ScreenshotController();
-      imageBytes = await screenshotController.captureFromWidget(
-        // ✨ 长截图方案：使用UnconstrainedBox移除所有父级约束
-        Directionality(
-          textDirection: TextDirection.ltr,
-          child: UnconstrainedBox(
-            child: SizedBox(
-              width: 375, // 只约束宽度
-              child: MediaQuery(
-                data: const MediaQueryData(
-                  size: Size(375, 50000), // 提供超大高度空间
-                  devicePixelRatio: 2.0,
-                  textScaleFactor: 1.0,
-                ),
-                child: RecipeShareCard(
-                  recipe: recipe,
-                  qrData: qrData,
-                ),
-              ),
-            ),
-          ),
-        ),
-        delay: const Duration(milliseconds: 800), // 确保二维码渲染完成
-        pixelRatio: 2.0, // 提高图片质量
-      );
+      if (imageBytes == null) {
+        hasError = true;
+        errorMessage = '图片生成失败';
+      }
     } catch (e) {
       debugPrint('生成图片异常: $e');
       hasError = true;
@@ -922,7 +899,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     try {
       await Gal.putImageBytes(
         imageBytes,
-        name: 'recipe_${recipe.id}_${DateTime.now().millisecondsSinceEpoch}.png',
+        name: 'recipe_${recipe.id}_${DateTime.now().millisecondsSinceEpoch}', // gal 会自动添加 .png
       );
 
       if (mounted) {
@@ -1045,7 +1022,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     try {
       // 导入分享服务
       final shareService = ref.read(recipeShareServiceProvider);
-      final result = await shareService.shareAsImage(recipe, saveOnly: saveOnly);
+      final result = await shareService.shareAsImage(recipe, context, saveOnly: saveOnly);
 
       if (!mounted) return;
 
