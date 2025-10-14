@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -10,6 +11,7 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import '../../domain/entities/recipe.dart';
 import '../../application/providers/recipe_providers.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/theme/app_colors.dart';
 
 /// 菜谱创建页面
 ///
@@ -26,10 +28,12 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
 
   // 表单控制器
   late TextEditingController _nameController;
+  late TextEditingController _pasteController;
 
   // 数据
   bool _isSaving = false;
   bool _isUploadingImage = false;
+  bool _isParsing = false;
 
   // 编辑状态
   String _selectedCategory = 'meat_dish'; // 默认分类
@@ -57,11 +61,13 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
   void initState() {
     super.initState();
     _nameController = TextEditingController();
+    _pasteController = TextEditingController();
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _pasteController.dispose();
     super.dispose();
   }
 
@@ -88,6 +94,9 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            // 粘贴导入区域（最顶部）
+            _buildPasteImportSection(),
+            const SizedBox(height: 24),
             _buildBasicInfoSection(),
             const SizedBox(height: 24),
             _buildIngredientsSection(),
@@ -102,6 +111,94 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
             const SizedBox(height: 24),
             _buildImagesSection(),
             const SizedBox(height: 80), // 底部留白
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 粘贴导入部分
+  Widget _buildPasteImportSection() {
+    return Card(
+      elevation: 3,
+      color: Colors.blue.shade50,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.auto_awesome, color: Colors.blue.shade700, size: 24),
+                const SizedBox(width: 8),
+                Text(
+                  '智能导入',
+                  style: AppTextStyles.h3.copyWith(color: Colors.blue.shade900),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '粘贴菜谱内容，AI 将自动解析并填充表单',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.blue.shade700,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _pasteController,
+              maxLines: 6,
+              decoration: InputDecoration(
+                hintText: '粘贴菜谱内容...\n例如：\n菜名：红烧肉\n食材：五花肉 500g、生抽 2勺...\n步骤：1. 五花肉切块...',
+                border: const OutlineInputBorder(),
+                filled: true,
+                fillColor: Colors.white,
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.paste),
+                      tooltip: '粘贴剪贴板内容',
+                      onPressed: _pasteFromClipboard,
+                    ),
+                    if (_pasteController.text.isNotEmpty)
+                      IconButton(
+                        icon: const Icon(Icons.clear),
+                        tooltip: '清空',
+                        onPressed: () {
+                          setState(() => _pasteController.clear());
+                        },
+                      ),
+                  ],
+                ),
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _pasteController.text.trim().isEmpty || _isParsing
+                    ? null
+                    : _parseAndFill,
+                icon: _isParsing
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.auto_fix_high),
+                label: Text(_isParsing ? '解析中...' : '智能解析并填充'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue.shade700,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -536,7 +633,12 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(index >= 0 ? hint : '添加'),
+        title: Text(
+          index >= 0 ? hint : '添加',
+          style: AppTextStyles.h3.copyWith(
+            color: AppColors.textPrimary,
+          ),
+        ),
         content: TextField(
           controller: controller,
           maxLines: 3,
@@ -595,7 +697,12 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(index >= 0 ? '编辑图片URL' : '添加图片URL'),
+        title: Text(
+          index >= 0 ? '编辑图片URL' : '添加图片URL',
+          style: AppTextStyles.h3.copyWith(
+            color: AppColors.textPrimary,
+          ),
+        ),
         content: TextField(
           controller: controller,
           decoration: const InputDecoration(
@@ -740,7 +847,9 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
               Text(
                 '正在处理图片...',
                 key: const ValueKey('processing_text'),
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textPrimary,
+                ),
               ),
             ],
           ),
@@ -766,7 +875,9 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
                 const SizedBox(height: 16),
                 Text(
                   message,
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               ],
             ),
@@ -774,6 +885,360 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
         ),
       );
     }
+  }
+
+  /// 移除文本中的 emoji
+  String _removeEmoji(String text) {
+    // 移除所有 emoji 和特殊符号（保留中文、英文、数字、标点）
+    return text
+        .replaceAll(RegExp(r'[\u{1F300}-\u{1F9FF}]', unicode: true), '') // Emoji 表情
+        .replaceAll(RegExp(r'[\u{2600}-\u{26FF}]', unicode: true), '')  // 杂项符号
+        .replaceAll(RegExp(r'[\u{2700}-\u{27BF}]', unicode: true), '')  // 装饰符号
+        .replaceAll(RegExp(r'[\u{FE00}-\u{FE0F}]', unicode: true), '')  // 变体选择符
+        .replaceAll(RegExp(r'[\u{1F600}-\u{1F64F}]', unicode: true), '') // 表情符号
+        .replaceAll(RegExp(r'[\u{1F680}-\u{1F6FF}]', unicode: true), '') // 交通和地图符号
+        .replaceAll(RegExp(r'[\u{1F1E0}-\u{1F1FF}]', unicode: true), '') // 国旗
+        .trim();
+  }
+
+  /// 从剪贴板粘贴内容
+  Future<void> _pasteFromClipboard() async {
+    try {
+      final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
+      if (clipboardData != null && clipboardData.text != null) {
+        setState(() {
+          _pasteController.text = clipboardData.text!;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('已粘贴剪贴板内容'),
+              duration: Duration(seconds: 1),
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('剪贴板为空'),
+              duration: Duration(seconds: 1),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('粘贴失败: $e'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  /// 智能解析并填充表单
+  Future<void> _parseAndFill() async {
+    final content = _pasteController.text.trim();
+    if (content.isEmpty) return;
+
+    setState(() => _isParsing = true);
+
+    try {
+      // 本地简单解析逻辑
+      final lines = content.split('\n').where((l) => l.trim().isNotEmpty).toList();
+
+      String? name;
+      List<String> ingredients = [];
+      List<String> steps = [];
+      List<String> tools = [];
+      List<String> warnings = [];
+      String? tips;
+      String? category;
+      int difficulty = 1;
+
+      for (var i = 0; i < lines.length; i++) {
+        final line = lines[i].trim();
+        final cleanLine = _removeEmoji(line); // 移除 emoji 后的文本
+        final lowerLine = cleanLine.toLowerCase();
+
+        // 解析菜名（支持【】包裹）
+        if (cleanLine.contains('【') && cleanLine.contains('】')) {
+          final match = RegExp(r'【(.+?)】').firstMatch(cleanLine);
+          if (match != null) {
+            name = match.group(1);
+            continue;
+          }
+        }
+
+        // 解析菜名（标准格式）
+        if (lowerLine.startsWith('菜名：') || lowerLine.startsWith('菜名:') ||
+            lowerLine.startsWith('名称：') || lowerLine.startsWith('名称:')) {
+          name = cleanLine.split(RegExp(r'[：:]'))[1].trim();
+        }
+        // 解析分类
+        else if (lowerLine.startsWith('分类：') || lowerLine.startsWith('分类:') ||
+                 lowerLine.startsWith('类别：') || lowerLine.startsWith('类别:')) {
+          final categoryText = _removeEmoji(cleanLine.split(RegExp(r'[：:]'))[1].trim());
+          category = _matchCategory(categoryText);
+        }
+        // 解析难度（支持星号 ⭐）
+        else if (lowerLine.startsWith('难度：') || lowerLine.startsWith('难度:')) {
+          final diffText = line.split(RegExp(r'[：:]'))[1].trim();
+          // 计算星号数量
+          final starCount = '⭐'.allMatches(diffText).length;
+          if (starCount > 0) {
+            difficulty = starCount.clamp(1, 5);
+          } else if (diffText.contains('简单') || diffText.contains('1')) {
+            difficulty = 1;
+          } else if (diffText.contains('中等') || diffText.contains('2')) {
+            difficulty = 2;
+          } else if (diffText.contains('困难') || diffText.contains('3') || diffText.contains('难')) {
+            difficulty = 3;
+          } else if (diffText.contains('4')) {
+            difficulty = 4;
+          } else if (diffText.contains('5')) {
+            difficulty = 5;
+          }
+        }
+        // 解析食材
+        else if (lowerLine.startsWith('食材：') || lowerLine.startsWith('食材:') ||
+                 lowerLine.startsWith('配料：') || lowerLine.startsWith('配料:') ||
+                 lowerLine.startsWith('原料：') || lowerLine.startsWith('原料:')) {
+          // 食材可能在同一行或多行
+          final parts = cleanLine.split(RegExp(r'[：:]'));
+          if (parts.length > 1) {
+            var ingText = parts[1].trim();
+            if (ingText.isNotEmpty) {
+              // 同一行有多个食材，用逗号、顿号、分号分隔
+              ingredients.addAll(ingText.split(RegExp(r'[,，、;；]')).map((e) => e.trim()).where((e) => e.isNotEmpty));
+            }
+          }
+
+          // 继续读取下一行，如果是列表项（• 开头）就当作食材
+          for (var j = i + 1; j < lines.length; j++) {
+            final nextLine = lines[j].trim();
+            final nextClean = _removeEmoji(nextLine);
+            final nextLower = nextClean.toLowerCase();
+
+            // 遇到其他标题，停止（标题通常包含冒号）
+            if (nextClean.contains(':') || nextClean.contains('：')) {
+              break;
+            }
+
+            // 如果是 • 开头，当作食材
+            if (nextClean.startsWith('•')) {
+              String itemText = nextClean.substring(1).trim();
+              if (itemText.isNotEmpty) {
+                ingredients.addAll(itemText.split(RegExp(r'[,，、;；]')).map((e) => e.trim()).where((e) => e.isNotEmpty));
+                i = j;
+              } else {
+                break;
+              }
+            } else {
+              // 不是 • 开头，停止解析食材
+              break;
+            }
+          }
+        }
+        // 解析工具
+        else if (lowerLine.startsWith('所需工具') || lowerLine.startsWith('工具：') ||
+                 lowerLine.startsWith('工具:')) {
+          // 读取工具列表
+          for (var j = i + 1; j < lines.length; j++) {
+            final toolLine = lines[j].trim();
+            final toolClean = _removeEmoji(toolLine);
+            final toolLower = toolClean.toLowerCase();
+
+            // 遇到其他标题，停止
+            if (toolLower.startsWith('步骤') || toolLower.startsWith('做法') ||
+                toolLower.startsWith('制作') || toolLower.startsWith('小贴士') ||
+                toolLower.startsWith('注意') || toolClean.contains('---')) {
+              break;
+            }
+
+            // 只解析 • 开头的行
+            if (toolClean.startsWith('•')) {
+              String toolText = toolClean.substring(1).trim();
+              if (toolText.isNotEmpty) {
+                tools.add(toolText);
+                i = j;
+              } else {
+                break;
+              }
+            } else {
+              // 不是 • 开头，停止解析工具
+              break;
+            }
+          }
+        }
+        // 解析步骤
+        else if (lowerLine.startsWith('步骤：') || lowerLine.startsWith('步骤:') ||
+                 lowerLine.startsWith('做法：') || lowerLine.startsWith('做法:') ||
+                 lowerLine.startsWith('制作步骤') || lowerLine.startsWith('制作：') ||
+                 lowerLine.startsWith('制作:')) {
+          // 步骤通常是多行
+          for (var j = i + 1; j < lines.length; j++) {
+            final stepLine = lines[j].trim();
+            final stepClean = _removeEmoji(stepLine);
+            final stepLower = stepClean.toLowerCase();
+
+            // 遇到小贴士或其他标题，停止
+            if (stepLower.startsWith('小贴士') || stepLower.startsWith('提示') ||
+                stepLower.startsWith('注意') || stepLower.startsWith('tips') ||
+                stepLower.contains('---')) {
+              break;
+            }
+
+            // 移除步骤编号（如 "1. " 或 "1、" 或 "①"）
+            var step = stepClean.replaceFirst(RegExp(r'^[\d①②③④⑤⑥⑦⑧⑨⑩]+[.、\s]+'), '').trim();
+            if (step.isNotEmpty) {
+              steps.add(step);
+              i = j;
+            } else {
+              break;
+            }
+          }
+        }
+        // 解析小贴士
+        else if (lowerLine.startsWith('小贴士：') || lowerLine.startsWith('小贴士:') ||
+                 lowerLine.startsWith('提示：') || lowerLine.startsWith('提示:') ||
+                 lowerLine.startsWith('tips：') || lowerLine.startsWith('tips:')) {
+          final parts = cleanLine.split(RegExp(r'[：:]'));
+          if (parts.length > 1) {
+            tips = parts[1].trim();
+          } else {
+            tips = '';
+          }
+
+          // 小贴士可能多行
+          for (var j = i + 1; j < lines.length; j++) {
+            final tipsLine = lines[j].trim();
+            final tipsClean = _removeEmoji(tipsLine);
+            final tipsLower = tipsClean.toLowerCase();
+
+            // 遇到其他标题或分隔符，停止
+            if (tipsLower.startsWith('注意') || tipsLower.startsWith('warning') ||
+                tipsClean.contains('---') || tipsLower.startsWith('分享自')) {
+              break;
+            }
+
+            if (tipsClean.isNotEmpty) {
+              tips = tips!.isEmpty ? tipsClean : '$tips\n$tipsClean';
+              i = j;
+            }
+          }
+        }
+        // 解析注意事项
+        else if (lowerLine.startsWith('注意事项') || lowerLine.startsWith('注意：') ||
+                 lowerLine.startsWith('注意:') || lowerLine.startsWith('警告') ||
+                 lowerLine.startsWith('warning')) {
+          // 读取注意事项列表
+          for (var j = i + 1; j < lines.length; j++) {
+            final warnLine = lines[j].trim();
+            final warnClean = _removeEmoji(warnLine);
+
+            // 遇到分隔符或结尾，停止
+            if (warnClean.contains('---') || warnClean.startsWith('分享自')) {
+              break;
+            }
+
+            // 只解析 • 开头的行，也允许 - 开头（markdown 风格）
+            if (warnClean.startsWith('•') || warnClean.startsWith('-')) {
+              String warnText = warnClean.startsWith('•')
+                  ? warnClean.substring(1).trim()
+                  : warnClean.substring(1).trim();
+              if (warnText.isNotEmpty) {
+                warnings.add(warnText);
+                i = j;
+              } else {
+                break;
+              }
+            } else {
+              // 不是列表项开头，停止解析注意事项
+              break;
+            }
+          }
+        }
+      }
+
+      // 如果没有明确标记，尝试智能识别
+      if (name == null && lines.isNotEmpty) {
+        // 第一行可能是菜名（移除 emoji）
+        name = _removeEmoji(lines[0].trim());
+      }
+
+      // 填充表单
+      if (name != null && name.isNotEmpty) {
+        _nameController.text = name;
+      }
+
+      if (category != null) {
+        setState(() => _selectedCategory = category!);
+      }
+
+      setState(() {
+        _selectedDifficulty = difficulty;
+        if (ingredients.isNotEmpty) _ingredientTexts = ingredients;
+        if (steps.isNotEmpty) _stepDescriptions = steps;
+        if (tools.isNotEmpty) _tools = tools;
+        if (warnings.isNotEmpty) _warnings = warnings;
+        if (tips != null && tips.isNotEmpty) _tips = tips;
+      });
+
+      // 清空输入框
+      _pasteController.clear();
+
+      // 显示成功提示
+      if (mounted) {
+        final summary = <String>[];
+        if (name != null) summary.add('菜名');
+        if (category != null) summary.add('分类');
+        if (difficulty > 1) summary.add('难度');
+        if (ingredients.isNotEmpty) summary.add('${ingredients.length}个食材');
+        if (steps.isNotEmpty) summary.add('${steps.length}个步骤');
+        if (tools.isNotEmpty) summary.add('${tools.length}个工具');
+        if (warnings.isNotEmpty) summary.add('${warnings.length}个注意事项');
+        if (tips != null && tips.isNotEmpty) summary.add('小贴士');
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ 解析成功！已填充：${summary.join('、')}'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('解析失败: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('解析失败: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      setState(() => _isParsing = false);
+    }
+  }
+
+  /// 匹配分类
+  String _matchCategory(String text) {
+    final lower = text.toLowerCase();
+    if (lower.contains('肉') || lower.contains('meat')) return 'meat_dish';
+    if (lower.contains('素') || lower.contains('vegetable')) return 'vegetable_dish';
+    if (lower.contains('水产') || lower.contains('海鲜') || lower.contains('鱼') || lower.contains('虾')) return 'aquatic';
+    if (lower.contains('早餐') || lower.contains('breakfast')) return 'breakfast';
+    if (lower.contains('主食') || lower.contains('staple')) return 'staple';
+    if (lower.contains('汤') || lower.contains('羹') || lower.contains('soup')) return 'soup';
+    if (lower.contains('甜品') || lower.contains('dessert')) return 'dessert';
+    if (lower.contains('饮') || lower.contains('drink')) return 'drink';
+    return 'meat_dish'; // 默认
   }
 
   /// 保存菜谱
