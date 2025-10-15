@@ -10,9 +10,11 @@ import '../../features/recipe/presentation/screens/favorite_recipes_screen.dart'
 import '../../features/recipe/presentation/screens/tips_screen.dart';
 import '../../features/recipe/presentation/screens/qr_scanner_screen.dart';
 import '../../features/recipe/presentation/screens/recipe_preview_screen.dart';
+import '../../features/recipe/presentation/screens/my_recipes_screen.dart';
 import '../../features/recipe/domain/entities/recipe.dart';
 import '../../features/ai_chat/presentation/screens/ai_chat_screen.dart';
 import '../../features/user/presentation/screens/user_screen.dart';
+import '../../features/settings/presentation/screens/data_sync_screen.dart';
 import '../widgets/main_scaffold.dart';
 
 /// 路由配置 Provider
@@ -110,12 +112,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/my-recipes',
         name: 'my-recipes',
         builder: (context, state) {
-          return Scaffold(
-            appBar: AppBar(title: const Text('我的菜谱')),
-            body: const Center(
-              child: Text('我的菜谱\n\n（待实现）'),
-            ),
-          );
+          return const MyRecipesScreen();
         },
       ),
 
@@ -130,6 +127,15 @@ final routerProvider = Provider<GoRouter>((ref) {
               child: Text('模型管理\n\n（待实现）'),
             ),
           );
+        },
+      ),
+
+      // 数据同步
+      GoRoute(
+        path: '/data-sync',
+        name: 'data-sync',
+        builder: (context, state) {
+          return const DataSyncScreen();
         },
       ),
 
@@ -174,10 +180,28 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // 食谱预览（扫码导入）
       GoRoute(
-        path: '/recipe/preview',
+        path: '/recipe-preview',
         name: 'recipe-preview',
         builder: (context, state) {
+          debugPrint('🛣️  路由: /recipe-preview 被触发');
+          debugPrint('  - state.extra 类型: ${state.extra.runtimeType}');
+          debugPrint('  - state.extra 是否为 null: ${state.extra == null}');
+
+          if (state.extra == null) {
+            debugPrint('❌ state.extra 为 null！');
+            return Scaffold(
+              appBar: AppBar(title: const Text('错误')),
+              body: const Center(
+                child: Text('未提供食谱数据'),
+              ),
+            );
+          }
+
           final recipe = state.extra as Recipe;
+          debugPrint('✅ Recipe 数据接收成功:');
+          debugPrint('  - ID: ${recipe.id}');
+          debugPrint('  - Name: ${recipe.name}');
+
           return RecipePreviewScreen(recipe: recipe);
         },
       ),

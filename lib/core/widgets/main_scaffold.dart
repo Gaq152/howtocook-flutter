@@ -51,10 +51,14 @@ class _MainScaffoldState extends State<MainScaffold> {
   Widget build(BuildContext context) {
     _currentIndex = _calculateSelectedIndex(context);
 
+    // 检测键盘是否弹出
+    final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
+
     return Scaffold(
       body: widget.child,
       bottomNavigationBar: _buildBottomNavigationBar(),
-      floatingActionButton: _buildAIChatFAB(),
+      // 键盘弹出时隐藏FAB，防止遮挡输入框
+      floatingActionButton: keyboardVisible ? null : _buildAIChatFAB(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }

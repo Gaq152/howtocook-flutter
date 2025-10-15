@@ -65,6 +65,8 @@ const _$RecipeSourceEnumMap = {
   RecipeSource.cloud: 'cloud',
   RecipeSource.userCreated: 'userCreated',
   RecipeSource.userModified: 'userModified',
+  RecipeSource.scanned: 'scanned',
+  RecipeSource.aiGenerated: 'aiGenerated',
 };
 
 _$IngredientImpl _$$IngredientImplFromJson(Map<String, dynamic> json) =>

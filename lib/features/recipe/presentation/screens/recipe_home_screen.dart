@@ -23,6 +23,26 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
   /// 当前选中的难度，null表示"全部"
   int? _selectedDifficulty;
 
+  /// 滚动控制器，用于双击滚动到顶部
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  /// 滚动到顶部
+  void _scrollToTop() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // 根据选中的分类获取菜谱列表
@@ -32,7 +52,17 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('菜谱'),
+        title: GestureDetector(
+          onDoubleTap: _scrollToTop,
+          child: Text(
+            '菜谱',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+            ),
+          ),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.qr_code_scanner),
@@ -236,6 +266,7 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
         await ref.read(allRecipesProvider.future);
       },
       child: GridView.builder(
+        controller: _scrollController,
         padding: const EdgeInsets.all(16),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: _getCrossAxisCount(context),

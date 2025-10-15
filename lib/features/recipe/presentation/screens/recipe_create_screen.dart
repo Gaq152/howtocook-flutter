@@ -297,6 +297,7 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
       onAdd: () => _addListItem(_ingredientTexts, '新食材'),
       onEdit: (index) => _editListItem(_ingredientTexts, index, '编辑食材'),
       onDelete: (index) => _deleteListItem(_ingredientTexts, index),
+      onClear: () => _confirmAndClearList(_ingredientTexts, '食材'),
     );
   }
 
@@ -312,6 +313,16 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
               children: [
                 Text('制作步骤', style: AppTextStyles.h3),
                 const Spacer(),
+                if (_stepDescriptions.isNotEmpty)
+                  TextButton.icon(
+                    onPressed: () => _confirmAndClearList(_stepDescriptions, '制作步骤'),
+                    icon: const Icon(Icons.clear_all, size: 20),
+                    label: const Text('清空'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.red,
+                    ),
+                  ),
+                const SizedBox(width: 8),
                 TextButton.icon(
                   onPressed: () => _addListItem(_stepDescriptions, '新步骤'),
                   icon: const Icon(Icons.add),
@@ -394,6 +405,7 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
       onAdd: () => _addListItem(_tools, '新工具'),
       onEdit: (index) => _editListItem(_tools, index, '编辑工具'),
       onDelete: (index) => _deleteListItem(_tools, index),
+      onClear: () => _confirmAndClearList(_tools, '工具'),
     );
   }
 
@@ -430,6 +442,7 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
       onAdd: () => _addListItem(_warnings, '新注意事项'),
       onEdit: (index) => _editListItem(_warnings, index, '编辑注意事项'),
       onDelete: (index) => _deleteListItem(_warnings, index),
+      onClear: () => _confirmAndClearList(_warnings, '注意事项'),
     );
   }
 
@@ -560,6 +573,7 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
     required VoidCallback onAdd,
     required Function(int) onEdit,
     required Function(int) onDelete,
+    required VoidCallback onClear,
   }) {
     return Card(
       child: Padding(
@@ -571,6 +585,16 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
               children: [
                 Text(title, style: AppTextStyles.h3),
                 const Spacer(),
+                if (items.isNotEmpty)
+                  TextButton.icon(
+                    onPressed: onClear,
+                    icon: const Icon(Icons.clear_all, size: 20),
+                    label: const Text('清空'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.red,
+                    ),
+                  ),
+                const SizedBox(width: 8),
                 TextButton.icon(
                   onPressed: onAdd,
                   icon: const Icon(Icons.add),
@@ -635,15 +659,25 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
       builder: (context) => AlertDialog(
         title: Text(
           index >= 0 ? hint : '添加',
-          style: AppTextStyles.h3.copyWith(
-            color: AppColors.textPrimary,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         content: TextField(
           controller: controller,
           maxLines: 3,
+          autofocus: true,
+          style: TextStyle(
+            fontSize: 16,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
           decoration: InputDecoration(
             hintText: hint,
+            hintStyle: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+            ),
             border: const OutlineInputBorder(),
           ),
         ),
@@ -652,7 +686,7 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
             onPressed: () => Navigator.pop(context),
             child: const Text('取消'),
           ),
-          TextButton(
+          FilledButton(
             onPressed: () {
               final text = controller.text.trim();
               if (text.isNotEmpty) {
@@ -678,6 +712,65 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
     setState(() => list.removeAt(index));
   }
 
+  /// 确认并清空列表
+  Future<void> _confirmAndClearList(List<String> list, String listName) async {
+    final confirmed = await _showClearConfirmDialog(listName, list.length);
+    if (confirmed == true) {
+      setState(() => list.clear());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('已清空所有$listName'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  /// 显示清空确认对话框
+  Future<bool?> _showClearConfirmDialog(String listName, int count) async {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.warning_rounded, color: Colors.orange.shade700, size: 28),
+            const SizedBox(width: 12),
+            Text(
+              '确认清空？',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          '确定要清空所有$listName吗？\n\n当前有 $count 项内容将被删除，此操作不可撤销。',
+          style: TextStyle(
+            fontSize: 16,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('清空'),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// 添加图片URL
   void _addImageUrl() {
     _editImageUrlDialog(-1);
@@ -699,15 +792,25 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
       builder: (context) => AlertDialog(
         title: Text(
           index >= 0 ? '编辑图片URL' : '添加图片URL',
-          style: AppTextStyles.h3.copyWith(
-            color: AppColors.textPrimary,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(
+          autofocus: true,
+          style: TextStyle(
+            fontSize: 16,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+          decoration: InputDecoration(
             hintText: '输入图片URL地址',
-            border: OutlineInputBorder(),
+            hintStyle: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+            ),
+            border: const OutlineInputBorder(),
           ),
         ),
         actions: [
@@ -715,7 +818,7 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
             onPressed: () => Navigator.pop(context),
             child: const Text('取消'),
           ),
-          TextButton(
+          FilledButton(
             onPressed: () {
               final url = controller.text.trim();
               if (url.isNotEmpty) {
@@ -898,6 +1001,9 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
         .replaceAll(RegExp(r'[\u{1F600}-\u{1F64F}]', unicode: true), '') // 表情符号
         .replaceAll(RegExp(r'[\u{1F680}-\u{1F6FF}]', unicode: true), '') // 交通和地图符号
         .replaceAll(RegExp(r'[\u{1F1E0}-\u{1F1FF}]', unicode: true), '') // 国旗
+        .replaceAll(RegExp(r'[\u{200D}]', unicode: true), '')  // 零宽连字符 (ZWJ)
+        .replaceAll(RegExp(r'[\u{200C}-\u{200F}]', unicode: true), '')  // 零宽字符
+        .replaceAll(RegExp(r'^[\s\u{200B}\u{FEFF}]+', unicode: true), '') // 开头的空白和零宽字符
         .trim();
   }
 
@@ -960,10 +1066,18 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
       String? category;
       int difficulty = 1;
 
+      debugPrint('==================== 开始解析 ====================');
+      debugPrint('总行数: ${lines.length}');
+
       for (var i = 0; i < lines.length; i++) {
         final line = lines[i].trim();
         final cleanLine = _removeEmoji(line); // 移除 emoji 后的文本
         final lowerLine = cleanLine.toLowerCase();
+
+        debugPrint('\n--- 第 ${i + 1} 行 ---');
+        debugPrint('原始: $line');
+        debugPrint('清理后: $cleanLine');
+        debugPrint('小写: $lowerLine');
 
         // 解析菜名（支持【】包裹）
         if (cleanLine.contains('【') && cleanLine.contains('】')) {
@@ -1022,7 +1136,6 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
           for (var j = i + 1; j < lines.length; j++) {
             final nextLine = lines[j].trim();
             final nextClean = _removeEmoji(nextLine);
-            final nextLower = nextClean.toLowerCase();
 
             // 遇到其他标题，停止（标题通常包含冒号）
             if (nextClean.contains(':') || nextClean.contains('：')) {
@@ -1080,28 +1193,54 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
                  lowerLine.startsWith('做法：') || lowerLine.startsWith('做法:') ||
                  lowerLine.startsWith('制作步骤') || lowerLine.startsWith('制作：') ||
                  lowerLine.startsWith('制作:')) {
+          debugPrint('✅ 检测到步骤标题！开始解析步骤...');
+
           // 步骤通常是多行
           for (var j = i + 1; j < lines.length; j++) {
             final stepLine = lines[j].trim();
             final stepClean = _removeEmoji(stepLine);
             final stepLower = stepClean.toLowerCase();
 
-            // 遇到小贴士或其他标题，停止
+            debugPrint('  步骤行 ${j + 1}: 原始="$stepLine", 清理后="$stepClean"');
+
+            // 遇到小贴士或其他标题，停止 - 扩展停止条件
             if (stepLower.startsWith('小贴士') || stepLower.startsWith('提示') ||
                 stepLower.startsWith('注意') || stepLower.startsWith('tips') ||
-                stepLower.contains('---')) {
+                stepLower.startsWith('所需工具') || stepLower.startsWith('工具') ||
+                stepLower.startsWith('食材') || stepLower.startsWith('配料') ||
+                stepLower.contains('---') || stepLower.startsWith('分享自')) {
+              debugPrint('  ⚠️ 遇到停止条件，停止解析步骤');
               break;
             }
 
-            // 移除步骤编号（如 "1. " 或 "1、" 或 "①"）
-            var step = stepClean.replaceFirst(RegExp(r'^[\d①②③④⑤⑥⑦⑧⑨⑩]+[.、\s]+'), '').trim();
+            // 跳过空行
+            if (stepClean.isEmpty) {
+              debugPrint('  ⏭️ 跳过空行');
+              continue;
+            }
+
+            // 移除步骤编号（如 "1. " 或 "1、" 或 "①"） - 改进正则表达式
+            var step = stepClean.replaceFirst(RegExp(r'^[\d①②③④⑤⑥⑦⑧⑨⑩]+[.、:：\s]+'), '').trim();
+
+            debugPrint('  处理后步骤内容: "$step"');
+
+            // 如果移除编号后内容不为空，添加到步骤列表
             if (step.isNotEmpty) {
               steps.add(step);
+              debugPrint('  ✅ 添加步骤 ${steps.length}: $step');
               i = j;
+            } else if (stepClean.contains(RegExp(r'^[\d①②③④⑤⑥⑦⑧⑨⑩]+[.、:：\s]+'))) {
+              // 如果这行只有编号没有内容，跳过但继续解析
+              debugPrint('  ⏭️ 只有编号，跳过');
+              continue;
             } else {
+              // 遇到既不是步骤编号也不是有效内容的情况，停止解析
+              debugPrint('  ⚠️ 不是有效步骤内容，停止解析');
               break;
             }
           }
+
+          debugPrint('📊 步骤解析完成，共 ${steps.length} 个步骤');
         }
         // 解析小贴士
         else if (lowerLine.startsWith('小贴士：') || lowerLine.startsWith('小贴士:') ||
@@ -1170,6 +1309,25 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
         // 第一行可能是菜名（移除 emoji）
         name = _removeEmoji(lines[0].trim());
       }
+
+      debugPrint('\n==================== 解析结果汇总 ====================');
+      debugPrint('菜名: $name');
+      debugPrint('分类: $category');
+      debugPrint('难度: $difficulty');
+      debugPrint('食材数量: ${ingredients.length}');
+      debugPrint('步骤数量: ${steps.length}');
+      debugPrint('工具数量: ${tools.length}');
+      debugPrint('注意事项数量: ${warnings.length}');
+      debugPrint('小贴士: ${tips != null ? "有" : "无"}');
+      if (steps.isNotEmpty) {
+        debugPrint('\n步骤详情:');
+        for (var i = 0; i < steps.length; i++) {
+          debugPrint('  ${i + 1}. ${steps[i]}');
+        }
+      } else {
+        debugPrint('⚠️ 警告：未解析到任何步骤！');
+      }
+      debugPrint('====================================================\n');
 
       // 填充表单
       if (name != null && name.isNotEmpty) {
@@ -1241,6 +1399,139 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
     return 'meat_dish'; // 默认
   }
 
+  /// 显示同名食谱对话框
+  Future<String?> _showDuplicateNameDialog(String recipeName) async {
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700, size: 28),
+            const SizedBox(width: 12),
+            Text(
+              '发现同名食谱',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '已存在名为「$recipeName」的食谱。',
+              style: TextStyle(
+                fontSize: 16,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '请选择操作：',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '• 覆盖：替换现有食谱\n• 重命名：输入新名称\n• 取消：放弃保存',
+              style: TextStyle(
+                fontSize: 14,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'cancel'),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'rename'),
+            child: const Text('重命名'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, 'overwrite'),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.orange,
+            ),
+            child: const Text('覆盖'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 显示重命名对话框
+  Future<String?> _showRenameDialog(String currentName) async {
+    final controller = TextEditingController(text: currentName);
+
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          '重命名食谱',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: controller,
+              autofocus: true,
+              style: TextStyle(
+                fontSize: 16,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+              decoration: InputDecoration(
+                labelText: '新名称',
+                labelStyle: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                ),
+                hintText: '请输入新的食谱名称',
+                hintStyle: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                ),
+                border: const OutlineInputBorder(),
+              ),
+              onSubmitted: (value) {
+                if (value.trim().isNotEmpty) {
+                  Navigator.pop(context, value.trim());
+                }
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final newName = controller.text.trim();
+              if (newName.isNotEmpty) {
+                Navigator.pop(context, newName);
+              }
+            },
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// 保存菜谱
   Future<void> _saveRecipe() async {
     if (!_formKey.currentState!.validate()) {
@@ -1261,14 +1552,51 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
       return;
     }
 
+    // 检查同名食谱
+    final recipeName = _nameController.text.trim();
+    final repository = ref.read(recipeRepositoryProvider);
+    final allRecipes = await repository.getAllRecipes();
+    final existingRecipe = allRecipes.where((r) => r.name == recipeName).firstOrNull;
+
+    if (existingRecipe != null) {
+      // 发现同名食谱，询问用户
+      final action = await _showDuplicateNameDialog(recipeName);
+
+      if (action == null || action == 'cancel') {
+        // 用户取消操作
+        return;
+      } else if (action == 'rename') {
+        // 用户选择重命名，弹出输入框
+        final newName = await _showRenameDialog(recipeName);
+        if (newName == null || newName.trim().isEmpty) {
+          // 用户取消重命名
+          return;
+        }
+        // 更新名称
+        _nameController.text = newName.trim();
+        // 递归调用保存（会再次检查新名称是否重复）
+        return _saveRecipe();
+      }
+      // action == 'overwrite'，继续执行覆盖逻辑
+    }
+
     setState(() => _isSaving = true);
 
     try {
-      // 生成新的菜谱ID
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final categoryPrefix = _selectedCategory;
-      final randomSuffix = timestamp.toRadixString(16).substring(0, 8);
-      final newRecipeId = '${categoryPrefix}_$randomSuffix';
+      // 确定菜谱 ID（如果覆盖现有食谱，使用现有ID；否则生成新ID）
+      final String recipeId;
+      if (existingRecipe != null) {
+        // 覆盖现有食谱，使用现有ID
+        recipeId = existingRecipe.id;
+        debugPrint('覆盖现有食谱，使用ID: $recipeId');
+      } else {
+        // 生成新的菜谱ID
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final categoryPrefix = _selectedCategory;
+        final randomSuffix = timestamp.toRadixString(16).substring(0, 8);
+        recipeId = '${categoryPrefix}_$randomSuffix';
+        debugPrint('创建新食谱，生成ID: $recipeId');
+      }
 
       // 转换食材文本为Ingredient对象
       final ingredients = _ingredientTexts.map((text) {
@@ -1286,7 +1614,7 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
           .firstWhere((c) => c['value'] == _selectedCategory)['label']!;
 
       final newRecipe = Recipe(
-        id: newRecipeId,
+        id: recipeId,
         name: _nameController.text.trim(),
         category: _selectedCategory,
         categoryName: categoryName,
@@ -1301,15 +1629,15 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
         hash: '', // 用户创建的菜谱不需要hash
       );
 
-      final repository = ref.read(recipeRepositoryProvider);
       await repository.saveRecipe(newRecipe);
 
       // 刷新相关provider
       ref.invalidate(allRecipesProvider);
 
       if (mounted) {
+        final message = existingRecipe != null ? '覆盖成功' : '创建成功';
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('保存成功')),
+          SnackBar(content: Text(message)),
         );
         Navigator.pop(context);
       }

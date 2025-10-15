@@ -79,8 +79,9 @@ class UserScreen extends StatelessWidget {
             context,
             icon: Icons.sync,
             title: '数据同步',
+            subtitle: '同步菜谱数据和图片',
             onTap: () {
-              // TODO: 导航到数据同步页面（待实现）
+              context.push('/data-sync');
             },
           ),
           _buildMenuItem(

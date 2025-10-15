@@ -2,11 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../application/providers/recipe_providers.dart';
 import '../../domain/entities/recipe.dart';
+import '../../infrastructure/services/search_history_service.dart';
 import '../widgets/recipe_card.dart';
 import '../../../../core/theme/app_colors.dart';
 
 /// 搜索关键词状态 Provider
 final searchQueryProvider = StateProvider<String>((ref) => '');
+
+/// 搜索历史服务 Provider
+final searchHistoryServiceProvider = Provider<SearchHistoryService>((ref) {
+  return SearchHistoryService();
+});
+
+/// 搜索历史 Provider
+final searchHistoryProvider = FutureProvider<List<String>>((ref) async {
+  final service = ref.watch(searchHistoryServiceProvider);
+  return service.getSearchHistory();
+});
 
 /// 菜谱搜索页面
 ///
@@ -38,6 +50,78 @@ class _RecipeSearchScreenState extends ConsumerState<RecipeSearchScreen> {
     super.dispose();
   }
 
+  /// 执行搜索
+  Future<void> _performSearch(String query) async {
+    if (query.trim().isEmpty) return;
+
+    // 添加到搜索历史
+    final service = ref.read(searchHistoryServiceProvider);
+    await service.addSearchRecord(query.trim());
+
+    // 更新搜索状态
+    ref.read(searchQueryProvider.notifier).state = query.trim();
+
+    // 刷新搜索历史
+    ref.invalidate(searchHistoryProvider);
+  }
+
+  /// 删除搜索记录
+  Future<void> _deleteSearchRecord(String query) async {
+    final service = ref.read(searchHistoryServiceProvider);
+    await service.deleteSearchRecord(query);
+
+    // 刷新搜索历史
+    ref.invalidate(searchHistoryProvider);
+  }
+
+  /// 清空搜索历史
+  Future<void> _clearSearchHistory() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          '清空搜索历史',
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+        content: Text(
+          '确定要清空所有搜索记录吗？',
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('清空'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final service = ref.read(searchHistoryServiceProvider);
+      await service.clearSearchHistory();
+
+      // 刷新搜索历史
+      ref.invalidate(searchHistoryProvider);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('已清空搜索历史')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final searchQuery = ref.watch(searchQueryProvider);
@@ -53,38 +137,70 @@ class _RecipeSearchScreenState extends ConsumerState<RecipeSearchScreen> {
             hintStyle: TextStyle(
               color: AppColors.textSecondary.withValues(alpha: 0.6),
             ),
+            suffixIcon: _searchController.text.isNotEmpty
+                ? GestureDetector(
+                    onTap: () {
+                      _searchController.clear();
+                      ref.read(searchQueryProvider.notifier).state = '';
+                      _searchFocusNode.requestFocus();
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.close,
+                        size: 14,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  )
+                : null,
           ),
           style: const TextStyle(fontSize: 16),
           textInputAction: TextInputAction.search,
           onChanged: (value) {
-            ref.read(searchQueryProvider.notifier).state = value;
+            setState(() {}); // 仅用于刷新UI，显示/隐藏清空按钮
           },
           onSubmitted: (value) {
             // 提交搜索
-            if (value.trim().isNotEmpty) {
-              ref.read(searchQueryProvider.notifier).state = value.trim();
-            }
+            _performSearch(value);
           },
         ),
         actions: [
           if (_searchController.text.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.clear),
-              onPressed: () {
-                _searchController.clear();
-                ref.read(searchQueryProvider.notifier).state = '';
-                _searchFocusNode.requestFocus();
-              },
+            TextButton(
+              onPressed: () => _performSearch(_searchController.text),
+              child: const Text('搜索'),
             ),
         ],
       ),
       body: searchQuery.trim().isEmpty
-          ? _buildEmptyState(context)
+          ? _buildSearchHistoryState(context)
           : _buildSearchResults(searchQuery.trim()),
     );
   }
 
-  /// 构建空状态（未输入搜索词）
+  /// 构建搜索历史状态
+  Widget _buildSearchHistoryState(BuildContext context) {
+    final historyAsync = ref.watch(searchHistoryProvider);
+
+    return historyAsync.when(
+      data: (history) {
+        if (history.isEmpty) {
+          return _buildEmptyState(context);
+        }
+        return _buildSearchHistory(history);
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (_, __) => _buildEmptyState(context),
+    );
+  }
+
+  /// 构建空状态（无搜索历史）
   Widget _buildEmptyState(BuildContext context) {
     return Center(
       child: Column(
@@ -111,6 +227,62 @@ class _RecipeSearchScreenState extends ConsumerState<RecipeSearchScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  /// 构建搜索历史列表
+  Widget _buildSearchHistory(List<String> history) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 标题栏
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Row(
+            children: [
+              Text(
+                '搜索历史',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: _clearSearchHistory,
+                icon: const Icon(Icons.delete_outline, size: 18),
+                label: const Text('清空'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // 搜索历史列表
+        Expanded(
+          child: ListView.builder(
+            itemCount: history.length,
+            itemBuilder: (context, index) {
+              final query = history[index];
+              return ListTile(
+                leading: const Icon(Icons.history, size: 20),
+                title: Text(query),
+                trailing: IconButton(
+                  icon: const Icon(Icons.close, size: 20),
+                  onPressed: () => _deleteSearchRecord(query),
+                ),
+                onTap: () {
+                  _searchController.text = query;
+                  _performSearch(query);
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
