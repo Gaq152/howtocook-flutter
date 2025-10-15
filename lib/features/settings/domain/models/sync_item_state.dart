@@ -5,9 +5,10 @@ part 'sync_item_state.freezed.dart';
 
 /// 同步项类型
 enum SyncItemType {
-  json,         // JSON数据
-  coverImages,  // 封面图
-  detailImages, // 详情图
+  json,              // JSON数据
+  coverImages,       // 封面图
+  detailImages,      // 详情图（增量更新）
+  fullDetailImages,  // 完整详情图（初始化下载）
 }
 
 /// 同步项状态
@@ -56,6 +57,12 @@ class SyncItemInfo {
 
   static const items = [
     SyncItemInfo(
+      type: SyncItemType.fullDetailImages,
+      title: '初始化详情图',
+      description: '下载所有食谱的详情图片（首次使用推荐）',
+      icon: Icons.file_download,
+    ),
+    SyncItemInfo(
       type: SyncItemType.json,
       title: 'JSON数据',
       description: '食谱数据文件',
@@ -70,7 +77,7 @@ class SyncItemInfo {
     SyncItemInfo(
       type: SyncItemType.detailImages,
       title: '详情图',
-      description: '食谱详细步骤图片',
+      description: '食谱详细步骤图片（增量更新）',
       icon: Icons.photo_library,
     ),
   ];

@@ -106,6 +106,12 @@ class ImageDownloadManager extends _$ImageDownloadManager {
     state = state.copyWith(status: DownloadStatus.downloading);
 
     while (_currentIndex < _tasks.length) {
+      // 检查是否应该停止下载
+      if (!_isDownloading) {
+        print('⏸️ 下载已被暂停或取消');
+        break;
+      }
+
       final task = _tasks.values.elementAt(_currentIndex);
 
       if (task.status == DownloadStatus.completed) {
@@ -128,14 +134,24 @@ class ImageDownloadManager extends _$ImageDownloadManager {
     }
 
     _isDownloading = false;
-    state = state.copyWith(
-      status: DownloadStatus.completed,
-      progress: 100,
-    );
+
+    // 只有在真正完成所有任务时才标记为completed
+    if (_currentIndex >= _tasks.length) {
+      state = state.copyWith(
+        status: DownloadStatus.completed,
+        progress: 100,
+      );
+    }
   }
 
   /// 下载单个任务
   Future<void> _downloadSingleTask(DownloadTask task) async {
+    // 在开始下载前检查是否应该继续
+    if (!_isDownloading) {
+      print('⏸️ 任务 ${task.id} 被跳过（下载已停止）');
+      return;
+    }
+
     task.status = DownloadStatus.downloading;
     task.progress = 0;
     task.error = null;
@@ -186,6 +202,18 @@ class ImageDownloadManager extends _$ImageDownloadManager {
       print('   - 文件存在: $exists');
       print('   - 文件大小: $fileSize 字节');
 
+    } on DioException catch (e) {
+      // 如果是取消操作，不标记为错误
+      if (e.type == DioExceptionType.cancel) {
+        print('⏸️ 图片下载被取消: ${task.imageUrl}');
+        task.status = DownloadStatus.paused;
+      } else {
+        task.status = DownloadStatus.error;
+        task.error = e.toString();
+        print('❌ 图片下载失败:');
+        print('   - URL: ${task.imageUrl}');
+        print('   - 错误: $e');
+      }
     } catch (e) {
       task.status = DownloadStatus.error;
       task.error = e.toString();
@@ -200,6 +228,12 @@ class ImageDownloadManager extends _$ImageDownloadManager {
 
   /// 暂停下载
   void pauseDownload() {
+    print('⏸️ 暂停下载请求...');
+    print('   - 当前正在下载的任务数: ${_cancelTokens.length}');
+
+    // 先设置标志，防止新任务开始
+    _isDownloading = false;
+
     // 取消当前正在下载的任务
     for (final cancelToken in _cancelTokens.values) {
       cancelToken.cancel();
@@ -210,10 +244,11 @@ class ImageDownloadManager extends _$ImageDownloadManager {
     if (_currentIndex < _tasks.length) {
       final currentTask = _tasks.values.elementAt(_currentIndex);
       currentTask.status = DownloadStatus.paused;
+      print('   - 当前任务已标记为暂停: ${currentTask.id}');
     }
 
-    _isDownloading = false;
     state = state.copyWith(status: DownloadStatus.paused);
+    print('✅ 下载已暂停');
   }
 
   /// 恢复下载

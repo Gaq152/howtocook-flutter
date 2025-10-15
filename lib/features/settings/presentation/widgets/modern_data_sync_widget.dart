@@ -18,10 +18,55 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
     SyncItemType.json: SyncItemState.initial(SyncItemType.json),
     SyncItemType.coverImages: SyncItemState.initial(SyncItemType.coverImages),
     SyncItemType.detailImages: SyncItemState.initial(SyncItemType.detailImages),
+    SyncItemType.fullDetailImages: SyncItemState.initial(SyncItemType.fullDetailImages),
   };
 
   // 缓存更新信息
   List<RecipeUpdate>? _pendingUpdates;
+
+  // 存储大小
+  String _storageSize = '计算中...';
+
+  @override
+  void initState() {
+    super.initState();
+    _calculateStorageSize();
+  }
+
+  /// 计算本地存储大小
+  Future<void> _calculateStorageSize() async {
+    try {
+      final dataSyncService = ref.read(dataSyncServiceProvider.notifier);
+      final imageDownloadService = ref.read(imageDownloadManagerProvider.notifier);
+
+      final dataSize = await dataSyncService.getLocalDataSize();
+      final imageSize = await imageDownloadService.getCacheSize();
+      final totalSize = dataSize + imageSize;
+
+      if (mounted) {
+        setState(() {
+          _storageSize = _formatBytes(totalSize);
+        });
+      }
+    } catch (e) {
+      print('❌ 计算存储大小失败: $e');
+      if (mounted) {
+        setState(() {
+          _storageSize = '计算失败';
+        });
+      }
+    }
+  }
+
+  /// 格式化字节大小
+  String _formatBytes(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    if (bytes < 1024 * 1024 * 1024) {
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    }
+    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,9 +139,11 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
   Widget _buildSyncItemCard(BuildContext context, SyncItemInfo info) {
     final state = _itemStates[info.type]!;
     final theme = Theme.of(context);
+    final isFullDetailImages = info.type == SyncItemType.fullDetailImages;
 
     return Card(
-      elevation: 1,
+      elevation: isFullDetailImages ? 3 : 1,
+      color: isFullDetailImages ? theme.colorScheme.primaryContainer : null,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -417,7 +464,7 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '已使用: 计算中...',
+                    '已使用: $_storageSize',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -529,10 +576,84 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
             );
           });
         }
+      } else if (type == SyncItemType.fullDetailImages) {
+        // 完整详情图下载：计算准确的图片数量
+        final localIndex = await dataSyncService.loadLocalIndex();
+
+        if (localIndex == null || localIndex.isEmpty) {
+          setState(() {
+            _itemStates[type] = _itemStates[type]!.copyWith(
+              status: SyncItemStatus.error,
+              error: '请先同步JSON数据',
+            );
+          });
+          return;
+        }
+
+        final recipes = localIndex['recipes'] as List<dynamic>? ?? [];
+
+        print('📊 正在计算准确的图片数量...');
+        print('   - 总食谱数: ${recipes.length}');
+
+        // 计算准确的图片数量（实际读取每个食谱的JSON文件）
+        int recipesWithImages = 0;
+        int totalImages = 0;
+
+        for (final recipe in recipes) {
+          final hasImages = recipe['hasImages'] as bool? ?? false;
+          if (!hasImages) continue;
+
+          recipesWithImages++;
+          final recipeId = recipe['id'] as String;
+          final category = recipe['category'] as String;
+
+          // 创建 RecipeUpdate 对象
+          final update = RecipeUpdate(
+            category: category,
+            recipeId: recipeId,
+            lastModified: '',
+            isNew: false,
+            hash: recipe['hash'] as String? ?? '',
+          );
+
+          // 实际读取JSON文件获取图片数量
+          final tasks = await dataSyncService.extractDetailImageTasksFromAssets(update);
+          totalImages += tasks.length;
+        }
+
+        print('   - 有图食谱数: $recipesWithImages');
+        print('   - 准确图片数: $totalImages 张');
+
+        if (totalImages > 0) {
+          setState(() {
+            _itemStates[type] = _itemStates[type]!.copyWith(
+              status: SyncItemStatus.updateAvailable,
+              message: '可下载 $totalImages 张详情图',
+              totalItems: totalImages,
+            );
+          });
+        } else {
+          setState(() {
+            _itemStates[type] = _itemStates[type]!.copyWith(
+              status: SyncItemStatus.idle,
+              message: '没有可下载的详情图',
+            );
+          });
+        }
       } else {
-        // 对于图片类型，基于JSON更新状态
-        final jsonState = _itemStates[SyncItemType.json];
-        if (jsonState?.status == SyncItemStatus.updateAvailable && _pendingUpdates != null) {
+        // 对于增量图片类型，检查是否有待下载的食谱更新
+        // 如果没有缓存的更新信息，先检查JSON更新
+        if (_pendingUpdates == null) {
+          final remoteIndex = await dataSyncService.downloadRemoteIndex();
+          final localIndex = await dataSyncService.loadLocalIndex();
+
+          if (remoteIndex != null) {
+            final updates = dataSyncService.identifyUpdates(localIndex, remoteIndex);
+            _pendingUpdates = updates;
+          }
+        }
+
+        if (_pendingUpdates != null && _pendingUpdates!.isNotEmpty) {
           setState(() {
             _itemStates[type] = _itemStates[type]!.copyWith(
               status: SyncItemStatus.updateAvailable,
@@ -546,7 +667,7 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
           setState(() {
             _itemStates[type] = _itemStates[type]!.copyWith(
               status: SyncItemStatus.idle,
-              message: '请先检查JSON数据更新',
+              message: '已是最新版本',
             );
           });
         }
@@ -562,14 +683,17 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
   }
 
   void _handleStartDownload(SyncItemType type) async {
-    if (_pendingUpdates == null || _pendingUpdates!.isEmpty) {
-      setState(() {
-        _itemStates[type] = _itemStates[type]!.copyWith(
-          status: SyncItemStatus.error,
-          error: '没有待下载的更新',
-        );
-      });
-      return;
+    // 对于完整详情图下载，不需要检查 _pendingUpdates
+    if (type != SyncItemType.fullDetailImages) {
+      if (_pendingUpdates == null || _pendingUpdates!.isEmpty) {
+        setState(() {
+          _itemStates[type] = _itemStates[type]!.copyWith(
+            status: SyncItemStatus.error,
+            error: '没有待下载的更新',
+          );
+        });
+        return;
+      }
     }
 
     setState(() {
@@ -631,7 +755,7 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
           await _downloadImages(type, imageTasks);
         }
       } else if (type == SyncItemType.detailImages) {
-        // 下载详情图
+        // 下载详情图（增量）
         final imageTasks = <DownloadTask>[];
         for (final update in _pendingUpdates!) {
           final tasks = await dataSyncService.extractDetailImageTasks(update);
@@ -640,6 +764,72 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
 
         if (imageTasks.isNotEmpty) {
           await _downloadImages(type, imageTasks);
+        }
+      } else if (type == SyncItemType.fullDetailImages) {
+        // 下载所有详情图（完整下载）
+        final localIndex = await dataSyncService.loadLocalIndex();
+
+        if (localIndex == null || localIndex.isEmpty) {
+          setState(() {
+            _itemStates[type] = _itemStates[type]!.copyWith(
+              status: SyncItemStatus.error,
+              error: '本地索引为空',
+            );
+          });
+          return;
+        }
+
+        final recipes = localIndex['recipes'] as List<dynamic>? ?? [];
+        final imageTasks = <DownloadTask>[];
+        int recipesWithImages = 0;
+        int totalImagesCount = 0;
+
+        print('📊 开始扫描详情图任务...');
+        print('   - 总食谱数: ${recipes.length}');
+
+        // 为所有食谱创建详情图下载任务
+        for (final recipe in recipes) {
+          final recipeId = recipe['id'] as String;
+          final category = recipe['category'] as String;
+          final hasImages = recipe['hasImages'] as bool? ?? false;
+
+          if (!hasImages) continue;
+
+          recipesWithImages++;
+
+          // 创建 RecipeUpdate 对象来复用现有方法
+          final update = RecipeUpdate(
+            category: category,
+            recipeId: recipeId,
+            lastModified: '',
+            isNew: false,
+            hash: recipe['hash'] as String? ?? '',
+          );
+
+          final tasks = await dataSyncService.extractDetailImageTasksFromAssets(update);
+          totalImagesCount += tasks.length;
+          imageTasks.addAll(tasks);
+        }
+
+        print('   - 有图食谱数: $recipesWithImages');
+        print('   - 总图片数: $totalImagesCount');
+        print('   - 平均每食谱: ${recipesWithImages > 0 ? (totalImagesCount / recipesWithImages).toStringAsFixed(1) : 0} 张');
+
+        if (imageTasks.isNotEmpty) {
+          setState(() {
+            _itemStates[type] = _itemStates[type]!.copyWith(
+              totalItems: imageTasks.length,
+              message: '准备下载 ${imageTasks.length} 张图片',
+            );
+          });
+          await _downloadImages(type, imageTasks);
+        } else {
+          setState(() {
+            _itemStates[type] = _itemStates[type]!.copyWith(
+              status: SyncItemStatus.completed,
+              message: '没有需要下载的详情图',
+            );
+          });
         }
       }
     } catch (e) {
@@ -653,6 +843,9 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
   }
 
   void _handlePauseDownload(SyncItemType type) {
+    // 调用图片下载管理器的暂停方法
+    ref.read(imageDownloadManagerProvider.notifier).pauseDownload();
+
     setState(() {
       _itemStates[type] = _itemStates[type]!.copyWith(
         status: SyncItemStatus.paused,
@@ -662,6 +855,9 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
   }
 
   void _handleResumeDownload(SyncItemType type) {
+    // 调用图片下载管理器的恢复方法
+    ref.read(imageDownloadManagerProvider.notifier).resumeDownload();
+
     setState(() {
       _itemStates[type] = _itemStates[type]!.copyWith(
         status: SyncItemStatus.downloading,
@@ -669,10 +865,15 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
       );
     });
 
-    _simulateDownload(type);
+    // 继续监听进度
+    final state = _itemStates[type]!;
+    _monitorImageDownloadProgress(type, state.totalItems);
   }
 
   void _handleCancelDownload(SyncItemType type) {
+    // 调用图片下载管理器的取消方法
+    ref.read(imageDownloadManagerProvider.notifier).cancelAllDownloads();
+
     setState(() {
       _itemStates[type] = SyncItemState.initial(type);
     });
@@ -739,10 +940,10 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
             child: const Text('取消'),
           ),
           FilledButton(
-            onPressed: () {
+            onPressed: () async {
               // 实际清理逻辑
-              ref.read(dataSyncServiceProvider.notifier).clearLocalData();
-              ref.read(imageDownloadManagerProvider.notifier).clearCache();
+              await ref.read(dataSyncServiceProvider.notifier).clearLocalData();
+              await ref.read(imageDownloadManagerProvider.notifier).clearCache();
 
               // 重置所有状态
               setState(() {
@@ -751,6 +952,9 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
                   _itemStates[type] = SyncItemState.initial(type);
                 }
               });
+
+              // 重新计算存储大小
+              _calculateStorageSize();
 
               Navigator.of(context).pop();
               ScaffoldMessenger.of(context).showSnackBar(
