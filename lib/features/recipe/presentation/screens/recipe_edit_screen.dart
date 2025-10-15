@@ -48,6 +48,17 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
   List<String> _warnings = [];
   List<String> _images = [];
 
+  // 保存原始数据副本，用于重置
+  String _originalName = '';
+  String _originalCategory = '';
+  int _originalDifficulty = 1;
+  List<String> _originalIngredientTexts = [];
+  List<String> _originalStepDescriptions = [];
+  List<String> _originalTools = [];
+  String? _originalTips;
+  List<String> _originalWarnings = [];
+  List<String> _originalImages = [];
+
   @override
   void initState() {
     super.initState();
@@ -77,6 +88,18 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
           _tips = recipe.tips;
           _warnings = List.from(recipe.warnings);
           _images = List.from(recipe.images);
+
+          // 保存原始数据副本，用于重置
+          _originalName = recipe.name;
+          _originalCategory = recipe.category;
+          _originalDifficulty = recipe.difficulty;
+          _originalIngredientTexts = recipe.ingredients.map((i) => i.text).toList();
+          _originalStepDescriptions = recipe.steps.map((s) => s.description).toList();
+          _originalTools = List.from(recipe.tools);
+          _originalTips = recipe.tips;
+          _originalWarnings = List.from(recipe.warnings);
+          _originalImages = List.from(recipe.images);
+
           _isLoading = false;
         });
       }
@@ -110,6 +133,13 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
       appBar: AppBar(
         title: const Text('编辑菜谱'),
         actions: [
+          // 重置按钮
+          TextButton.icon(
+            onPressed: _isSaving ? null : _resetToOriginal,
+            icon: const Icon(Icons.restart_alt, size: 20),
+            label: const Text('重置'),
+          ),
+          // 保存按钮
           TextButton(
             onPressed: _isSaving ? null : _saveRecipe,
             child: _isSaving
@@ -218,6 +248,7 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
       onAdd: () => _addListItem(_ingredientTexts, '新食材'),
       onEdit: (index) => _editListItem(_ingredientTexts, index, '编辑食材'),
       onDelete: (index) => _deleteListItem(_ingredientTexts, index),
+      onClear: () => _confirmAndClearList(_ingredientTexts, '食材'),
       validator: (value) => value.trim().isEmpty ? '食材不能为空' : null,
     );
   }
@@ -234,6 +265,16 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
               children: [
                 Text('制作步骤', style: AppTextStyles.h3),
                 const Spacer(),
+                if (_stepDescriptions.isNotEmpty)
+                  TextButton.icon(
+                    onPressed: () => _confirmAndClearList(_stepDescriptions, '制作步骤'),
+                    icon: const Icon(Icons.clear_all, size: 20),
+                    label: const Text('清空'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.red,
+                    ),
+                  ),
+                const SizedBox(width: 8),
                 TextButton.icon(
                   onPressed: () => _addListItem(_stepDescriptions, '新步骤'),
                   icon: const Icon(Icons.add),
@@ -318,6 +359,7 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
       onAdd: () => _addListItem(_tools, '新工具'),
       onEdit: (index) => _editListItem(_tools, index, '编辑工具'),
       onDelete: (index) => _deleteListItem(_tools, index),
+      onClear: () => _confirmAndClearList(_tools, '工具'),
     );
   }
 
@@ -354,6 +396,7 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
       onAdd: () => _addListItem(_warnings, '新注意事项'),
       onEdit: (index) => _editListItem(_warnings, index, '编辑注意事项'),
       onDelete: (index) => _deleteListItem(_warnings, index),
+      onClear: () => _confirmAndClearList(_warnings, '注意事项'),
     );
   }
 
@@ -474,7 +517,7 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
                     ],
                   ),
                 );
-              }).toList(),
+              }),
           ],
         ),
       ),
@@ -488,6 +531,7 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
     required VoidCallback onAdd,
     required Function(int) onEdit,
     required Function(int) onDelete,
+    required VoidCallback onClear,
     bool numbered = false,
     String? Function(String)? validator,
   }) {
@@ -501,6 +545,16 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
               children: [
                 Text(title, style: AppTextStyles.h3),
                 const Spacer(),
+                if (items.isNotEmpty)
+                  TextButton.icon(
+                    onPressed: onClear,
+                    icon: const Icon(Icons.clear_all, size: 20),
+                    label: const Text('清空'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.red,
+                    ),
+                  ),
+                const SizedBox(width: 8),
                 TextButton.icon(
                   onPressed: onAdd,
                   icon: const Icon(Icons.add),
@@ -542,7 +596,7 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
                     ],
                   ),
                 );
-              }).toList(),
+              }),
           ],
         ),
       ),
@@ -883,5 +937,130 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
         setState(() => _isSaving = false);
       }
     }
+  }
+
+  /// 重置到原始状态
+  Future<void> _resetToOriginal() async {
+    final confirmed = await _showResetConfirmDialog();
+    if (confirmed != true) {
+      return;
+    }
+
+    setState(() {
+      _nameController.text = _originalName;
+      _selectedCategory = _originalCategory;
+      _selectedDifficulty = _originalDifficulty;
+      _ingredientTexts = List.from(_originalIngredientTexts);
+      _stepDescriptions = List.from(_originalStepDescriptions);
+      _tools = List.from(_originalTools);
+      _tips = _originalTips;
+      _warnings = List.from(_originalWarnings);
+      _images = List.from(_originalImages);
+    });
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('已重置到原始内容')),
+      );
+    }
+  }
+
+  /// 显示重置确认对话框
+  Future<bool?> _showResetConfirmDialog() async {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.warning_rounded, color: Colors.orange.shade700, size: 28),
+            const SizedBox(width: 12),
+            Text(
+              '确认重置？',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          '确定要重置所有修改吗？\n\n所有当前修改将被丢弃，恢复为原始内容。此操作不可撤销。',
+          style: TextStyle(
+            fontSize: 16,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.orange,
+            ),
+            child: const Text('重置'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 确认并清空列表
+  Future<void> _confirmAndClearList(List<String> list, String listName) async {
+    final confirmed = await _showClearConfirmDialog(listName, list.length);
+    if (confirmed == true) {
+      setState(() => list.clear());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('已清空所有$listName')),
+        );
+      }
+    }
+  }
+
+  /// 显示清空确认对话框
+  Future<bool?> _showClearConfirmDialog(String listName, int count) async {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.warning_rounded, color: Colors.orange.shade700, size: 28),
+            const SizedBox(width: 12),
+            Text(
+              '确认清空？',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          '确定要清空所有$listName吗？\n\n当前有 $count 项内容将被删除，此操作不可撤销。',
+          style: TextStyle(
+            fontSize: 16,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('清空'),
+          ),
+        ],
+      ),
+    );
   }
 }

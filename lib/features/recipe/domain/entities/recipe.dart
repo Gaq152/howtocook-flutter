@@ -93,4 +93,6 @@ enum RecipeSource {
   cloud,        // 云端下载
   userCreated,  // 用户创建
   userModified, // 用户修改
+  scanned,      // 扫码导入
+  aiGenerated,  // AI生成
 }
