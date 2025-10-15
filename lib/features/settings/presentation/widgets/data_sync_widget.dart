@@ -12,8 +12,8 @@ class DataSyncWidget extends ConsumerStatefulWidget {
 }
 
 class _DataSyncWidgetState extends ConsumerState<DataSyncWidget> {
-  bool _downloadImages = true;
-  bool _onlyWifi = false;
+  bool _downloadCoverImages = true;   // 下载封面图
+  bool _downloadDetailImages = false; // 下载详情图
 
   @override
   Widget build(BuildContext context) {
@@ -66,26 +66,26 @@ class _DataSyncWidgetState extends ConsumerState<DataSyncWidget> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SwitchListTile(
-          title: const Text('下载图片'),
-          subtitle: const Text('同步时自动下载食谱图片'),
-          value: _downloadImages,
+          title: const Text('下载封面图'),
+          subtitle: const Text('下载食谱的封面图片（AI生成，400x400）'),
+          value: _downloadCoverImages,
           onChanged: (value) {
             setState(() {
-              _downloadImages = value;
+              _downloadCoverImages = value;
             });
           },
         ),
         SwitchListTile(
-          title: const Text('仅WiFi下��'),
-          subtitle: const Text('仅在连接WiFi时下载图片'),
-          value: _onlyWifi,
+          title: const Text('下载详情图'),
+          subtitle: const Text('下载食谱的详细步骤图片（较大，建议WiFi下载）'),
+          value: _downloadDetailImages,
           onChanged: (value) {
             setState(() {
-              _onlyWifi = value;
+              _downloadDetailImages = value;
             });
           },
         ),
-      ],
+              ],
     );
   }
 
@@ -95,8 +95,8 @@ class _DataSyncWidgetState extends ConsumerState<DataSyncWidget> {
       child: ElevatedButton(
         onPressed: state.status == SyncStatus.downloading ? null : () {
           final config = SyncConfig(
-            downloadImages: _downloadImages,
-            onlyWifi: _onlyWifi,
+            downloadCoverImages: _downloadCoverImages,
+            downloadDetailImages: _downloadDetailImages,
           );
           service.startSync(config);
         },

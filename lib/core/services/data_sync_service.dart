@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:howtocook/core/services/image_download_manager.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 part 'data_sync_service.g.dart';
 part 'data_sync_service.freezed.dart';
@@ -20,12 +21,14 @@ enum SyncStatus {
 
 /// 同步配置
 class SyncConfig {
-  final bool downloadImages;
+  final bool downloadCoverImages;  // 下载封面图
+  final bool downloadDetailImages; // 下载详情图
   final bool onlyWifi;
   final int maxConcurrentDownloads;
 
   const SyncConfig({
-    this.downloadImages = true,
+    this.downloadCoverImages = true,
+    this.downloadDetailImages = false,  // 默认不下载详情图
     this.onlyWifi = false,
     this.maxConcurrentDownloads = 3,
   });
@@ -34,14 +37,20 @@ class SyncConfig {
 /// 数据同步服务
 @riverpod
 class DataSyncService extends _$DataSyncService {
-  static const String _remoteBaseUrl = 'https://username.github.io/recipe-data';
-  static const String _indexUrl = '$_remoteBaseUrl/index.json';
+  late final String _remoteBaseUrl;
+  late final String _manifestUrl;
   static const String _localDataDirName = 'recipe_data';
+
+  String get _baseUrl => dotenv.env['STATIC_RESOURCE_URL'] ?? 'https://gaq152.github.io/HowToCook-assets';
 
   final Dio _dio = Dio();
 
   @override
   DataSyncState build() {
+    // 初始化URL
+    _remoteBaseUrl = _baseUrl;
+    _manifestUrl = '$_remoteBaseUrl/manifest.json';
+
     return const DataSyncState(
       status: SyncStatus.idle,
       progress: 0,
@@ -59,7 +68,7 @@ class DataSyncService extends _$DataSyncService {
       print('🔄 开始检查数据更新...');
 
       // 1. 下载远程索引
-      final remoteIndex = await _downloadRemoteIndex();
+      final remoteIndex = await downloadRemoteIndex();
       if (remoteIndex == null) {
         state = state.copyWith(
           status: SyncStatus.error,
@@ -69,10 +78,10 @@ class DataSyncService extends _$DataSyncService {
       }
 
       // 2. 检查本地索引
-      final localIndex = await _loadLocalIndex();
+      final localIndex = await loadLocalIndex();
 
       // 3. 比较并识别需要更新的食谱
-      final updates = _identifyUpdates(localIndex, remoteIndex);
+      final updates = identifyUpdates(localIndex, remoteIndex);
       state = state.copyWith(
         totalRecipes: updates.length,
         totalImages: _estimateImageCount(updates),
@@ -92,12 +101,13 @@ class DataSyncService extends _$DataSyncService {
       print('📥 开始下载 ${updates.length} 个食谱更新...');
 
       int downloadedCount = 0;
-      final imageDownloadTasks = <DownloadTask>[];
+      final coverImageTasks = <DownloadTask>[];
+      final detailImageTasks = <DownloadTask>[];
 
       for (final update in updates) {
         try {
           // 下载JSON文件
-          final success = await _downloadRecipeJson(update);
+          final success = await downloadRecipeJson(update);
           if (success) {
             downloadedCount++;
             state = state.copyWith(
@@ -105,10 +115,18 @@ class DataSyncService extends _$DataSyncService {
               progress: (downloadedCount / updates.length * 50).round(), // JSON下载占50%
             );
 
-            // 如果启用图片下载，解析图片路径并添加到下载任务
-            if (config.downloadImages) {
-              final imageTasks = await _extractImageTasks(update);
-              imageDownloadTasks.addAll(imageTasks);
+            // 如果启用封面图下载，添加封面图下载任务
+            if (config.downloadCoverImages) {
+              final coverTask = await extractCoverImageTask(update);
+              if (coverTask != null) {
+                coverImageTasks.add(coverTask);
+              }
+            }
+
+            // 如果启用详情图下载，解析详情图路径并添加到下载任务
+            if (config.downloadDetailImages) {
+              final detailTasks = await extractDetailImageTasks(update);
+              detailImageTasks.addAll(detailTasks);
             }
           }
         } catch (e) {
@@ -117,17 +135,20 @@ class DataSyncService extends _$DataSyncService {
       }
 
       // 5. 保存更新后的索引
-      await _saveLocalIndex(remoteIndex);
+      await saveLocalIndex(remoteIndex);
 
       // 6. 开始下载图片
-      if (config.downloadImages && imageDownloadTasks.isNotEmpty) {
-        print('🖼️ 开始下载 ${imageDownloadTasks.length} 张图片...');
+      final allImageTasks = [...coverImageTasks, ...detailImageTasks];
+      if (allImageTasks.isNotEmpty) {
+        print('🖼️ 开始下载图片...');
+        print('  - 封面图: ${coverImageTasks.length} 张');
+        print('  - 详情图: ${detailImageTasks.length} 张');
 
-        // 按优先级排序：封面图优先
-        imageDownloadTasks.sort((a, b) => a.priority.compareTo(b.priority));
+        // 按优先级排序：封面图优先（priority=0），详情图次之（priority=1）
+        allImageTasks.sort((a, b) => a.priority.compareTo(b.priority));
 
         // 提交给图片下载管理器
-        ref.read(imageDownloadManagerProvider.notifier).addDownloadTasks(imageDownloadTasks);
+        ref.read(imageDownloadManagerProvider.notifier).addDownloadTasks(allImageTasks);
       }
 
       state = state.copyWith(
@@ -145,63 +166,92 @@ class DataSyncService extends _$DataSyncService {
     }
   }
 
-  /// 下载远程索引文件
-  Future<Map<String, dynamic>?> _downloadRemoteIndex() async {
+  /// 下载远程清单文件
+  Future<Map<String, dynamic>?> downloadRemoteIndex() async {
     try {
-      final response = await _dio.get(_indexUrl);
-      return jsonDecode(response.data);
+      print('🌐 正在下载远程清单: $_manifestUrl');
+      final response = await _dio.get(_manifestUrl);
+
+      if (response.statusCode == 200) {
+        String responseData;
+        if (response.data is String) {
+          responseData = response.data;
+        } else {
+          responseData = jsonEncode(response.data);
+        }
+
+        final data = jsonDecode(responseData);
+        print('✅ 远程清单下载成功');
+        return data;
+      } else {
+        print('❌ 远程清单返回错误状态码: ${response.statusCode}');
+        return null;
+      }
+    } on DioException catch (e) {
+      print('❌ 下载远程清单失败: ${e.type} - ${e.message}');
+      if (e.response?.statusCode == 404) {
+        print('❌ 远程清单文件不存在 (404): $_manifestUrl');
+        print('💡 请检查远程服务器上是否有 manifest.json 文件');
+      }
+      return null;
     } catch (e) {
-      print('❌ 下载远程索引失败: $e');
+      print('❌ 下载远程清单失败: $e');
       return null;
     }
   }
 
-  /// 加载本地索引文件
-  Future<Map<String, dynamic>?> _loadLocalIndex() async {
+  
+  /// 加载本地清单文件
+  Future<Map<String, dynamic>?> loadLocalIndex() async {
     try {
       final cacheDir = await getApplicationDocumentsDirectory();
-      final indexPath = '${cacheDir.path}/$_localDataDirName/index.json';
-      final file = File(indexPath);
+      final manifestPath = '${cacheDir.path}/$_localDataDirName/manifest.json';
+      final file = File(manifestPath);
 
       if (!await file.exists()) return {};
 
       final content = await file.readAsString();
       return jsonDecode(content);
     } catch (e) {
-      print('❌ 加载本地索引失败: $e');
+      print('❌ 加载本地清单失败: $e');
       return {};
     }
   }
 
   /// 识别需要更新的食谱
-  List<RecipeUpdate> _identifyUpdates(
+  List<RecipeUpdate> identifyUpdates(
     Map<String, dynamic>? localIndex,
     Map<String, dynamic> remoteIndex,
   ) {
     final updates = <RecipeUpdate>[];
-    final remoteRecipes = remoteIndex['recipes'] as Map<String, dynamic>? ?? {};
+    final remoteRecipes = remoteIndex['recipes'] as List<dynamic>? ?? [];
 
-    for (final categoryEntry in remoteRecipes.entries) {
-      final category = categoryEntry.key;
-      final categoryData = categoryEntry.value as Map<String, dynamic>;
+    // 本地索引格式：{recipes: []}
+    final localRecipes = localIndex?['recipes'] as List<dynamic>? ?? [];
 
-      for (final recipeEntry in categoryData.entries) {
-        final recipeId = recipeEntry.key;
-        final remoteRecipe = recipeEntry.value as Map<String, dynamic>;
-        final remoteLastModified = remoteRecipe['lastModified'] as String? ?? '';
+    // 创建本地食谱的映射表以便快速查找
+    final localRecipeMap = <String, Map<String, dynamic>>{};
+    for (final recipe in localRecipes) {
+      final recipeId = recipe['id'] as String;
+      localRecipeMap[recipeId] = recipe as Map<String, dynamic>;
+    }
 
-        final localRecipe = localIndex?['recipes']?[category]?[recipeId] as Map<String, dynamic>?;
-        final localLastModified = localRecipe?['lastModified'] as String? ?? '';
+    for (final remoteRecipe in remoteRecipes) {
+      final recipeId = remoteRecipe['id'] as String;
+      final category = remoteRecipe['category'] as String;
+      final recipeHash = remoteRecipe['hash'] as String;
 
-        // 如果远程版本更新，或者本地不存在，则需要更新
-        if (remoteLastModified.compareTo(localLastModified) > 0) {
-          updates.add(RecipeUpdate(
-            category: category,
-            recipeId: recipeId,
-            lastModified: remoteLastModified,
-            isNew: localRecipe == null,
-          ));
-        }
+      final localRecipe = localRecipeMap[recipeId];
+
+      // 如果本地不存在，或者hash不同，则需要更新
+      if (localRecipe == null || localRecipe['hash'] != recipeHash) {
+        updates.add(RecipeUpdate(
+          category: category,
+          recipeId: recipeId,
+          lastModified: remoteRecipe['generatedAt'] as String? ?? '',
+          isNew: localRecipe == null,
+          hash: recipeHash,
+        ));
       }
     }
 
@@ -209,7 +259,7 @@ class DataSyncService extends _$DataSyncService {
   }
 
   /// 下载单个食谱JSON文件
-  Future<bool> _downloadRecipeJson(RecipeUpdate update) async {
+  Future<bool> downloadRecipeJson(RecipeUpdate update) async {
     try {
       final url = '$_remoteBaseUrl/recipes/${update.category}/${update.category}_${update.recipeId}.json';
       final cacheDir = await getApplicationDocumentsDirectory();
@@ -229,8 +279,48 @@ class DataSyncService extends _$DataSyncService {
     }
   }
 
-  /// 从食谱JSON中提取图片下载任务
-  Future<List<DownloadTask>> _extractImageTasks(RecipeUpdate update) async {
+  /// 提取封面图下载任务（按菜名）
+  Future<DownloadTask?> extractCoverImageTask(RecipeUpdate update) async {
+    try {
+      final cacheDir = await getApplicationDocumentsDirectory();
+      final jsonPath = '${cacheDir.path}/$_localDataDirName/recipes/${update.category}/${update.category}_${update.recipeId}.json';
+      final file = File(jsonPath);
+
+      if (!await file.exists()) {
+        print('⚠️  JSON文件不存在，跳过封面图提取: $jsonPath');
+        return null;
+      }
+
+      final content = await file.readAsString();
+      final recipeData = jsonDecode(content);
+      final recipeName = recipeData['name'] as String;
+
+      // 封面图按菜名存储：covers/{category}/{name}.webp
+      final coverUrl = '$_remoteBaseUrl/covers/${update.category}/$recipeName.webp';
+      final localPath = '${cacheDir.path}/recipe_images/covers/${update.category}/$recipeName.webp';
+
+      print('📋 封面图下载任务:');
+      print('   - 分类: ${update.category}');
+      print('   - 菜名: $recipeName');
+      print('   - URL: $coverUrl');
+      print('   - 本地: $localPath');
+
+      return DownloadTask(
+        id: 'cover_${update.category}_${update.recipeId}',
+        category: update.category,
+        recipeId: update.recipeId,
+        imageUrl: coverUrl,
+        localPath: localPath,
+        priority: 0, // 封面图优先级最高
+      );
+    } catch (e) {
+      print('❌ 提取封面图任务失败: ${update.category}/${update.recipeId}, 错误: $e');
+      return null;
+    }
+  }
+
+  /// 从食谱JSON中提取详情图下载任务（按ID）
+  Future<List<DownloadTask>> extractDetailImageTasks(RecipeUpdate update) async {
     final tasks = <DownloadTask>[];
 
     try {
@@ -238,45 +328,58 @@ class DataSyncService extends _$DataSyncService {
       final jsonPath = '${cacheDir.path}/$_localDataDirName/recipes/${update.category}/${update.category}_${update.recipeId}.json';
       final file = File(jsonPath);
 
-      if (!await file.exists()) return tasks;
+      if (!await file.exists()) {
+        print('⚠️  JSON文件不存在，跳过详情图提取: $jsonPath');
+        return tasks;
+      }
 
       final content = await file.readAsString();
       final recipeData = jsonDecode(content);
       final images = recipeData['images'] as List<dynamic>? ?? [];
 
+      if (images.isEmpty) {
+        print('ℹ️  食谱无详情图: ${update.category}/${update.recipeId}');
+        return tasks;
+      }
+
+      print('📋 详情图下载任务（${update.category}/${update.recipeId}）: ${images.length} 张');
+
       for (int i = 0; i < images.length; i++) {
-        final imagePath = images[i] as String;
-        final imageUrl = '$_remoteBaseUrl/$imagePath';
-        final localPath = '${cacheDir.path}/recipe_images/${update.category}/${update.category}_${update.recipeId}_$i.webp';
+        // 详情图按ID存储：images/{category}/{recipeId}_$i.webp
+        final imageUrl = '$_remoteBaseUrl/images/${update.category}/${update.recipeId}_$i.webp';
+        final localPath = '${cacheDir.path}/recipe_images/details/${update.category}/${update.recipeId}_$i.webp';
+
+        print('   [$i] URL: $imageUrl');
+        print('   [$i] 本地: $localPath');
 
         tasks.add(DownloadTask(
-          id: '${update.category}_${update.recipeId}_$i',
+          id: 'detail_${update.category}_${update.recipeId}_$i',
           category: update.category,
           recipeId: update.recipeId,
           imageUrl: imageUrl,
           localPath: localPath,
-          priority: i == 0 ? 0 : 1, // 第一张图片（封面）优先级更高
+          priority: 1, // 详情图优先级次之
         ));
       }
     } catch (e) {
-      print('❌ 提取图片任务失败: ${update.category}/${update.recipeId}, 错误: $e');
+      print('❌ 提取详情图任务失败: ${update.category}/${update.recipeId}, 错误: $e');
     }
 
     return tasks;
   }
 
-  /// 保存本地索引文件
-  Future<void> _saveLocalIndex(Map<String, dynamic> index) async {
+  /// 保存本地清单文件
+  Future<void> saveLocalIndex(Map<String, dynamic> index) async {
     try {
       final cacheDir = await getApplicationDocumentsDirectory();
-      final indexPath = '${cacheDir.path}/$_localDataDirName/index.json';
-      final file = File(indexPath);
+      final manifestPath = '${cacheDir.path}/$_localDataDirName/manifest.json';
+      final file = File(manifestPath);
 
       await file.parent.create(recursive: true);
       await file.writeAsString(jsonEncode(index));
-      print('✅ 本地索引已更新');
+      print('✅ 本地清单已更新');
     } catch (e) {
-      print('❌ 保存本地索引失败: $e');
+      print('❌ 保存本地清单失败: $e');
     }
   }
 
@@ -330,12 +433,14 @@ class RecipeUpdate {
   final String recipeId;
   final String lastModified;
   final bool isNew;
+  final String hash;
 
   RecipeUpdate({
     required this.category,
     required this.recipeId,
     required this.lastModified,
     required this.isNew,
+    required this.hash,
   });
 }
 

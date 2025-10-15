@@ -45,7 +45,7 @@ class RemoteImageService {
     if (_downloading.containsKey(downloadKey)) {
       // 等待下载完成
       await _waitForDownload(downloadKey);
-      return File(localPath).exists() ? localPath : null;
+      return await File(localPath).exists() ? localPath : null;
     }
 
     // 3. 从远程下载

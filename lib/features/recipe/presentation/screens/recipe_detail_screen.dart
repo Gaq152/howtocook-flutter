@@ -197,12 +197,43 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
 
     // 错误时显示的占位符
     Widget errorWidget = Container(
-      color: AppColors.surface,
-      child: const Center(
-        child: Icon(
-          Icons.broken_image,
-          size: 64,
-          color: AppColors.textSecondary,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.primary.withOpacity(0.1),
+            AppColors.secondary.withOpacity(0.1),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.cloud_download_outlined,
+              size: 64,
+              color: AppColors.primary.withOpacity(0.6),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '图片未下载',
+              style: TextStyle(
+                color: AppColors.textPrimary.withOpacity(0.8),
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '请前往数据同步页面下载',
+              style: TextStyle(
+                color: AppColors.textSecondary.withOpacity(0.8),
+                fontSize: 12,
+              ),
+            ),
+          ],
         ),
       ),
     );

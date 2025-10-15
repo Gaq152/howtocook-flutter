@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:howtocook/features/settings/presentation/widgets/data_sync_widget.dart';
+import 'package:howtocook/features/settings/presentation/widgets/modern_data_sync_widget.dart';
 
 /// 数据同步页面
 class DataSyncScreen extends ConsumerWidget {
@@ -14,7 +14,8 @@ class DataSyncScreen extends ConsumerWidget {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       body: const SingleChildScrollView(
-        child: DataSyncWidget(),
+        padding: EdgeInsets.all(16),
+        child: ModernDataSyncWidget(),
       ),
     );
   }
