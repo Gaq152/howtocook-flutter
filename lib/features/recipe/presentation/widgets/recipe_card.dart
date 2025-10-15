@@ -5,6 +5,7 @@ import '../../domain/entities/recipe.dart';
 import '../../application/providers/recipe_providers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/cached_recipe_image.dart';
 
 /// 菜谱卡片组件
 ///
@@ -107,65 +108,18 @@ class RecipeCard extends ConsumerWidget {
     );
   }
 
-  /// 构建图片区域
+  /// 构建图片区域 - 使用缓存图片加载
   Widget _buildImage() {
-    if (recipe.images.isEmpty) {
-      // 无图片时显示占位图
-      return Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppColors.primary.withValues(alpha: 0.1),
-              AppColors.secondary.withValues(alpha: 0.1),
-            ],
-          ),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.restaurant_menu,
-                size: 48,
-                color: AppColors.textSecondary.withValues(alpha: 0.3),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '暂无图片',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: AppColors.textSecondary.withValues(alpha: 0.5),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // 显示第一张图片
-    return Image.asset(
-      recipe.images.first,
+    // 使用CachedRecipeImage.cover加载封面图
+    return CachedRecipeImage.cover(
+      category: recipe.category,
+      recipeName: recipe.name,
       width: double.infinity,
       fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) {
-        // 图片加载失败时显示占位图
-        return Container(
-          width: double.infinity,
-          color: AppColors.surface,
-          child: Center(
-            child: Icon(
-              Icons.broken_image,
-              size: 48,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        );
-      },
+      errorWidget: RecipePlaceholderImage(
+        icon: Icons.cloud_download_outlined,
+        text: '图片未下载\n请前往数据同步页面下载',
+      ),
     );
   }
 

@@ -66,8 +66,11 @@ class ImageDownloadManager extends _$ImageDownloadManager {
 
   /// 添加下载任务
   void addDownloadTasks(List<DownloadTask> tasks) {
+    print('📋 添加下载任务: ${tasks.length} 个');
+
     for (final task in tasks) {
       _tasks[task.id] = task;
+      print('   - ${task.id}: ${task.imageUrl}');
     }
 
     // 按优先级排序
@@ -79,6 +82,8 @@ class ImageDownloadManager extends _$ImageDownloadManager {
       _tasks[task.id] = task;
     }
 
+    print('🎯 总下载任务数: ${_tasks.length}');
+
     state = state.copyWith(
       totalTasks: _tasks.length,
       completedTasks: _getCompletedCount(),
@@ -86,6 +91,7 @@ class ImageDownloadManager extends _$ImageDownloadManager {
 
     // 如果没有正在下载，开始下载
     if (!_isDownloading) {
+      print('🚀 开始下载...');
       _startDownload();
     }
   }
@@ -134,6 +140,13 @@ class ImageDownloadManager extends _$ImageDownloadManager {
     task.progress = 0;
     task.error = null;
 
+    print('📥 开始下载图片:');
+    print('   - ID: ${task.id}');
+    print('   - 分类: ${task.category}');
+    print('   - 食谱ID: ${task.recipeId}');
+    print('   - URL: ${task.imageUrl}');
+    print('   - 本地路径: ${task.localPath}');
+
     state = state.copyWith(); // 触发状态更新
 
     try {
@@ -143,6 +156,7 @@ class ImageDownloadManager extends _$ImageDownloadManager {
       // 创建本地目录
       final file = File(task.localPath);
       await file.parent.create(recursive: true);
+      print('   - 目录已创建: ${file.parent.path}');
 
       // 下载文件
       await _dio.download(
@@ -162,12 +176,22 @@ class ImageDownloadManager extends _$ImageDownloadManager {
 
       task.status = DownloadStatus.completed;
       task.progress = 100;
-      print('✅ 图片下载完成: ${task.localPath}');
+
+      // 验证文件是否真的存在
+      final exists = await file.exists();
+      final fileSize = exists ? await file.length() : 0;
+
+      print('✅ 图片下载完成:');
+      print('   - 路径: ${task.localPath}');
+      print('   - 文件存在: $exists');
+      print('   - 文件大小: $fileSize 字节');
 
     } catch (e) {
       task.status = DownloadStatus.error;
       task.error = e.toString();
-      print('❌ 图片下载失败: ${task.imageUrl}, 错误: $e');
+      print('❌ 图片下载失败:');
+      print('   - URL: ${task.imageUrl}');
+      print('   - 错误: $e');
     }
 
     _cancelTokens.remove(task.id);
