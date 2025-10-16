@@ -65,6 +65,13 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.menu_book_outlined),
+            tooltip: '教程中心',
+            onPressed: () {
+              context.push('/tips');
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.qr_code_scanner),
             tooltip: '扫一扫',
             onPressed: () {
@@ -82,18 +89,16 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
       ),
       body: Column(
         children: [
-          // 分类筛选栏
           _buildCategoryFilter(),
-          // 筛选栏（包含难度下拉菜单）
           _buildFilterBar(),
-          // 菜谱列表
           Expanded(
             child: recipesAsync.when(
               data: (recipes) {
-                // 根据难度筛选
                 final filteredRecipes = _selectedDifficulty == null
                     ? recipes
-                    : recipes.where((r) => r.difficulty == _selectedDifficulty).toList();
+                    : recipes
+                        .where((r) => r.difficulty == _selectedDifficulty)
+                        .toList();
                 return _buildRecipeList(context, filteredRecipes);
               },
               loading: () => _buildLoadingState(),
@@ -103,9 +108,7 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          context.push('/create-recipe');
-        },
+        onPressed: () => context.push('/create-recipe'),
         child: const Icon(Icons.add),
       ),
     );
@@ -120,7 +123,9 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
         // 构建分类列表：全部 + 各分类
         final categories = <MapEntry<String?, String>>[
           const MapEntry(null, '全部'),
-          ...manifest.categories.entries.map((e) => MapEntry(e.key, e.value.name)),
+          ...manifest.categories.entries.map(
+            (e) => MapEntry(e.key, e.value.name),
+          ),
         ];
 
         return Container(
@@ -151,8 +156,12 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
                 label: Text(
                   categoryName,
                   style: TextStyle(
-                    color: isSelected ? AppColors.primary : AppColors.textPrimary,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected
+                        ? AppColors.primary
+                        : AppColors.textPrimary,
+                    fontWeight: isSelected
+                        ? FontWeight.bold
+                        : FontWeight.normal,
                   ),
                 ),
                 selected: isSelected,
@@ -163,7 +172,10 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
                 },
                 selectedColor: AppColors.primary.withValues(alpha: 0.2),
                 showCheckmark: false, // 不显示勾选标记
-                labelPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                labelPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               );
             },
@@ -194,13 +206,7 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
       ),
       child: Row(
         children: [
-          const Text(
-            '难度',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey,
-            ),
-          ),
+          const Text('难度', style: TextStyle(fontSize: 14, color: Colors.grey)),
           const SizedBox(width: 12),
           // 小巧的下拉菜单
           Container(
@@ -217,10 +223,7 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
                 style: const TextStyle(fontSize: 13, color: Colors.black87),
                 icon: const Icon(Icons.arrow_drop_down, size: 20),
                 items: [
-                  const DropdownMenuItem<int?>(
-                    value: null,
-                    child: Text('全部'),
-                  ),
+                  const DropdownMenuItem<int?>(value: null, child: Text('全部')),
                   ...List.generate(5, (index) {
                     final difficulty = index + 1;
                     return DropdownMenuItem<int?>(
@@ -310,10 +313,7 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
               color: Theme.of(context).colorScheme.error,
             ),
             const SizedBox(height: 16),
-            Text(
-              '加载失败',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
+            Text('加载失败', style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 8),
             Text(
               error.toString(),
@@ -351,15 +351,9 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
             color: Theme.of(context).colorScheme.secondary,
           ),
           const SizedBox(height: 16),
-          Text(
-            '暂无菜谱',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
+          Text('暂无菜谱', style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 8),
-          Text(
-            '点击右下角按钮创建第一个菜谱',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+          Text('点击右下角按钮创建第一个菜谱', style: Theme.of(context).textTheme.bodyMedium),
         ],
       ),
     );
