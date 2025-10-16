@@ -8,9 +8,7 @@ class UserScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('我的'),
-      ),
+      appBar: AppBar(title: const Text('我的')),
       body: ListView(
         children: [
           // 用户头像区域
@@ -21,17 +19,10 @@ class UserScreen extends StatelessWidget {
                 CircleAvatar(
                   radius: 40,
                   backgroundColor: Colors.grey[300],
-                  child: Icon(
-                    Icons.person,
-                    size: 48,
-                    color: Colors.grey[600],
-                  ),
+                  child: Icon(Icons.person, size: 48, color: Colors.grey[600]),
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  '美食爱好者',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+                Text('美食爱好者', style: Theme.of(context).textTheme.titleLarge),
               ],
             ),
           ),
@@ -53,6 +44,15 @@ class UserScreen extends StatelessWidget {
             title: '我的菜谱',
             onTap: () {
               context.push('/my-recipes');
+            },
+          ),
+          _buildMenuItem(
+            context,
+            icon: Icons.menu_book_outlined,
+            title: '教程中心',
+            subtitle: '查看烹饪技巧与教程',
+            onTap: () {
+              context.push('/tips');
             },
           ),
           _buildMenuItem(
@@ -129,10 +129,7 @@ class UserScreen extends StatelessWidget {
       context: context,
       applicationName: '智能菜谱助手',
       applicationVersion: '1.0.0',
-      applicationIcon: const Icon(
-        Icons.restaurant_menu,
-        size: 48,
-      ),
+      applicationIcon: const Icon(Icons.restaurant_menu, size: 48),
       children: [
         const Text(
           '智能菜谱助手是一款基于 AI 的菜谱管理和烹饪助手应用。\n\n'

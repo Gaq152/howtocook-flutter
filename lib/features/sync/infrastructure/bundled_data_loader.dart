@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/services.dart';
 import '../../recipe/domain/entities/recipe.dart';
+import '../../tips/domain/entities/tip.dart';
 import '../domain/entities/manifest.dart';
 
 /// 内置资源加载器
@@ -101,6 +102,70 @@ class BundledDataLoader {
     return loadRecipes(recipeIds);
   }
 
+  /// 加载单个教程
+  ///
+  /// 路径格式: assets/tips/{category}/{tipId}.json
+  Future<Tip> loadTip(String category, String tipId) async {
+    try {
+      final path = getTipPath(category, tipId);
+      final jsonString = await rootBundle.loadString(path);
+      final jsonData = jsonDecode(jsonString) as Map<String, dynamic>;
+      return Tip.fromJson(jsonData);
+    } catch (e) {
+      throw Exception('Failed to load tip $tipId: $e');
+    }
+  }
+
+  /// 根据 ID 加载教程（自动匹配分类）
+  Future<Tip?> loadTipById(String tipId) async {
+    try {
+      final manifest = await loadManifest();
+      TipIndex? target;
+      for (final tipIndex in manifest.tips) {
+        if (tipIndex.id == tipId) {
+          target = tipIndex;
+          break;
+        }
+      }
+
+      if (target == null) {
+        return null;
+      }
+
+      return loadTip(target.category, target.id);
+    } catch (e) {
+      print('Warning: Failed to load tip $tipId: $e');
+      return null;
+    }
+  }
+
+  /// 批量加载教程
+  Future<List<Tip>> loadTips(List<TipIndex> indices) async {
+    final tips = <Tip>[];
+    for (final index in indices) {
+      try {
+        final tip = await loadTip(index.category, index.id);
+        tips.add(tip);
+      } catch (e) {
+        print('Warning: Failed to load tip ${index.id}: $e');
+      }
+    }
+    return tips;
+  }
+
+  /// 加载全部教程
+  Future<List<Tip>> loadAllTips() async {
+    final manifest = await loadManifest();
+    return loadTips(manifest.tips);
+  }
+
+  /// 根据分类加载教程
+  Future<List<Tip>> loadTipsByCategory(String category) async {
+    final manifest = await loadManifest();
+    final indices = manifest.tips.where((t) => t.category == category).toList();
+    return loadTips(indices);
+  }
+
   /// 从菜谱 ID 提取分类
   ///
   /// ID 格式: {category}_{hash}
@@ -121,6 +186,11 @@ class BundledDataLoader {
   String getRecipePath(String recipeId) {
     final category = _extractCategory(recipeId);
     return 'assets/recipes/$category/$recipeId.json';
+  }
+
+  /// 获取教程资源路径
+  String getTipPath(String category, String tipId) {
+    return 'assets/tips/$category/$tipId.json';
   }
 
   /// 获取图片资源路径

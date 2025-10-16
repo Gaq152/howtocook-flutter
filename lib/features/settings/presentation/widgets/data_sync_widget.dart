@@ -12,7 +12,7 @@ class DataSyncWidget extends ConsumerStatefulWidget {
 }
 
 class _DataSyncWidgetState extends ConsumerState<DataSyncWidget> {
-  bool _downloadCoverImages = true;   // 下载封面图
+  bool _downloadCoverImages = true; // 下载封面图
   bool _downloadDetailImages = false; // 下载详情图
 
   @override
@@ -20,7 +20,9 @@ class _DataSyncWidgetState extends ConsumerState<DataSyncWidget> {
     final dataSyncState = ref.watch(dataSyncServiceProvider);
     final imageDownloadState = ref.watch(imageDownloadManagerProvider);
     final dataSyncService = ref.read(dataSyncServiceProvider.notifier);
-    final imageDownloadService = ref.read(imageDownloadManagerProvider.notifier);
+    final imageDownloadService = ref.read(
+      imageDownloadManagerProvider.notifier,
+    );
 
     return Card(
       margin: const EdgeInsets.all(16),
@@ -29,10 +31,7 @@ class _DataSyncWidgetState extends ConsumerState<DataSyncWidget> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '数据同步',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
+            Text('数据同步', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 16),
 
             // 同步选项
@@ -49,7 +48,10 @@ class _DataSyncWidgetState extends ConsumerState<DataSyncWidget> {
 
             // 图片下载进度
             if (imageDownloadState.status != DownloadStatus.idle)
-              _buildImageDownloadProgress(imageDownloadState, imageDownloadService),
+              _buildImageDownloadProgress(
+                imageDownloadState,
+                imageDownloadService,
+              ),
 
             const SizedBox(height: 16),
 
@@ -85,7 +87,7 @@ class _DataSyncWidgetState extends ConsumerState<DataSyncWidget> {
             });
           },
         ),
-              ],
+      ],
     );
   }
 
@@ -93,13 +95,15 @@ class _DataSyncWidgetState extends ConsumerState<DataSyncWidget> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: state.status == SyncStatus.downloading ? null : () {
-          final config = SyncConfig(
-            downloadCoverImages: _downloadCoverImages,
-            downloadDetailImages: _downloadDetailImages,
-          );
-          service.startSync(config);
-        },
+        onPressed: state.status == SyncStatus.downloading
+            ? null
+            : () {
+                final config = SyncConfig(
+                  downloadCoverImages: _downloadCoverImages,
+                  downloadDetailImages: _downloadDetailImages,
+                );
+                service.startSync(config);
+              },
         child: Text(
           _getButtonText(state.status),
           style: const TextStyle(fontSize: 16),
@@ -124,22 +128,34 @@ class _DataSyncWidgetState extends ConsumerState<DataSyncWidget> {
   }
 
   Widget _buildSyncProgress(DataSyncState state) {
+    final theme = Theme.of(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         LinearProgressIndicator(value: state.progress / 100),
         const SizedBox(height: 8),
+        Text('总体进度：${state.progress}%', style: theme.textTheme.bodySmall),
+        const SizedBox(height: 4),
         Text(
-          '食谱同步进度: ${state.downloadedRecipes}/${state.totalRecipes}',
-          style: Theme.of(context).textTheme.bodySmall,
+          '食谱同步：${state.downloadedRecipes}/${state.totalRecipes}',
+          style: theme.textTheme.bodySmall,
         ),
+        if (state.totalTips > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+              '教程同步：${state.downloadedTips}/${state.totalTips}',
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
         if (state.error != null)
           Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: 6),
             child: Text(
-              '错误: ${state.error}',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.error,
+              '错误：${state.error}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.error,
               ),
             ),
           ),
@@ -147,7 +163,10 @@ class _DataSyncWidgetState extends ConsumerState<DataSyncWidget> {
     );
   }
 
-  Widget _buildImageDownloadProgress(ImageDownloadState state, ImageDownloadManager service) {
+  Widget _buildImageDownloadProgress(
+    ImageDownloadState state,
+    ImageDownloadManager service,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -217,7 +236,9 @@ class _DataSyncWidgetState extends ConsumerState<DataSyncWidget> {
 
   Future<int> _getTotalStorageSize() async {
     final dataSyncService = ref.read(dataSyncServiceProvider.notifier);
-    final imageDownloadService = ref.read(imageDownloadManagerProvider.notifier);
+    final imageDownloadService = ref.read(
+      imageDownloadManagerProvider.notifier,
+    );
 
     final dataSize = await dataSyncService.getLocalDataSize();
     final imageSize = await imageDownloadService.getCacheSize();
@@ -247,9 +268,9 @@ class _DataSyncWidgetState extends ConsumerState<DataSyncWidget> {
               ref.read(dataSyncServiceProvider.notifier).clearLocalData();
               ref.read(imageDownloadManagerProvider.notifier).clearCache();
               Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('缓存已清理')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('缓存已清理')));
             },
             child: const Text('确定'),
           ),

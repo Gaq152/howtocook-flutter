@@ -13,6 +13,8 @@ class HiveService {
   static const String settingsBox = 'settings';
   static const String chatHistoryBox = 'chat_history';
   static const String modifiedRecipesBox = 'modified_recipes'; // 存储修改后的菜谱JSON
+  static const String modifiedTipsBox = 'modified_tips';       // 存储用户创建/修改的教程
+  static const String favoriteTipsBox = 'favorite_tips';       // 教程收藏
 
   /// 初始化 Hive
   /// 必须在应用启动时调用（main.dart 中）
@@ -73,6 +75,16 @@ class HiveService {
     if (!Hive.isBoxOpen(modifiedRecipesBox)) {
       await Hive.openBox<Map>(modifiedRecipesBox);
     }
+
+    // 修改后的教程 Box（存储 JSON Map）
+    if (!Hive.isBoxOpen(modifiedTipsBox)) {
+      await Hive.openBox<Map>(modifiedTipsBox);
+    }
+
+    // 教程收藏 Box（存储 tipId 列表）
+    if (!Hive.isBoxOpen(favoriteTipsBox)) {
+      await Hive.openBox<String>(favoriteTipsBox);
+    }
   }
 
   /// 获取 AI 模型配置 Box
@@ -101,6 +113,12 @@ class HiveService {
   /// 存储格式: recipeId (String) → recipeJson (Map)
   static Box<Map> getModifiedRecipesBox() => Hive.box<Map>(modifiedRecipesBox);
 
+  /// 获取修改后的教程 Box
+  static Box<Map> getModifiedTipsBox() => Hive.box<Map>(modifiedTipsBox);
+
+  /// 获取收藏教程 Box
+  static Box<String> getFavoriteTipsBox() => Hive.box<String>(favoriteTipsBox);
+
   /// 关闭所有 Boxes（用于测试或应用退出）
   static Future<void> closeAll() async {
     await Hive.close();
@@ -111,10 +129,12 @@ class HiveService {
     await getAIModelsBox().clear();
     await getAPICallRecordsBox().clear();
     await getFavoritesBox().clear();
+    await getFavoriteTipsBox().clear();
     await getUserNotesBox().clear();
     await getSettingsBox().clear();
     await getChatHistoryBox().clear();
     await getModifiedRecipesBox().clear();
+    await getModifiedTipsBox().clear();
   }
 
   /// 删除所有 Boxes（彻底清除数据）
@@ -122,10 +142,12 @@ class HiveService {
     await Hive.deleteBoxFromDisk(aiModelsBox);
     await Hive.deleteBoxFromDisk(apiCallRecordsBox);
     await Hive.deleteBoxFromDisk(favoritesBox);
+    await Hive.deleteBoxFromDisk(favoriteTipsBox);
     await Hive.deleteBoxFromDisk(userNotesBox);
     await Hive.deleteBoxFromDisk(settingsBox);
     await Hive.deleteBoxFromDisk(chatHistoryBox);
     await Hive.deleteBoxFromDisk(modifiedRecipesBox);
+    await Hive.deleteBoxFromDisk(modifiedTipsBox);
   }
 
   // ========== 便捷方法 ==========

@@ -7,14 +7,18 @@ import '../../features/recipe/presentation/screens/recipe_search_screen.dart';
 import '../../features/recipe/presentation/screens/recipe_edit_screen.dart';
 import '../../features/recipe/presentation/screens/recipe_create_screen.dart';
 import '../../features/recipe/presentation/screens/favorite_recipes_screen.dart';
-import '../../features/recipe/presentation/screens/tips_screen.dart';
 import '../../features/recipe/presentation/screens/qr_scanner_screen.dart';
 import '../../features/recipe/presentation/screens/recipe_preview_screen.dart';
 import '../../features/recipe/presentation/screens/my_recipes_screen.dart';
 import '../../features/recipe/domain/entities/recipe.dart';
+import '../../features/tips/domain/entities/tip.dart';
 import '../../features/ai_chat/presentation/screens/ai_chat_screen.dart';
 import '../../features/user/presentation/screens/user_screen.dart';
 import '../../features/settings/presentation/screens/data_sync_screen.dart';
+import '../../features/tips/presentation/screens/tip_detail_screen.dart';
+import '../../features/tips/presentation/screens/tip_editor_screen.dart';
+import '../../features/tips/presentation/screens/tip_preview_screen.dart';
+import '../../features/tips/presentation/screens/tips_overview_screen.dart';
 import '../widgets/main_scaffold.dart';
 
 /// 路由配置 Provider
@@ -52,10 +56,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/user',
             name: 'user',
-            pageBuilder: (context, state) => NoTransitionPage(
-              key: state.pageKey,
-              child: const UserScreen(),
-            ),
+            pageBuilder: (context, state) =>
+                NoTransitionPage(key: state.pageKey, child: const UserScreen()),
           ),
         ],
       ),
@@ -123,9 +125,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           return Scaffold(
             appBar: AppBar(title: const Text('模型管理')),
-            body: const Center(
-              child: Text('模型管理\n\n（待实现）'),
-            ),
+            body: const Center(child: Text('模型管理\n\n（待实现）')),
           );
         },
       ),
@@ -146,26 +146,64 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           return Scaffold(
             appBar: AppBar(title: const Text('设置')),
-            body: const Center(
-              child: Text('设置\n\n（待实现）'),
-            ),
+            body: const Center(child: Text('设置\n\n（待实现）')),
           );
         },
       ),
 
-      // 教程提示页面
+      // 教程中心
+      GoRoute(
+        path: '/tips',
+        name: 'tips-overview',
+        builder: (context, state) {
+          return const TipsOverviewScreen();
+        },
+      ),
+
+      // 新建教程
+      GoRoute(
+        path: '/tips/create',
+        name: 'tips-create',
+        builder: (context, state) {
+          final initialCategory = state.uri.queryParameters['category'];
+          return TipEditorScreen(initialCategory: initialCategory);
+        },
+      ),
+
+      GoRoute(
+        path: '/tip-preview',
+        name: 'tip-preview',
+        builder: (context, state) {
+          final tip = state.extra as Tip?;
+          if (tip == null) {
+            return Scaffold(
+              appBar: AppBar(title: const Text('错误')),
+              body: const Center(child: Text('未提供教程数据')),
+            );
+          }
+          return TipPreviewScreen(tip: tip);
+        },
+      ),
+
+      // 编辑教程
+      GoRoute(
+        path: '/tips/:tipId/edit',
+        name: 'tips-edit',
+        builder: (context, state) {
+          final tipId = state.pathParameters['tipId']!;
+          return TipEditorScreen(tipId: tipId);
+        },
+      ),
+
+      // 教程详情
       // 格式: /tips/:category/:tipsId
-      // 例如: /tips/learn/tips_learn_50ddd8bd
       GoRoute(
         path: '/tips/:category/:tipsId',
-        name: 'tips',
+        name: 'tips-detail',
         builder: (context, state) {
           final category = state.pathParameters['category'] ?? '';
-          final tipsId = state.pathParameters['tipsId'] ?? '';
-          return TipsScreen(
-            category: category,
-            tipsId: tipsId,
-          );
+          final tipId = state.pathParameters['tipsId'] ?? '';
+          return TipDetailScreen(category: category, tipId: tipId);
         },
       ),
 
@@ -191,9 +229,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             debugPrint('❌ state.extra 为 null！');
             return Scaffold(
               appBar: AppBar(title: const Text('错误')),
-              body: const Center(
-                child: Text('未提供食谱数据'),
-              ),
+              body: const Center(child: Text('未提供食谱数据')),
             );
           }
 
@@ -214,17 +250,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Colors.grey,
-            ),
+            const Icon(Icons.error_outline, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
             Text(
               '404',
-              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                    color: Colors.grey,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineLarge?.copyWith(color: Colors.grey),
             ),
             const SizedBox(height: 8),
             const Text('页面不存在'),

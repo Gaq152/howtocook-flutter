@@ -15,6 +15,9 @@ _$ManifestImpl _$$ManifestImplFromJson(Map<String, dynamic> json) =>
       categories: (json['categories'] as Map<String, dynamic>).map(
         (k, e) => MapEntry(k, CategoryInfo.fromJson(e as Map<String, dynamic>)),
       ),
+      tipsCategories: (json['tipsCategories'] as Map<String, dynamic>).map(
+        (k, e) => MapEntry(k, CategoryInfo.fromJson(e as Map<String, dynamic>)),
+      ),
       recipes: (json['recipes'] as List<dynamic>)
           .map((e) => RecipeIndex.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -31,6 +34,7 @@ Map<String, dynamic> _$$ManifestImplToJson(_$ManifestImpl instance) =>
       'totalRecipes': instance.totalRecipes,
       'totalTips': instance.totalTips,
       'categories': instance.categories,
+      'tipsCategories': instance.tipsCategories,
       'recipes': instance.recipes,
       'tips': instance.tips,
     };

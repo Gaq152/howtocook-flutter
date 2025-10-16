@@ -25,7 +25,9 @@ mixin _$Manifest {
   int get totalRecipes => throw _privateConstructorUsedError; // 菜谱总数
   int get totalTips => throw _privateConstructorUsedError; // 技巧总数
   Map<String, CategoryInfo> get categories =>
-      throw _privateConstructorUsedError; // 分类信息
+      throw _privateConstructorUsedError; // 菜谱分类信息
+  Map<String, CategoryInfo> get tipsCategories =>
+      throw _privateConstructorUsedError; // 教程分类信息
   List<RecipeIndex> get recipes => throw _privateConstructorUsedError; // 菜谱索引
   List<TipIndex> get tips => throw _privateConstructorUsedError;
 
@@ -46,6 +48,7 @@ abstract class $ManifestCopyWith<$Res> {
       int totalRecipes,
       int totalTips,
       Map<String, CategoryInfo> categories,
+      Map<String, CategoryInfo> tipsCategories,
       List<RecipeIndex> recipes,
       List<TipIndex> tips});
 }
@@ -68,6 +71,7 @@ class _$ManifestCopyWithImpl<$Res, $Val extends Manifest>
     Object? totalRecipes = null,
     Object? totalTips = null,
     Object? categories = null,
+    Object? tipsCategories = null,
     Object? recipes = null,
     Object? tips = null,
   }) {
@@ -91,6 +95,10 @@ class _$ManifestCopyWithImpl<$Res, $Val extends Manifest>
       categories: null == categories
           ? _value.categories
           : categories // ignore: cast_nullable_to_non_nullable
+              as Map<String, CategoryInfo>,
+      tipsCategories: null == tipsCategories
+          ? _value.tipsCategories
+          : tipsCategories // ignore: cast_nullable_to_non_nullable
               as Map<String, CategoryInfo>,
       recipes: null == recipes
           ? _value.recipes
@@ -118,6 +126,7 @@ abstract class _$$ManifestImplCopyWith<$Res>
       int totalRecipes,
       int totalTips,
       Map<String, CategoryInfo> categories,
+      Map<String, CategoryInfo> tipsCategories,
       List<RecipeIndex> recipes,
       List<TipIndex> tips});
 }
@@ -138,6 +147,7 @@ class __$$ManifestImplCopyWithImpl<$Res>
     Object? totalRecipes = null,
     Object? totalTips = null,
     Object? categories = null,
+    Object? tipsCategories = null,
     Object? recipes = null,
     Object? tips = null,
   }) {
@@ -162,6 +172,10 @@ class __$$ManifestImplCopyWithImpl<$Res>
           ? _value._categories
           : categories // ignore: cast_nullable_to_non_nullable
               as Map<String, CategoryInfo>,
+      tipsCategories: null == tipsCategories
+          ? _value._tipsCategories
+          : tipsCategories // ignore: cast_nullable_to_non_nullable
+              as Map<String, CategoryInfo>,
       recipes: null == recipes
           ? _value._recipes
           : recipes // ignore: cast_nullable_to_non_nullable
@@ -183,9 +197,11 @@ class _$ManifestImpl implements _Manifest {
       required this.totalRecipes,
       required this.totalTips,
       required final Map<String, CategoryInfo> categories,
+      required final Map<String, CategoryInfo> tipsCategories,
       required final List<RecipeIndex> recipes,
       final List<TipIndex> tips = const []})
       : _categories = categories,
+        _tipsCategories = tipsCategories,
         _recipes = recipes,
         _tips = tips;
 
@@ -213,9 +229,19 @@ class _$ManifestImpl implements _Manifest {
     return EqualUnmodifiableMapView(_categories);
   }
 
-// 分类信息
+// 菜谱分类信息
+  final Map<String, CategoryInfo> _tipsCategories;
+// 菜谱分类信息
+  @override
+  Map<String, CategoryInfo> get tipsCategories {
+    if (_tipsCategories is EqualUnmodifiableMapView) return _tipsCategories;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableMapView(_tipsCategories);
+  }
+
+// 教程分类信息
   final List<RecipeIndex> _recipes;
-// 分类信息
+// 教程分类信息
   @override
   List<RecipeIndex> get recipes {
     if (_recipes is EqualUnmodifiableListView) return _recipes;
@@ -236,7 +262,7 @@ class _$ManifestImpl implements _Manifest {
 
   @override
   String toString() {
-    return 'Manifest(version: $version, generatedAt: $generatedAt, totalRecipes: $totalRecipes, totalTips: $totalTips, categories: $categories, recipes: $recipes, tips: $tips)';
+    return 'Manifest(version: $version, generatedAt: $generatedAt, totalRecipes: $totalRecipes, totalTips: $totalTips, categories: $categories, tipsCategories: $tipsCategories, recipes: $recipes, tips: $tips)';
   }
 
   @override
@@ -253,6 +279,8 @@ class _$ManifestImpl implements _Manifest {
                 other.totalTips == totalTips) &&
             const DeepCollectionEquality()
                 .equals(other._categories, _categories) &&
+            const DeepCollectionEquality()
+                .equals(other._tipsCategories, _tipsCategories) &&
             const DeepCollectionEquality().equals(other._recipes, _recipes) &&
             const DeepCollectionEquality().equals(other._tips, _tips));
   }
@@ -266,6 +294,7 @@ class _$ManifestImpl implements _Manifest {
       totalRecipes,
       totalTips,
       const DeepCollectionEquality().hash(_categories),
+      const DeepCollectionEquality().hash(_tipsCategories),
       const DeepCollectionEquality().hash(_recipes),
       const DeepCollectionEquality().hash(_tips));
 
@@ -290,6 +319,7 @@ abstract class _Manifest implements Manifest {
       required final int totalRecipes,
       required final int totalTips,
       required final Map<String, CategoryInfo> categories,
+      required final Map<String, CategoryInfo> tipsCategories,
       required final List<RecipeIndex> recipes,
       final List<TipIndex> tips}) = _$ManifestImpl;
 
@@ -306,7 +336,9 @@ abstract class _Manifest implements Manifest {
   int get totalTips;
   @override // 技巧总数
   Map<String, CategoryInfo> get categories;
-  @override // 分类信息
+  @override // 菜谱分类信息
+  Map<String, CategoryInfo> get tipsCategories;
+  @override // 教程分类信息
   List<RecipeIndex> get recipes;
   @override // 菜谱索引
   List<TipIndex> get tips;
