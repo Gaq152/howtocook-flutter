@@ -9,6 +9,8 @@ import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../domain/entities/recipe.dart';
 import '../../infrastructure/services/wechat_qr_scanner.dart';
+import '../../../tips/application/providers/tip_providers.dart';
+import '../../../tips/domain/entities/tip.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 
@@ -24,13 +26,16 @@ class QRScannerScreen extends ConsumerStatefulWidget {
 }
 
 class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
-  final mobile.MobileScannerController _controller = mobile.MobileScannerController(
-    detectionSpeed: mobile.DetectionSpeed.normal,
-    facing: mobile.CameraFacing.back,
-  );
+  final mobile.MobileScannerController _controller =
+      mobile.MobileScannerController(
+        detectionSpeed: mobile.DetectionSpeed.normal,
+        facing: mobile.CameraFacing.back,
+        returnImage: true,
+      );
 
   final WeChatQRScanner _wechatScanner = WeChatQRScanner();
   bool _isProcessing = false; // 防止重复处理
+  bool _isDecodingFrame = false; // 控制兜底识别并发
 
   @override
   void dispose() {
@@ -105,7 +110,10 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
                   foregroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
                 ),
               ),
             ),
@@ -127,80 +135,86 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
 
   /// 处理条码检测（相机实时扫描 - 使用 WeChatQRCode）
   Future<void> _onBarcodeDetect(mobile.BarcodeCapture capture) async {
-    if (_isProcessing) return;
-
-    // 获取图像数据
-    final image = capture.image;
-    if (image == null) {
-      debugPrint('⚠️  相机帧无图像数据');
+    if (_isProcessing || _isDecodingFrame) {
       return;
     }
 
-    setState(() {
-      _isProcessing = true;
-    });
+    // 先尝试使用 mobile_scanner 自带的识别结果
+    for (final barcode in capture.barcodes) {
+      final rawValue = barcode.rawValue ?? barcode.displayValue;
+      if (rawValue != null && rawValue.isNotEmpty) {
+        debugPrint('📦 MobileScanner 识别二维码，长度: ${rawValue.length}');
+        _processQRCode(rawValue);
+        return;
+      }
+    }
 
+    // 如未识别到结果，则降级使用 WeChatQRCode 兜底扫描
+    final image = capture.image;
+    if (image == null) {
+      debugPrint('⚠️ MobileScanner 未返回二维码且无图像可供兜底识别');
+      return;
+    }
+
+    _isDecodingFrame = true;
+    File? tempFile;
     try {
-      debugPrint('📸 捕获相机帧...');
+      debugPrint('📸 准备使用 WeChatQRCode 兜底识别...');
 
-      // 1. 将相机帧保存为临时文件
       final tempDir = await getTemporaryDirectory();
-      final tempPath = '${tempDir.path}/camera_frame_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final tempFile = File(tempPath);
-
-      // 写入图像字节
+      final tempPath =
+          '${tempDir.path}/camera_frame_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      tempFile = File(tempPath);
       await tempFile.writeAsBytes(image);
-      debugPrint('✅ 相机帧已保存: $tempPath (${image.length} 字节)');
+      debugPrint('💾 相机帧已保存: $tempPath (${image.length} 字节)');
 
-      // 2. 初始化扫描器（首次调用）
       await _wechatScanner.initialize();
-
-      // 3. 使用 WeChatQRCode 扫描
       final results = await _wechatScanner.detectAndDecode(tempPath);
 
-      // 4. 清理临时文件
-      try {
-        await tempFile.delete();
-      } catch (e) {
-        debugPrint('清理临时文件失败: $e');
-      }
-
-      // 5. 处理结果
       if (results.isNotEmpty) {
         final code = results.first;
-        debugPrint('✅ 相机实时扫描成功！二维码长度: ${code.length} 字符');
+        debugPrint('🧠 WeChatQRCode 兜底识别成功，长度: ${code.length} 字符');
         _processQRCode(code);
       } else {
-        // 未找到二维码，重置状态继续扫描
-        setState(() {
-          _isProcessing = false;
-        });
+        debugPrint('ℹ️ WeChatQRCode 兜底识别未找到二维码，等待下一帧');
       }
     } catch (e, stackTrace) {
-      debugPrint('❌ 相机实时扫描失败: $e');
+      debugPrint('❌ 实时兜底识别失败: $e');
       debugPrint('堆栈: $stackTrace');
-      setState(() {
-        _isProcessing = false;
-      });
+    } finally {
+      _isDecodingFrame = false;
+      if (tempFile != null) {
+        try {
+          await tempFile.delete();
+        } catch (e) {
+          debugPrint('清理临时文件失败: $e');
+        }
+      }
     }
   }
 
   /// 从相册选择图片扫描（使用 WeChat QRCode 强力扫描）
   Future<void> _pickImageFromGallery() async {
+    if (_isProcessing || _isDecodingFrame) {
+      debugPrint('⚠️ 忙于处理当前扫码结果，忽略相册扫描请求');
+      return;
+    }
+
+    _isDecodingFrame = true;
     try {
       debugPrint('🔍 开始从相册选择图片...');
       final ImagePicker picker = ImagePicker();
       final XFile? image = await picker.pickImage(source: ImageSource.gallery);
 
       if (image == null) {
-        debugPrint('❌ 用户取消选择图片');
+        debugPrint('ℹ️ 用户取消选择图片');
         return;
       }
 
       debugPrint('✅ 图片已选择: ${image.path}');
 
       // 使用 WeChat QRCode 扫描器（强力 CNN 模型）
-      debugPrint('🚀 使用 WeChatQRCode 扫描器...');
+      debugPrint('🚀 使用 WeChatQRCode 扫描...');
 
       // 初始化扫描器（首次调用会加载模型）
       await _wechatScanner.initialize();
@@ -209,7 +223,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
       final results = await _wechatScanner.detectAndDecode(image.path);
 
       if (results.isEmpty) {
-        debugPrint('❌ WeChatQRCode 未找到二维码');
+        debugPrint('ℹ️ WeChatQRCode 未找到二维码');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -237,6 +251,8 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
           ),
         );
       }
+    } finally {
+      _isDecodingFrame = false;
     }
   }
 
@@ -244,19 +260,27 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
   void _processQRCode(String code) {
     if (_isProcessing) return;
 
+    Uri? uri;
+    try {
+      uri = Uri.parse(code);
+    } catch (_) {
+      uri = null;
+    }
+
+    if (uri != null && uri.scheme == 'howtocook' && uri.host == 'tip') {
+      _handleTipQRCode(uri);
+      return;
+    }
+
     setState(() {
       _isProcessing = true;
     });
 
     try {
-      // 解析二维码数据
-      final parseResult = _parseQRCode(code);
+      final recipe = _parseRecipeQRCode(code);
 
-      // 检查是否是内置食谱（已经直接跳转）
-      if (parseResult == null) {
-        // 内置食谱已经在 _buildRecipeFromJson 中跳转，重置状态并返回
+      if (recipe == null) {
         debugPrint('✅ 内置食谱跳转完成');
-        // 延迟重置状态，确保跳转动画完成
         Future.delayed(const Duration(milliseconds: 500), () {
           if (mounted) {
             setState(() {
@@ -267,35 +291,19 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
         return;
       }
 
-      final recipe = parseResult;
-
-      // 跳转到预览页面（其他类型的食谱）
       if (mounted) {
-        debugPrint('🚀 准备跳转到预览页面...');
-        debugPrint('  - Recipe ID: ${recipe.id}');
-        debugPrint('  - Recipe Name: ${recipe.name}');
-        debugPrint('  - mounted: $mounted');
-        debugPrint('  - context: ${context.toString()}');
-
         try {
-          // 使用 push 代替 go，保留返回按钮
           context.push('/recipe-preview', extra: recipe);
-          debugPrint('✅ context.push 调用成功');
-
-          // 延迟重置状态，确保跳转动画完成
           Future.delayed(const Duration(milliseconds: 500), () {
             if (mounted) {
               setState(() {
                 _isProcessing = false;
               });
             }
-            debugPrint('⏰ 500ms 后重置：_isProcessing = false');
           });
         } catch (e, stackTrace) {
           debugPrint('❌ 跳转失败: $e');
           debugPrint('堆栈: $stackTrace');
-
-          // 显示错误对话框
           if (mounted) {
             showDialog(
               context: context,
@@ -319,16 +327,163 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
       debugPrint('解析二维码失败: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('解析失败: $e'), backgroundColor: AppColors.error),
+        );
+      }
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _handleTipQRCode(Uri uri) async {
+    if (_isProcessing) return;
+
+    setState(() {
+      _isProcessing = true;
+    });
+
+    try {
+      final tip = _parseTipUri(uri);
+      if (tip == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('无法解析教程二维码'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+          setState(() => _isProcessing = false);
+        }
+        return;
+      }
+
+      Tip? existing;
+      try {
+        existing = await ref.read(tipRepositoryProvider).getTipById(tip.id);
+      } catch (_) {
+        existing = null;
+      }
+
+      if (!mounted) return;
+
+      if (existing != null && existing.hash == tip.hash) {
+        context.push('/tips/${existing.category}/${existing.id}');
+      } else {
+        context.push('/tip-preview', extra: tip);
+      }
+
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          setState(() => _isProcessing = false);
+        }
+      });
+    } catch (e) {
+      debugPrint('处理教程二维码失败: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('解析失败: $e'),
+            content: Text('解析教程失败: $e'),
             backgroundColor: AppColors.error,
           ),
         );
+        setState(() => _isProcessing = false);
       }
-      setState(() {
-        _isProcessing = false;
-      });
     }
+  }
+
+  Tip? _parseTipUri(Uri uri) {
+    try {
+      Map<String, dynamic>? json;
+      if (uri.queryParameters.containsKey('raw')) {
+        json = _decodeTipRaw(uri.queryParameters['raw']!);
+      } else if (uri.queryParameters.containsKey('data')) {
+        json = _decodeTipCompressed(uri.queryParameters['data']!);
+      } else if (uri.queryParameters.containsKey('json')) {
+        final jsonString = Uri.decodeComponent(uri.queryParameters['json']!);
+        json = jsonDecode(jsonString) as Map<String, dynamic>;
+      }
+
+      if (json == null) {
+        return null;
+      }
+
+      return _tipFromJson(json);
+    } catch (e) {
+      debugPrint('解析教程 URI 失败: $e');
+      return null;
+    }
+  }
+
+  Map<String, dynamic>? _decodeTipRaw(String base64Data) {
+    try {
+      var padded = base64Data;
+      while (padded.length % 4 != 0) {
+        padded += '=';
+      }
+      final bytes = base64Url.decode(padded);
+      final jsonString = utf8.decode(bytes);
+      return jsonDecode(jsonString) as Map<String, dynamic>;
+    } catch (e) {
+      debugPrint('解析教程 raw 数据失败: $e');
+      return null;
+    }
+  }
+
+  Map<String, dynamic>? _decodeTipCompressed(String base64Data) {
+    try {
+      var padded = base64Data;
+      while (padded.length % 4 != 0) {
+        padded += '=';
+      }
+      final gzipBytes = base64Url.decode(padded);
+      final utf8Bytes = GZipDecoder().decodeBytes(gzipBytes);
+      final jsonString = utf8.decode(utf8Bytes);
+      return jsonDecode(jsonString) as Map<String, dynamic>;
+    } catch (e) {
+      debugPrint('解析教程压缩数据失败: $e');
+      return null;
+    }
+  }
+
+  Tip _tipFromJson(Map<String, dynamic> json) {
+    final sectionsJson = json['sections'] as List<dynamic>? ?? [];
+    final sections = sectionsJson.map((item) {
+      if (item is Map<String, dynamic>) {
+        return TipSection(
+          title: (item['title'] as String? ?? '').trim(),
+          content: (item['content'] as String? ?? '').trim(),
+        );
+      }
+      return TipSection(title: '', content: item?.toString() ?? '');
+    }).toList();
+
+    DateTime? createdAt;
+    DateTime? updatedAt;
+    final createdAtString = json['createdAt'] as String?;
+    final updatedAtString = json['updatedAt'] as String?;
+    if (createdAtString != null) {
+      createdAt = DateTime.tryParse(createdAtString);
+    }
+    if (updatedAtString != null) {
+      updatedAt = DateTime.tryParse(updatedAtString);
+    }
+
+    return Tip(
+      id:
+          json['id'] as String? ??
+          'tip_${DateTime.now().millisecondsSinceEpoch}',
+      title: json['title'] as String? ?? '未命名教程',
+      category: json['category'] as String? ?? 'general',
+      categoryName: json['categoryName'] as String? ?? '教程',
+      content: json['content'] as String? ?? '',
+      sections: sections,
+      hash: json['hash'] as String? ?? '',
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+    );
   }
 
   /// 解析二维码数据为 Recipe 对象
@@ -337,7 +492,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
   /// 1. Raw Scheme: howtocook://recipe?raw=BASE64URL(JSON) - 未压缩格式
   /// 2. Compressed Scheme: howtocook://recipe?data=BASE64URL(GZIP(JSON)) - 压缩格式
   /// 3. Fallback Scheme: howtocook://recipe?json=URL_ENCODED_JSON - 降级格式
-  Recipe? _parseQRCode(String code) {
+  Recipe? _parseRecipeQRCode(String code) {
     try {
       final uri = Uri.parse(code);
 
@@ -508,7 +663,9 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
         final textStr = text as String;
         // 从字符串提取食材名称（第一个空格前的部分）
         final firstSpaceIndex = textStr.indexOf(' ');
-        final name = firstSpaceIndex > 0 ? textStr.substring(0, firstSpaceIndex) : textStr;
+        final name = firstSpaceIndex > 0
+            ? textStr.substring(0, firstSpaceIndex)
+            : textStr;
         return Ingredient(name: name, text: textStr);
       }).toList(),
       steps: (json['s'] as List<dynamic>)
@@ -533,7 +690,6 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
 
     return recipe;
   }
-
 }
 
 /// 扫描框遮罩绘制器
@@ -568,26 +724,52 @@ class _ScanMaskPainter extends CustomPainter {
     const double cornerLength = 20;
 
     // 左上角
-    canvas.drawLine(Offset(left, top), Offset(left + cornerLength, top), cornerPaint);
-    canvas.drawLine(Offset(left, top), Offset(left, top + cornerLength), cornerPaint);
+    canvas.drawLine(
+      Offset(left, top),
+      Offset(left + cornerLength, top),
+      cornerPaint,
+    );
+    canvas.drawLine(
+      Offset(left, top),
+      Offset(left, top + cornerLength),
+      cornerPaint,
+    );
 
     // 右上角
-    canvas.drawLine(Offset(left + scanAreaSize, top),
-        Offset(left + scanAreaSize - cornerLength, top), cornerPaint);
-    canvas.drawLine(Offset(left + scanAreaSize, top),
-        Offset(left + scanAreaSize, top + cornerLength), cornerPaint);
+    canvas.drawLine(
+      Offset(left + scanAreaSize, top),
+      Offset(left + scanAreaSize - cornerLength, top),
+      cornerPaint,
+    );
+    canvas.drawLine(
+      Offset(left + scanAreaSize, top),
+      Offset(left + scanAreaSize, top + cornerLength),
+      cornerPaint,
+    );
 
     // 左下角
-    canvas.drawLine(Offset(left, top + scanAreaSize),
-        Offset(left + cornerLength, top + scanAreaSize), cornerPaint);
-    canvas.drawLine(Offset(left, top + scanAreaSize),
-        Offset(left, top + scanAreaSize - cornerLength), cornerPaint);
+    canvas.drawLine(
+      Offset(left, top + scanAreaSize),
+      Offset(left + cornerLength, top + scanAreaSize),
+      cornerPaint,
+    );
+    canvas.drawLine(
+      Offset(left, top + scanAreaSize),
+      Offset(left, top + scanAreaSize - cornerLength),
+      cornerPaint,
+    );
 
     // 右下角
-    canvas.drawLine(Offset(left + scanAreaSize, top + scanAreaSize),
-        Offset(left + scanAreaSize - cornerLength, top + scanAreaSize), cornerPaint);
-    canvas.drawLine(Offset(left + scanAreaSize, top + scanAreaSize),
-        Offset(left + scanAreaSize, top + scanAreaSize - cornerLength), cornerPaint);
+    canvas.drawLine(
+      Offset(left + scanAreaSize, top + scanAreaSize),
+      Offset(left + scanAreaSize - cornerLength, top + scanAreaSize),
+      cornerPaint,
+    );
+    canvas.drawLine(
+      Offset(left + scanAreaSize, top + scanAreaSize),
+      Offset(left + scanAreaSize, top + scanAreaSize - cornerLength),
+      cornerPaint,
+    );
   }
 
   @override
