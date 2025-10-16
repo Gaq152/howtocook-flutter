@@ -11,7 +11,8 @@ class Manifest with _$Manifest {
     required String generatedAt,                                     // 生成时间
     required int totalRecipes,                                       // 菜谱总数
     required int totalTips,                                          // 技巧总数
-    required Map<String, CategoryInfo> categories,                   // 分类信息
+    required Map<String, CategoryInfo> categories,                   // 菜谱分类信息
+    required Map<String, CategoryInfo> tipsCategories,               // 教程分类信息
     required List<RecipeIndex> recipes,                              // 菜谱索引
     @Default([]) List<TipIndex> tips,                                // 技巧索引
   }) = _Manifest;

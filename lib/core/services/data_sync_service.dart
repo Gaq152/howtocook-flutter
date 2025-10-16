@@ -13,23 +13,23 @@ part 'data_sync_service.freezed.dart';
 
 /// 同步状态枚举
 enum SyncStatus {
-  idle,          // 空闲
-  checking,      // 检查更新
-  downloading,   // 下载中
-  completed,     // 已完成
-  error,         // 出错
+  idle, // 空闲
+  checking, // 检查更新
+  downloading, // 下载中
+  completed, // 已完成
+  error, // 出错
 }
 
 /// 同步配置
 class SyncConfig {
-  final bool downloadCoverImages;  // 下载封面图
+  final bool downloadCoverImages; // 下载封面图
   final bool downloadDetailImages; // 下载详情图
   final bool onlyWifi;
   final int maxConcurrentDownloads;
 
   const SyncConfig({
     this.downloadCoverImages = true,
-    this.downloadDetailImages = false,  // 默认不下载详情图
+    this.downloadDetailImages = false, // 默认不下载详情图
     this.onlyWifi = false,
     this.maxConcurrentDownloads = 3,
   });
@@ -42,7 +42,9 @@ class DataSyncService extends _$DataSyncService {
   late final String _manifestUrl;
   static const String _localDataDirName = 'recipe_data';
 
-  String get _baseUrl => dotenv.env['STATIC_RESOURCE_URL'] ?? 'https://gaq152.github.io/HowToCook-assets';
+  String get _baseUrl =>
+      dotenv.env['STATIC_RESOURCE_URL'] ??
+      'https://gaq152.github.io/HowToCook-assets';
 
   final Dio _dio = Dio();
 
@@ -57,6 +59,8 @@ class DataSyncService extends _$DataSyncService {
       progress: 0,
       downloadedRecipes: 0,
       totalRecipes: 0,
+      downloadedTips: 0,
+      totalTips: 0,
       downloadedImages: 0,
       totalImages: 0,
     );
@@ -65,66 +69,79 @@ class DataSyncService extends _$DataSyncService {
   /// 开始数据同步
   Future<void> startSync(SyncConfig config) async {
     try {
-      state = state.copyWith(status: SyncStatus.checking);
+      state = state.copyWith(
+        status: SyncStatus.checking,
+        progress: 0,
+        downloadedRecipes: 0,
+        totalRecipes: 0,
+        downloadedTips: 0,
+        totalTips: 0,
+        downloadedImages: 0,
+        totalImages: 0,
+      );
       print('🔄 开始检查数据更新...');
 
       // 1. 下载远程索引
       final remoteIndex = await downloadRemoteIndex();
       if (remoteIndex == null) {
-        state = state.copyWith(
-          status: SyncStatus.error,
-          error: '无法下载远程索引文件',
-        );
+        state = state.copyWith(status: SyncStatus.error, error: '无法下载远程索引文件');
         return;
       }
 
       // 2. 检查本地索引
-      print('\n🔍 检查本地���引文件...');
+      print('\n🔍 检查本地索引文件...');
       final localIndex = await loadLocalIndex();
 
-      // 调试：检查本地索引是否为空
       if (localIndex == null || localIndex.isEmpty) {
         print('⚠️  本地索引为空，可能是首次同步或数据丢失');
       } else {
         print('✅ 本地索引加载成功，开始比对...');
       }
 
-      // 3. 比较并识别需要更新的食谱
-      final updates = identifyUpdates(localIndex, remoteIndex);
+      // 3. 识别需要更新的食谱与教程
+      final recipeUpdates = identifyUpdates(localIndex, remoteIndex);
+      final tipUpdates = identifyTipUpdates(localIndex, remoteIndex);
+
       state = state.copyWith(
-        totalRecipes: updates.length,
-        totalImages: _estimateImageCount(updates),
+        totalRecipes: recipeUpdates.length,
+        totalTips: tipUpdates.length,
+        totalImages: _estimateImageCount(recipeUpdates),
       );
 
-      if (updates.isEmpty) {
-        state = state.copyWith(
-          status: SyncStatus.completed,
-          progress: 100,
-        );
+      final totalJsonTasks = recipeUpdates.length + tipUpdates.length;
+
+      if (totalJsonTasks == 0) {
+        state = state.copyWith(status: SyncStatus.completed, progress: 100);
         print('✅ 数据已是最新，无需更新');
         return;
       }
 
-      // 4. 开始下载更新的JSON文件
+      // 4. 开始下载更新的 JSON 文件
       state = state.copyWith(status: SyncStatus.downloading);
-      print('📥 开始下载 ${updates.length} 个食谱更新...');
+      print(
+        '📥 开始下载 ${recipeUpdates.length} 个食谱与 ${tipUpdates.length} 个教程更新...',
+      );
 
-      int downloadedCount = 0;
+      int downloadedRecipes = 0;
+      int downloadedTips = 0;
+      int completedJsonTasks = 0;
       final coverImageTasks = <DownloadTask>[];
       final detailImageTasks = <DownloadTask>[];
 
-      for (final update in updates) {
+      for (final update in recipeUpdates) {
         try {
-          // 下载JSON文件
           final success = await downloadRecipeJson(update);
           if (success) {
-            downloadedCount++;
+            downloadedRecipes++;
+            completedJsonTasks++;
+            final progress = totalJsonTasks == 0
+                ? state.progress
+                : ((completedJsonTasks / totalJsonTasks) * 50).round();
             state = state.copyWith(
-              downloadedRecipes: downloadedCount,
-              progress: (downloadedCount / updates.length * 50).round(), // JSON下载占50%
+              downloadedRecipes: downloadedRecipes,
+              progress: progress,
             );
 
-            // 如果启用封面图下载，添加封面图下载任务
             if (config.downloadCoverImages) {
               final coverTask = await extractCoverImageTask(update);
               if (coverTask != null) {
@@ -132,7 +149,6 @@ class DataSyncService extends _$DataSyncService {
               }
             }
 
-            // 如果启用详情图下载，解析详情图路径并添加到下载任务
             if (config.downloadDetailImages) {
               final detailTasks = await extractDetailImageTasks(update);
               detailImageTasks.addAll(detailTasks);
@@ -140,6 +156,25 @@ class DataSyncService extends _$DataSyncService {
           }
         } catch (e) {
           print('❌ 下载食谱失败: ${update.category}/${update.recipeId}, 错误: $e');
+        }
+      }
+
+      for (final tipUpdate in tipUpdates) {
+        try {
+          final success = await downloadTipJson(tipUpdate);
+          if (success) {
+            downloadedTips++;
+            completedJsonTasks++;
+            final progress = totalJsonTasks == 0
+                ? state.progress
+                : ((completedJsonTasks / totalJsonTasks) * 50).round();
+            state = state.copyWith(
+              downloadedTips: downloadedTips,
+              progress: progress,
+            );
+          }
+        } catch (e) {
+          print('❌ 下载教程失败: ${tipUpdate.category}/${tipUpdate.tipId}, 错误: $e');
         }
       }
 
@@ -155,24 +190,16 @@ class DataSyncService extends _$DataSyncService {
         print('  - 封面图: ${coverImageTasks.length} 张');
         print('  - 详情图: ${detailImageTasks.length} 张');
 
-        // 按优先级排序：封面图优先（priority=0），详情图次之（priority=1）
         allImageTasks.sort((a, b) => a.priority.compareTo(b.priority));
-
-        // 提交给图片下载管理器
-        ref.read(imageDownloadManagerProvider.notifier).addDownloadTasks(allImageTasks);
+        ref
+            .read(imageDownloadManagerProvider.notifier)
+            .addDownloadTasks(allImageTasks);
       }
 
-      state = state.copyWith(
-        status: SyncStatus.completed,
-        progress: 100,
-      );
+      state = state.copyWith(status: SyncStatus.completed, progress: 100);
       print('✅ 数据同步完成');
-
     } catch (e) {
-      state = state.copyWith(
-        status: SyncStatus.error,
-        error: e.toString(),
-      );
+      state = state.copyWith(status: SyncStatus.error, error: e.toString());
       print('❌ 数据同步失败: $e');
     }
   }
@@ -197,7 +224,9 @@ class DataSyncService extends _$DataSyncService {
         print('   - 版本: ${data['version']}');
         print('   - 生成时间: ${data['generatedAt']}');
         print('   - 总食谱数: ${data['totalRecipes']}');
-        print('   - 实际食谱数组长度: ${(data['recipes'] as List<dynamic>?)?.length ?? 0}');
+        print(
+          '   - 实际食谱数组长度: ${(data['recipes'] as List<dynamic>?)?.length ?? 0}',
+        );
 
         if (data['recipes'] is List && (data['recipes'] as List).isNotEmpty) {
           final firstRecipe = (data['recipes'] as List)[0];
@@ -225,7 +254,6 @@ class DataSyncService extends _$DataSyncService {
     }
   }
 
-  
   /// 加载本地清单文件
   Future<Map<String, dynamic>?> loadLocalIndex() async {
     try {
@@ -301,7 +329,9 @@ class DataSyncService extends _$DataSyncService {
       print('   - 版本: ${data['version']}');
       print('   - 生成时间: ${data['generatedAt']}');
       print('   - 总食谱数: ${data['totalRecipes']}');
-      print('   - 实际食谱数组长度: ${(data['recipes'] as List<dynamic>?)?.length ?? 0}');
+      print(
+        '   - 实际食谱数组长度: ${(data['recipes'] as List<dynamic>?)?.length ?? 0}',
+      );
 
       return data;
     } catch (e) {
@@ -315,7 +345,9 @@ class DataSyncService extends _$DataSyncService {
     try {
       print('📦 尝试从assets加载预置索引...');
 
-      final String manifestContent = await rootBundle.loadString('assets/manifest.json');
+      final String manifestContent = await rootBundle.loadString(
+        'assets/manifest.json',
+      );
 
       if (manifestContent.isEmpty) {
         print('   - ❌ assets中的manifest.json为空');
@@ -330,7 +362,9 @@ class DataSyncService extends _$DataSyncService {
       print('   - 版本: ${data['version']}');
       print('   - 生成时间: ${data['generatedAt']}');
       print('   - 总食谱数: ${data['totalRecipes']}');
-      print('   - 实际食谱数组长度: ${(data['recipes'] as List<dynamic>?)?.length ?? 0}');
+      print(
+        '   - 实际食谱数组长度: ${(data['recipes'] as List<dynamic>?)?.length ?? 0}',
+      );
 
       if (data['recipes'] is List && (data['recipes'] as List).isNotEmpty) {
         final firstRecipe = (data['recipes'] as List)[0];
@@ -395,31 +429,37 @@ class DataSyncService extends _$DataSyncService {
           print('   - 示例$sampleCount: $recipeName ($recipeId) - ❌ 不存在 (新增)');
           sampleCount++;
         }
-        updates.add(RecipeUpdate(
-          category: category,
-          recipeId: recipeId,
-          lastModified: remoteRecipe['generatedAt'] as String? ?? '',
-          isNew: true,
-          hash: recipeHash,
-        ));
+        updates.add(
+          RecipeUpdate(
+            category: category,
+            recipeId: recipeId,
+            lastModified: remoteRecipe['generatedAt'] as String? ?? '',
+            isNew: true,
+            hash: recipeHash,
+          ),
+        );
         newCount++;
       } else {
         final localHash = localRecipe['hash'] as String? ?? '无hash';
 
         if (localHash != recipeHash) {
           if (sampleCount < 3) {
-            print('   - 示例$sampleCount: $recipeName ($recipeId) - 🔄 hash不匹配 (更新)');
+            print(
+              '   - 示例$sampleCount: $recipeName ($recipeId) - 🔄 hash不匹配 (更新)',
+            );
             print('     本地hash: $localHash');
             print('     远程hash: $recipeHash');
             sampleCount++;
           }
-          updates.add(RecipeUpdate(
-            category: category,
-            recipeId: recipeId,
-            lastModified: remoteRecipe['generatedAt'] as String? ?? '',
-            isNew: false,
-            hash: recipeHash,
-          ));
+          updates.add(
+            RecipeUpdate(
+              category: category,
+              recipeId: recipeId,
+              lastModified: remoteRecipe['generatedAt'] as String? ?? '',
+              isNew: false,
+              hash: recipeHash,
+            ),
+          );
           updateCount++;
         } else {
           unchangedCount++;
@@ -443,18 +483,112 @@ class DataSyncService extends _$DataSyncService {
     return updates;
   }
 
+  List<TipUpdate> identifyTipUpdates(
+    Map<String, dynamic>? localIndex,
+    Map<String, dynamic> remoteIndex,
+  ) {
+    print('🔍 开始分析需要更新的教程...');
+
+    final updates = <TipUpdate>[];
+    final remoteTips = remoteIndex['tips'] as List<dynamic>? ?? [];
+    final localTips = localIndex?['tips'] as List<dynamic>? ?? [];
+
+    print('📊 教程数据统计:');
+    print('   - 远程教程数量: ${remoteTips.length}');
+    print('   - 本地教程数量: ${localTips.length}');
+
+    final localTipMap = <String, Map<String, dynamic>>{};
+    for (final tip in localTips) {
+      if (tip is Map<String, dynamic>) {
+        final tipId = tip['id'] as String?;
+        if (tipId != null) {
+          localTipMap[tipId] = tip;
+        }
+      }
+    }
+
+    int newCount = 0;
+    int updateCount = 0;
+    int unchangedCount = 0;
+    int sampleCount = 0;
+
+    for (final remoteTip in remoteTips) {
+      if (remoteTip is! Map<String, dynamic>) {
+        continue;
+      }
+      final tipId = remoteTip['id'] as String?;
+      if (tipId == null) continue;
+      final category = remoteTip['category'] as String? ?? 'general';
+      final title = remoteTip['title'] as String? ?? '未知';
+      final remoteHash = remoteTip['hash'] as String? ?? '';
+
+      final localTip = localTipMap[tipId];
+      final localHash = localTip?['hash'] as String? ?? '';
+
+      if (localTip == null) {
+        if (sampleCount < 3) {
+          print('   - 示例$sampleCount: $title ($tipId) - ✅ 新增');
+          sampleCount++;
+        }
+        updates.add(
+          TipUpdate(
+            category: category,
+            tipId: tipId,
+            hash: remoteHash,
+            isNew: true,
+          ),
+        );
+        newCount++;
+      } else if (remoteHash != localHash) {
+        if (sampleCount < 3) {
+          print('   - 示例$sampleCount: $title ($tipId) - 🔁 发生变更');
+          sampleCount++;
+        }
+        updates.add(
+          TipUpdate(
+            category: category,
+            tipId: tipId,
+            hash: remoteHash,
+            isNew: false,
+          ),
+        );
+        updateCount++;
+      } else {
+        unchangedCount++;
+      }
+    }
+
+    if (updateCount > 3) {
+      print('   - ... 还有 ${updateCount - 3} 个更新教程');
+    }
+
+    print('\n📈 教程比对结果汇总');
+    print('   - 新增教程: $newCount 个');
+    print('   - 更新教程: $updateCount 个');
+    print('   - 无需更新: $unchangedCount 个');
+    print('   - 总计需要处理 ${updates.length} 个教程');
+
+    return updates;
+  }
+
   /// 下载单个食谱JSON文件
   Future<bool> downloadRecipeJson(RecipeUpdate update) async {
     try {
-      final url = '$_remoteBaseUrl/recipes/${update.category}/${update.category}_${update.recipeId}.json';
+      final url =
+          '$_remoteBaseUrl/recipes/${update.category}/${update.recipeId}.json';
       final cacheDir = await getApplicationDocumentsDirectory();
-      final localPath = '${cacheDir.path}/$_localDataDirName/recipes/${update.category}/${update.category}_${update.recipeId}.json';
+      final localPath =
+          '${cacheDir.path}/$_localDataDirName/recipes/${update.category}/${update.recipeId}.json';
 
       final file = File(localPath);
       await file.parent.create(recursive: true);
 
       final response = await _dio.get(url);
-      await file.writeAsString(response.data);
+      if (response.data is String) {
+        await file.writeAsString(response.data as String);
+      } else {
+        await file.writeAsString(jsonEncode(response.data));
+      }
 
       print('✅ 食谱JSON下载完成: ${update.category}/${update.recipeId}');
       return true;
@@ -464,11 +598,39 @@ class DataSyncService extends _$DataSyncService {
     }
   }
 
+  /// 下载单个教程 JSON 文件
+  Future<bool> downloadTipJson(TipUpdate update) async {
+    try {
+      final url =
+          '$_remoteBaseUrl/tips/${update.category}/${update.tipId}.json';
+      final cacheDir = await getApplicationDocumentsDirectory();
+      final localPath =
+          '${cacheDir.path}/$_localDataDirName/tips/${update.category}/${update.tipId}.json';
+
+      final file = File(localPath);
+      await file.parent.create(recursive: true);
+
+      final response = await _dio.get(url);
+      if (response.data is String) {
+        await file.writeAsString(response.data as String);
+      } else {
+        await file.writeAsString(jsonEncode(response.data));
+      }
+
+      print('✅ 教程 JSON 下载完成: ${update.category}/${update.tipId}');
+      return true;
+    } catch (e) {
+      print('❌ 教程 JSON 下载失败: ${update.category}/${update.tipId}, 错误: $e');
+      return false;
+    }
+  }
+
   /// 提取封面图下载任务（按菜名）
   Future<DownloadTask?> extractCoverImageTask(RecipeUpdate update) async {
     try {
       final cacheDir = await getApplicationDocumentsDirectory();
-      final jsonPath = '${cacheDir.path}/$_localDataDirName/recipes/${update.category}/${update.category}_${update.recipeId}.json';
+      final jsonPath =
+          '${cacheDir.path}/$_localDataDirName/recipes/${update.category}/${update.recipeId}.json';
       final file = File(jsonPath);
 
       if (!await file.exists()) {
@@ -481,8 +643,10 @@ class DataSyncService extends _$DataSyncService {
       final recipeName = recipeData['name'] as String;
 
       // 封面图按菜名存储：covers/{category}/{name}.webp
-      final coverUrl = '$_remoteBaseUrl/covers/${update.category}/$recipeName.webp';
-      final localPath = '${cacheDir.path}/recipe_images/covers/${update.category}/$recipeName.webp';
+      final coverUrl =
+          '$_remoteBaseUrl/covers/${update.category}/$recipeName.webp';
+      final localPath =
+          '${cacheDir.path}/recipe_images/covers/${update.category}/$recipeName.webp';
 
       print('📋 封面图下载任务:');
       print('   - 分类: ${update.category}');
@@ -505,12 +669,15 @@ class DataSyncService extends _$DataSyncService {
   }
 
   /// 从assets中的食谱JSON提取详情图下载任务
-  Future<List<DownloadTask>> extractDetailImageTasksFromAssets(RecipeUpdate update) async {
+  Future<List<DownloadTask>> extractDetailImageTasksFromAssets(
+    RecipeUpdate update,
+  ) async {
     final tasks = <DownloadTask>[];
 
     try {
       // 从assets读取JSON文件，路径格式：assets/recipes/{category}/{recipeId}.json
-      final assetPath = 'assets/recipes/${update.category}/${update.recipeId}.json';
+      final assetPath =
+          'assets/recipes/${update.category}/${update.recipeId}.json';
 
       String content;
       try {
@@ -531,34 +698,43 @@ class DataSyncService extends _$DataSyncService {
 
       for (int i = 0; i < images.length; i++) {
         // 详情图按ID存储：images/{category}/{recipeId}_$i.webp
-        final imageUrl = '$_remoteBaseUrl/images/${update.category}/${update.recipeId}_$i.webp';
-        final localPath = '${cacheDir.path}/recipe_images/details/${update.category}/${update.recipeId}_$i.webp';
+        final imageUrl =
+            '$_remoteBaseUrl/images/${update.category}/${update.recipeId}_$i.webp';
+        final localPath =
+            '${cacheDir.path}/recipe_images/details/${update.category}/${update.recipeId}_$i.webp';
 
-        tasks.add(DownloadTask(
-          id: 'detail_${update.category}_${update.recipeId}_$i',
-          category: update.category,
-          recipeId: update.recipeId,
-          imageUrl: imageUrl,
-          localPath: localPath,
-          priority: 1,
-        ));
+        tasks.add(
+          DownloadTask(
+            id: 'detail_${update.category}_${update.recipeId}_$i',
+            category: update.category,
+            recipeId: update.recipeId,
+            imageUrl: imageUrl,
+            localPath: localPath,
+            priority: 1,
+          ),
+        );
       }
 
       return tasks;
     } catch (e) {
-      print('❌ 从Assets提取详情图任务失败: ${update.category}/${update.recipeId}, 错误: $e');
+      print(
+        '❌ 从Assets提取详情图任务失败: ${update.category}/${update.recipeId}, 错误: $e',
+      );
       return tasks;
     }
   }
 
   /// 从文档目录的食谱JSON中提取详情图下载任务（按ID）
-  Future<List<DownloadTask>> extractDetailImageTasks(RecipeUpdate update) async {
+  Future<List<DownloadTask>> extractDetailImageTasks(
+    RecipeUpdate update,
+  ) async {
     final tasks = <DownloadTask>[];
 
     try {
       final cacheDir = await getApplicationDocumentsDirectory();
       // 修复：recipeId已经包含了category前缀，不需要再拼接
-      final jsonPath = '${cacheDir.path}/$_localDataDirName/recipes/${update.category}/${update.recipeId}.json';
+      final jsonPath =
+          '${cacheDir.path}/$_localDataDirName/recipes/${update.category}/${update.recipeId}.json';
       final file = File(jsonPath);
 
       if (!await file.exists()) {
@@ -576,20 +752,24 @@ class DataSyncService extends _$DataSyncService {
 
       for (int i = 0; i < images.length; i++) {
         // 详情图按ID存储：images/{category}/{recipeId}_$i.webp
-        final imageUrl = '$_remoteBaseUrl/images/${update.category}/${update.recipeId}_$i.webp';
-        final localPath = '${cacheDir.path}/recipe_images/details/${update.category}/${update.recipeId}_$i.webp';
+        final imageUrl =
+            '$_remoteBaseUrl/images/${update.category}/${update.recipeId}_$i.webp';
+        final localPath =
+            '${cacheDir.path}/recipe_images/details/${update.category}/${update.recipeId}_$i.webp';
 
         print('   [$i] URL: $imageUrl');
         print('   [$i] 本地: $localPath');
 
-        tasks.add(DownloadTask(
-          id: 'detail_${update.category}_${update.recipeId}_$i',
-          category: update.category,
-          recipeId: update.recipeId,
-          imageUrl: imageUrl,
-          localPath: localPath,
-          priority: 1, // 详情图优先级次之
-        ));
+        tasks.add(
+          DownloadTask(
+            id: 'detail_${update.category}_${update.recipeId}_$i',
+            category: update.category,
+            recipeId: update.recipeId,
+            imageUrl: imageUrl,
+            localPath: localPath,
+            priority: 1, // 详情图优先级次之
+          ),
+        );
       }
     } catch (e) {
       print('❌ 提取详情图任务失败: ${update.category}/${update.recipeId}, 错误: $e');
@@ -617,7 +797,9 @@ class DataSyncService extends _$DataSyncService {
 
       // 检查索引数据
       final recipeCount = (index['recipes'] as List<dynamic>?)?.length ?? 0;
+      final tipCount = (index['tips'] as List<dynamic>?)?.length ?? 0;
       print('   - 索引包含食谱数量: $recipeCount');
+      print('   - 索引包含教程数量: $tipCount');
 
       // 写入文件
       final jsonContent = jsonEncode(index);
@@ -629,7 +811,6 @@ class DataSyncService extends _$DataSyncService {
       final writtenSize = await file.length();
       print('   - 写入文件大小: $writtenSize 字节');
       print('   - ✅ 本地清单保存完成');
-
     } catch (e) {
       print('❌ 保存本地清单失败: $e');
       print('   - 错误类型: ${e.runtimeType}');
@@ -697,6 +878,21 @@ class RecipeUpdate {
   });
 }
 
+/// 教程更新信息
+class TipUpdate {
+  final String category;
+  final String tipId;
+  final String hash;
+  final bool isNew;
+
+  TipUpdate({
+    required this.category,
+    required this.tipId,
+    required this.hash,
+    required this.isNew,
+  });
+}
+
 /// 数据同步状态
 @freezed
 class DataSyncState with _$DataSyncState {
@@ -705,6 +901,8 @@ class DataSyncState with _$DataSyncState {
     required int progress,
     required int downloadedRecipes,
     required int totalRecipes,
+    required int downloadedTips,
+    required int totalTips,
     required int downloadedImages,
     required int totalImages,
     String? error,
