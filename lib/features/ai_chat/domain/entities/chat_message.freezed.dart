@@ -27,7 +27,9 @@ mixin _$ChatMessage {
   MessageStatus get status => throw _privateConstructorUsedError;
   String? get modelId =>
       throw _privateConstructorUsedError; // 消息使用的模型ID（用于显示模型名称）
-  List<RecipeCard>? get recipeCards => throw _privateConstructorUsedError;
+  List<RecipeCard>? get recipeCards =>
+      throw _privateConstructorUsedError; // 菜谱卡片（UI 展示用）
+  List<String>? get createdRecipeIds => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
@@ -48,7 +50,8 @@ abstract class $ChatMessageCopyWith<$Res> {
       DateTime timestamp,
       MessageStatus status,
       String? modelId,
-      List<RecipeCard>? recipeCards});
+      List<RecipeCard>? recipeCards,
+      List<String>? createdRecipeIds});
 }
 
 /// @nodoc
@@ -71,6 +74,7 @@ class _$ChatMessageCopyWithImpl<$Res, $Val extends ChatMessage>
     Object? status = null,
     Object? modelId = freezed,
     Object? recipeCards = freezed,
+    Object? createdRecipeIds = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -101,6 +105,10 @@ class _$ChatMessageCopyWithImpl<$Res, $Val extends ChatMessage>
           ? _value.recipeCards
           : recipeCards // ignore: cast_nullable_to_non_nullable
               as List<RecipeCard>?,
+      createdRecipeIds: freezed == createdRecipeIds
+          ? _value.createdRecipeIds
+          : createdRecipeIds // ignore: cast_nullable_to_non_nullable
+              as List<String>?,
     ) as $Val);
   }
 }
@@ -120,7 +128,8 @@ abstract class _$$ChatMessageImplCopyWith<$Res>
       DateTime timestamp,
       MessageStatus status,
       String? modelId,
-      List<RecipeCard>? recipeCards});
+      List<RecipeCard>? recipeCards,
+      List<String>? createdRecipeIds});
 }
 
 /// @nodoc
@@ -141,6 +150,7 @@ class __$$ChatMessageImplCopyWithImpl<$Res>
     Object? status = null,
     Object? modelId = freezed,
     Object? recipeCards = freezed,
+    Object? createdRecipeIds = freezed,
   }) {
     return _then(_$ChatMessageImpl(
       id: null == id
@@ -171,6 +181,10 @@ class __$$ChatMessageImplCopyWithImpl<$Res>
           ? _value._recipeCards
           : recipeCards // ignore: cast_nullable_to_non_nullable
               as List<RecipeCard>?,
+      createdRecipeIds: freezed == createdRecipeIds
+          ? _value._createdRecipeIds
+          : createdRecipeIds // ignore: cast_nullable_to_non_nullable
+              as List<String>?,
     ));
   }
 }
@@ -185,9 +199,11 @@ class _$ChatMessageImpl implements _ChatMessage {
       required this.timestamp,
       this.status = MessageStatus.sent,
       this.modelId,
-      final List<RecipeCard>? recipeCards})
+      final List<RecipeCard>? recipeCards,
+      final List<String>? createdRecipeIds})
       : _content = content,
-        _recipeCards = recipeCards;
+        _recipeCards = recipeCards,
+        _createdRecipeIds = createdRecipeIds;
 
   factory _$ChatMessageImpl.fromJson(Map<String, dynamic> json) =>
       _$$ChatMessageImplFromJson(json);
@@ -223,9 +239,22 @@ class _$ChatMessageImpl implements _ChatMessage {
     return EqualUnmodifiableListView(value);
   }
 
+// 菜谱卡片（UI 展示用）
+  final List<String>? _createdRecipeIds;
+// 菜谱卡片（UI 展示用）
+  @override
+  List<String>? get createdRecipeIds {
+    final value = _createdRecipeIds;
+    if (value == null) return null;
+    if (_createdRecipeIds is EqualUnmodifiableListView)
+      return _createdRecipeIds;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(value);
+  }
+
   @override
   String toString() {
-    return 'ChatMessage(id: $id, role: $role, content: $content, timestamp: $timestamp, status: $status, modelId: $modelId, recipeCards: $recipeCards)';
+    return 'ChatMessage(id: $id, role: $role, content: $content, timestamp: $timestamp, status: $status, modelId: $modelId, recipeCards: $recipeCards, createdRecipeIds: $createdRecipeIds)';
   }
 
   @override
@@ -241,7 +270,9 @@ class _$ChatMessageImpl implements _ChatMessage {
             (identical(other.status, status) || other.status == status) &&
             (identical(other.modelId, modelId) || other.modelId == modelId) &&
             const DeepCollectionEquality()
-                .equals(other._recipeCards, _recipeCards));
+                .equals(other._recipeCards, _recipeCards) &&
+            const DeepCollectionEquality()
+                .equals(other._createdRecipeIds, _createdRecipeIds));
   }
 
   @JsonKey(ignore: true)
@@ -254,7 +285,8 @@ class _$ChatMessageImpl implements _ChatMessage {
       timestamp,
       status,
       modelId,
-      const DeepCollectionEquality().hash(_recipeCards));
+      const DeepCollectionEquality().hash(_recipeCards),
+      const DeepCollectionEquality().hash(_createdRecipeIds));
 
   @JsonKey(ignore: true)
   @override
@@ -278,7 +310,8 @@ abstract class _ChatMessage implements ChatMessage {
       required final DateTime timestamp,
       final MessageStatus status,
       final String? modelId,
-      final List<RecipeCard>? recipeCards}) = _$ChatMessageImpl;
+      final List<RecipeCard>? recipeCards,
+      final List<String>? createdRecipeIds}) = _$ChatMessageImpl;
 
   factory _ChatMessage.fromJson(Map<String, dynamic> json) =
       _$ChatMessageImpl.fromJson;
@@ -297,6 +330,8 @@ abstract class _ChatMessage implements ChatMessage {
   String? get modelId;
   @override // 消息使用的模型ID（用于显示模型名称）
   List<RecipeCard>? get recipeCards;
+  @override // 菜谱卡片（UI 展示用）
+  List<String>? get createdRecipeIds;
   @override
   @JsonKey(ignore: true)
   _$$ChatMessageImplCopyWith<_$ChatMessageImpl> get copyWith =>

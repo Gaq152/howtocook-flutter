@@ -1,5 +1,6 @@
 import '../../../sync/domain/entities/manifest.dart';
 import '../../../sync/infrastructure/bundled_data_loader.dart';
+import '../../../recipe/domain/entities/recipe.dart';
 
 /// 菜谱卡片数据
 class RecipeCardData {
@@ -25,6 +26,17 @@ class RecipeCardData {
       category: index.category,
       categoryName: index.categoryName,
       difficulty: index.difficulty,
+    );
+  }
+
+  /// 从 Recipe 创建（用于 AI 生成的食谱）
+  factory RecipeCardData.fromRecipe(Recipe recipe) {
+    return RecipeCardData(
+      id: recipe.id,
+      name: recipe.name,
+      category: recipe.category,
+      categoryName: recipe.categoryName,
+      difficulty: recipe.difficulty,
     );
   }
 }

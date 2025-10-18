@@ -20,6 +20,9 @@ _$ChatMessageImpl _$$ChatMessageImplFromJson(Map<String, dynamic> json) =>
       recipeCards: (json['recipeCards'] as List<dynamic>?)
           ?.map((e) => RecipeCard.fromJson(e as Map<String, dynamic>))
           .toList(),
+      createdRecipeIds: (json['createdRecipeIds'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
     );
 
 Map<String, dynamic> _$$ChatMessageImplToJson(_$ChatMessageImpl instance) =>
@@ -31,6 +34,7 @@ Map<String, dynamic> _$$ChatMessageImplToJson(_$ChatMessageImpl instance) =>
       'status': _$MessageStatusEnumMap[instance.status]!,
       'modelId': instance.modelId,
       'recipeCards': instance.recipeCards,
+      'createdRecipeIds': instance.createdRecipeIds,
     };
 
 const _$MessageRoleEnumMap = {

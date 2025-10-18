@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../recipe/domain/entities/recipe.dart';
 import '../../domain/entities/chat_message.dart';
 import '../../infrastructure/services/recipe_recognizer.dart';
 import 'recipe_card_widget.dart';
@@ -17,7 +18,7 @@ import 'recipe_card_widget.dart';
 /// - 操作按钮（复制、重试、编辑、删除）
 /// - 模型头像显示
 /// - 流式打字效果
-/// - 菜谱卡片展示
+/// - 菜谱卡片展示（包括内置和 AI 生成的食谱）
 class MessageBubble extends StatefulWidget {
   final ChatMessage message;
   final VoidCallback? onDelete;
@@ -29,6 +30,7 @@ class MessageBubble extends StatefulWidget {
   final String? streamingText;
   final RecipeRecognizer? recipeRecognizer;
   final Function(String recipeId)? onRecipeTap;
+  final Map<String, Recipe>? createdRecipes; // AI 生成的食谱列表
 
   const MessageBubble({
     super.key,
@@ -42,6 +44,7 @@ class MessageBubble extends StatefulWidget {
     this.streamingText,
     this.recipeRecognizer,
     this.onRecipeTap,
+    this.createdRecipes,
   });
 
   @override
@@ -67,15 +70,10 @@ class _MessageBubbleState extends State<MessageBubble> {
     }
   }
 
-  /// 识别消息中的菜谱
+  /// 识别消息中的菜谱（包括内置和 AI 生成的）
   Future<void> _recognizeRecipes() async {
     // 只对 AI 消息进行菜谱识别
     if (widget.message.role != MessageRole.assistant) {
-      return;
-    }
-
-    // 检查是否有 RecipeRecognizer
-    if (widget.recipeRecognizer == null) {
       return;
     }
 
@@ -87,19 +85,57 @@ class _MessageBubbleState extends State<MessageBubble> {
             .map((c) => c.text)
             .join('\n');
 
-    if (displayText.isEmpty) {
-      return;
-    }
+    final allRecipes = <RecipeCardData>[];
 
     try {
-      final recipes = await widget.recipeRecognizer!.extractRecipesFromText(displayText);
+      // 1. 优先处理：该消息创建的食谱（不依赖文本匹配）
+      if (widget.message.createdRecipeIds != null &&
+          widget.message.createdRecipeIds!.isNotEmpty &&
+          widget.createdRecipes != null) {
+        for (final recipeId in widget.message.createdRecipeIds!) {
+          final recipe = widget.createdRecipes![recipeId];
+          if (recipe != null) {
+            allRecipes.add(RecipeCardData.fromRecipe(recipe));
+            debugPrint('✅ Showing created recipe card: ${recipe.name} (ID: $recipeId)');
+          }
+        }
+      }
+
+      // 2. 识别内置菜谱（通过 RecipeRecognizer，依赖文本匹配）
+      if (displayText.isNotEmpty && widget.recipeRecognizer != null) {
+        final builtinRecipes = await widget.recipeRecognizer!.extractRecipesFromText(displayText);
+        for (final recipe in builtinRecipes) {
+          // 避免重复添加（检查 ID 是否已存在）
+          if (!allRecipes.any((r) => r.id == recipe.id)) {
+            allRecipes.add(recipe);
+          }
+        }
+      }
+
+      // 3. 备用：识别其他 AI 创建的菜谱（依赖文本匹配）
+      if (displayText.isNotEmpty &&
+          widget.createdRecipes != null &&
+          widget.createdRecipes!.isNotEmpty) {
+        for (final entry in widget.createdRecipes!.entries) {
+          final recipe = entry.value;
+          // 检查文本中是否包含这个食谱的名称
+          if (displayText.contains(recipe.name)) {
+            // 避免重复添加（检查 ID 是否已存在）
+            if (!allRecipes.any((r) => r.id == recipe.id)) {
+              allRecipes.add(RecipeCardData.fromRecipe(recipe));
+            }
+          }
+        }
+      }
+
       if (mounted) {
         setState(() {
-          _recognizedRecipes = recipes;
+          _recognizedRecipes = allRecipes.isEmpty ? null : allRecipes;
         });
       }
     } catch (e) {
       // 识别失败不影响消息显示
+      debugPrint('Recipe recognition error: $e');
     }
   }
 

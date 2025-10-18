@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart'; // 用于 kDebugMode
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
@@ -8,11 +9,31 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/storage/hive_service.dart';
 import '../../../sync/infrastructure/bundled_data_loader.dart';
+import '../../../recipe/domain/entities/recipe.dart';
 import '../../domain/entities/chat_message.dart';
 import '../../infrastructure/services/ai_service_factory.dart';
 import '../../infrastructure/services/mcp_service.dart';
 import '../../infrastructure/services/recipe_recognizer.dart';
 import '../widgets/message_bubble.dart';
+
+/// MCP 工具调用记录（用于调试面板）
+class MCPToolCall {
+  final String toolName;
+  final DateTime timestamp;
+  final Map<String, dynamic> input;
+  final Map<String, dynamic> output;
+  final String? error;
+  final Duration duration;
+
+  MCPToolCall({
+    required this.toolName,
+    required this.timestamp,
+    required this.input,
+    required this.output,
+    this.error,
+    required this.duration,
+  });
+}
 
 /// AI 聊天页面
 ///
@@ -44,6 +65,10 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   bool _shouldStopStreaming = false;
   String? _selectedImagePath;
   List<Map<String, dynamic>>? _mcpTools;
+  // 新创建的食谱（用于在聊天中显示卡片和跳转到预览页面）
+  final Map<String, Recipe> _createdRecipes = {};
+  // MCP 工具调用历史（仅 debug 模式）
+  final List<MCPToolCall> _mcpCallHistory = [];
 
   // 当前选择的模型 ID（默认 DeepSeek）
   String _currentModelId = 'builtin-deepseek-chat';
@@ -84,7 +109,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
 2. **完整展示工具结果**：获取到MCP工具返回的数据后，必须将这些数据完整地展示给用户，不要忽略或省略
 3. **基于工具结果回答**：在输出工具查询结果后，可以添加你的专业建议和补充说明
 4. **搜索功能**：要搜索食谱时使用getAllRecipes工具获取所有菜谱，然后筛选匹配的结果
-5. **时令建议**：根据当前时间（${now.month}月，${timeOfDay}）、季节和时间段给出合适的饮食建议
+5. **时令建议**：根据当前时间（${now.month}月，$timeOfDay）、季节和时间段给出合适的饮食建议
 
 可用的MCP工具：
 - getAllRecipes: 获取所有菜谱（用于搜索和浏览）
@@ -92,6 +117,13 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
 - getRecipeById: 查询菜谱详情（使用菜谱名称，如"红烧肉"）
 - recommendMeals: 智能推荐菜谱（可指定人数、过敏原、忌口）
 - whatToEat: 今天吃什么（随机推荐，可指定人数）
+- createRecipe: 创建新食谱（当用户提供食谱文本时使用）
+
+关于createRecipe工具：
+- 当用户提供了食谱的文本描述（包含食材、步骤等），使用此工具创建新食谱
+- 参数：recipeText（必需）、checkDuplicate（可选，默认true）、similarityThreshold（可选，默认0.75）
+- 创建成功后，在回复中提及食谱名称，系统会自动显示可点击的食谱卡片
+- 用户点击卡片可以预览并保存到"我的食谱"
 
 注意：getAllRecipes返回的ID格式为"recipe_数字"，这是生成的ID，不能用于getRecipeById查询。查询详情时请使用菜谱的中文名称。''';
   }
@@ -131,8 +163,9 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   Future<void> _loadChatHistory() async {
     try {
       final hiveService = HiveService();
-      final historyJson = await hiveService.getChatHistory();
 
+      // 加载聊天消息
+      final historyJson = await hiveService.getChatHistory();
       if (historyJson != null && historyJson.isNotEmpty) {
         setState(() {
           _messages.addAll(
@@ -143,8 +176,28 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
             }).toList(),
           );
         });
-        _scrollToBottom();
       }
+
+      // 加载 AI 创建的食谱
+      final recipesJson = await hiveService.getSetting('ai_created_recipes');
+      if (recipesJson is List) {
+        setState(() {
+          for (final item in recipesJson) {
+            if (item is Map) {
+              try {
+                final map = Map<String, dynamic>.from(item);
+                final recipe = Recipe.fromJson(map);
+                _createdRecipes[recipe.id] = recipe;
+              } catch (e) {
+                debugPrint('Failed to parse recipe: $e');
+              }
+            }
+          }
+        });
+        debugPrint('Loaded ${_createdRecipes.length} AI-created recipes');
+      }
+
+      _scrollToBottom();
     } catch (e, stackTrace) {
       debugPrint('Failed to load chat history: $e');
       debugPrint('Stack trace: $stackTrace');
@@ -172,17 +225,34 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   Future<void> _saveChatHistory() async {
     try {
       final hiveService = HiveService();
-      // 使用 jsonEncode/jsonDecode 确保完全序列化
+
+      // 保存聊天消息
       final jsonString = jsonEncode(_messages.map((m) => m.toJson()).toList());
       final jsonList = (jsonDecode(jsonString) as List)
           .map((item) => item as Map<String, dynamic>)
           .toList();
-
       await hiveService.saveChatHistory(jsonList);
       debugPrint('Chat history saved: ${jsonList.length} messages');
+
+      // 保存 AI 创建的食谱
+      await _saveCreatedRecipes();
     } catch (e, stackTrace) {
       debugPrint('Failed to save chat history: $e');
       debugPrint('Stack trace: $stackTrace');
+    }
+  }
+
+  /// 保存 AI 创建的食谱（独立方法，可在创建时立即调用）
+  Future<void> _saveCreatedRecipes() async {
+    try {
+      final hiveService = HiveService();
+      final recipesJson = _createdRecipes.values
+          .map((recipe) => recipe.toJson())
+          .toList();
+      await hiveService.saveSetting('ai_created_recipes', recipesJson);
+      debugPrint('Saved ${_createdRecipes.length} AI-created recipes');
+    } catch (e) {
+      debugPrint('Failed to save created recipes: $e');
     }
   }
 
@@ -227,6 +297,21 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
           _buildInputArea(),
         ],
       ),
+      // MCP 调试悬浮按钮（仅 debug 模式）
+      floatingActionButton: kDebugMode && _mcpCallHistory.isNotEmpty
+          ? FloatingActionButton(
+              onPressed: _showMCPDebugPanel,
+              tooltip: 'MCP 调试面板',
+              backgroundColor: Colors.orange,
+              child: Badge(
+                label: Text('${_mcpCallHistory.length}'),
+                backgroundColor: Colors.red,
+                textColor: Colors.white,
+                child: const Icon(Icons.bug_report),
+              ),
+            )
+          : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.startTop,
     );
   }
 
@@ -409,9 +494,17 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
           isStreaming: isLastStreaming,
           streamingText: isLastStreaming ? _streamingText : null,
           recipeRecognizer: _recipeRecognizer,
+          createdRecipes: _createdRecipes, // 传递 AI 创建的食谱列表
           onRecipeTap: (recipeId) {
-            // 导航到菜谱详情页
-            context.push('/recipe/$recipeId');
+            // 检查是否是 AI 生成的食谱
+            if (_createdRecipes.containsKey(recipeId)) {
+              // AI 生成的食谱：跳转到预览页面
+              final recipe = _createdRecipes[recipeId]!;
+              context.push('/recipe-preview', extra: recipe);
+            } else {
+              // 内置食谱：直接跳转到详情页
+              context.push('/recipe/$recipeId');
+            }
           },
           onDelete: () {
             setState(() {
@@ -736,6 +829,8 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
         // 使用非流式API进行工具调用循环（最多10轮）
         var toolCallCount = 0;
         const maxToolCalls = 10;
+        // 收集本次对话创建的食谱ID列表
+        final createdRecipeIds = <String>[];
 
         while (toolCallCount < maxToolCalls) {
           toolCallCount++;
@@ -763,6 +858,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                 content: response.content,
                 timestamp: tempAssistantMessage.timestamp,
                 modelId: _currentModelId, // 保存使用的模型ID
+                createdRecipeIds: createdRecipeIds.isNotEmpty ? createdRecipeIds : null,
               );
               _isLoading = false;
             });
@@ -781,6 +877,19 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                 // 执行 MCP 工具
                 final result = await _executeMCPTool(content.name, content.input);
                 debugPrint('Tool ${content.name} executed successfully');
+
+                // 如果是 createRecipe 工具且成功，收集创建的食谱 ID
+                final cleanToolName = content.name.replaceFirst('mcp_howtocook_', '');
+                if (cleanToolName == 'createRecipe' &&
+                    result['success'] == true &&
+                    result.containsKey('recipe')) {
+                  final recipeData = result['recipe'] as Map<String, dynamic>?;
+                  if (recipeData != null && recipeData.containsKey('id')) {
+                    final recipeId = recipeData['id'] as String;
+                    createdRecipeIds.add(recipeId);
+                    debugPrint('✅ Collected created recipe ID: $recipeId');
+                  }
+                }
 
                 toolResults.add(
                   MessageContent.toolResult(
@@ -839,6 +948,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
               content: [MessageContent.text(text: '抱歉，工具调用次数过多，请重新尝试。')],
               timestamp: tempAssistantMessage.timestamp,
               modelId: _currentModelId, // 保存使用的模型ID
+              createdRecipeIds: createdRecipeIds.isNotEmpty ? createdRecipeIds : null,
             );
             _isLoading = false;
           });
@@ -944,15 +1054,21 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
 
     debugPrint('Executing MCP tool: $cleanToolName with input: $input');
 
+    // 记录开始时间
+    final startTime = DateTime.now();
+    Map<String, dynamic>? result;
+    String? errorMessage;
+
     try {
       switch (cleanToolName) {
         case 'getAllRecipes':
           final recipes = await _mcpService.getAllRecipes();
-          return {
+          result = {
             'success': true,
             'recipes': recipes.map((r) => r.toJson()).toList(),
             'count': recipes.length,
           };
+          break;
 
         case 'getRecipesByCategory':
           // 支持多种参数名
@@ -962,12 +1078,13 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
             throw Exception('Missing required parameter: category');
           }
           final recipes = await _mcpService.getRecipesByCategory(category);
-          return {
+          result = {
             'success': true,
             'category': category,
             'recipes': recipes.map((r) => r.toJson()).toList(),
             'count': recipes.length,
           };
+          break;
 
         case 'getRecipeById':
           // 支持多种参数名：query, id, recipeId, recipeName
@@ -979,19 +1096,21 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
 
           // 检查是否是生成的 ID（格式：recipe_数字）
           if (query.startsWith('recipe_')) {
-            return {
+            result = {
               'success': false,
               'error': 'Generated ID "$query" cannot be used for detail query. '
                   'Please use the recipe name instead. '
                   'Example: Use "红烧肉" instead of "$query".',
             };
+            break;
           }
 
           final recipe = await _mcpService.getRecipeById(query);
-          return {
+          result = {
             'success': true,
             'recipe': recipe.toJson(),
           };
+          break;
 
         case 'recommendMeals':
           // 支持多种参数名：peopleCount, numberOfPeople, people
@@ -1002,15 +1121,16 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
           final allergies = input['allergies'] as List<dynamic>?;
           final avoidItems = input['avoidItems'] as List<dynamic>?;
 
-          final result = await _mcpService.recommendMeals(
+          final mealsResult = await _mcpService.recommendMeals(
             peopleCount: peopleCount,
             allergies: allergies?.cast<String>(),
             avoidItems: avoidItems?.cast<String>(),
           );
-          return {
+          result = {
             'success': true,
-            ...result,
+            ...mealsResult,
           };
+          break;
 
         case 'whatToEat':
           // 支持多种参数名：peopleCount, numberOfPeople, people
@@ -1022,12 +1142,184 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
           debugPrint('whatToEat with peopleCount: $peopleCount');
 
           final recipes = await _mcpService.whatToEat(peopleCount: peopleCount);
-          return {
+          result = {
             'success': true,
             'recipes': recipes.map((r) => r.toJson()).toList(),
             'count': recipes.length,
             'peopleCount': peopleCount,
           };
+          break;
+
+        case 'createRecipe':
+          // 支持多种参数名
+          final recipeTextValue = input['recipeText'] ?? input['text'] ?? input['recipe'];
+          final recipeText = recipeTextValue?.toString();
+          if (recipeText == null || recipeText.isEmpty) {
+            throw Exception('Missing required parameter: recipeText');
+          }
+
+          final checkDuplicate = input['checkDuplicate'] as bool? ?? true;
+          final similarityThreshold = (input['similarityThreshold'] as num?)?.toDouble() ?? 0.75;
+
+          debugPrint('createRecipe with text length: ${recipeText.length}');
+
+          final createResult = await _mcpService.createRecipe(
+            recipeText: recipeText,
+            checkDuplicate: checkDuplicate,
+            similarityThreshold: similarityThreshold,
+          );
+
+          // === 调试日志：打印 MCP 原始返回数据 ===
+          debugPrint('=== MCP createRecipe 原始返回数据 ===');
+          debugPrint('Success: ${createResult['success']}');
+          if (createResult.containsKey('error')) {
+            debugPrint('Error: ${createResult['error']}');
+          }
+          if (createResult.containsKey('recipe')) {
+            final recipeData = createResult['recipe'] as Map<String, dynamic>;
+            debugPrint('Recipe data keys: ${recipeData.keys.toList()}');
+            debugPrint('  - name: ${recipeData['name']}');
+            debugPrint('  - category: ${recipeData['category']}');
+            debugPrint('  - difficulty: ${recipeData['difficulty']}');
+            debugPrint('  - ingredients: ${recipeData['ingredients']}');
+            debugPrint('  - steps: ${recipeData['steps']}');
+            debugPrint('  - additional_notes type: ${recipeData['additional_notes']?.runtimeType}');
+            debugPrint('  - additional_notes: ${recipeData['additional_notes']}');
+          }
+          debugPrint('=======================================');
+
+          // 提取创建的食谱数据
+          if (createResult.containsKey('recipe')) {
+            final recipeData = createResult['recipe'] as Map<String, dynamic>;
+
+            // 中文分类到英文的映射
+            final categoryMap = {
+              '水产': 'aquatic',
+              '早餐': 'breakfast',
+              '调料': 'condiment',
+              '甜品': 'dessert',
+              '饮品': 'drink',
+              '荤菜': 'meat_dish',
+              '半成品加工': 'semi-finished',
+              '汤': 'soup',
+              '主食': 'staple',
+              '素菜': 'vegetable_dish',
+            };
+
+            // 获取中文分类名称（MCP 返回的字段名是 category，不是 categoryName）
+            final categoryNameFromMCP = recipeData['category'] as String?;
+            final categoryId = categoryNameFromMCP != null
+                ? (categoryMap[categoryNameFromMCP] ?? 'user_created')
+                : 'user_created';
+
+            // 生成 ID 和 hash
+            final timestamp = DateTime.now().millisecondsSinceEpoch;
+            final recipeName = recipeData['name'] as String? ?? '未命名食谱';
+            final recipeId = 'ai_${categoryId}_${timestamp.toRadixString(16)}';
+            final hash = '$recipeId-$timestamp'.hashCode.abs().toString();
+
+            // 转换 MCP ingredients 格式为我们的格式
+            // MCP: {name: "烤肠 6根", text_quantity: "烤肠 6根", ...}
+            // 我们需要: {name: "烤肠", text: "烤肠 6根"}
+            final mcpIngredients = recipeData['ingredients'] as List<dynamic>? ?? [];
+            final ingredients = mcpIngredients.map((item) {
+              if (item is Map<String, dynamic>) {
+                final textQuantity = item['text_quantity']?.toString() ?? item['name']?.toString() ?? '';
+                // 提取食材名称（第一个空格前的部分，或整个文本）
+                final firstSpaceIndex = textQuantity.indexOf(' ');
+                final name = firstSpaceIndex > 0
+                    ? textQuantity.substring(0, firstSpaceIndex)
+                    : textQuantity;
+
+                return {
+                  'name': name,
+                  'text': textQuantity,
+                };
+              }
+              return {'name': '', 'text': item.toString()};
+            }).toList();
+
+            // 转换 MCP steps 格式为我们的格式
+            // MCP: {step: 1, description: "..."}
+            // 我们需要: {description: "..."}
+            final mcpSteps = recipeData['steps'] as List<dynamic>? ?? [];
+            final steps = mcpSteps.map((item) {
+              if (item is Map<String, dynamic>) {
+                return {'description': item['description']?.toString() ?? ''};
+              }
+              return {'description': item.toString()};
+            }).toList();
+
+            // 转换 tips/additional_notes（可能是 String 或 List）
+            String? tipsText;
+            final additionalNotes = recipeData['additional_notes'];
+            if (additionalNotes is String) {
+              tipsText = additionalNotes;
+            } else if (additionalNotes is List) {
+              // 如果是列表，合并为字符串
+              tipsText = additionalNotes.map((item) => item.toString()).join('\n');
+            }
+
+            // 构建完整的食谱数据
+            final sanitizedData = <String, dynamic>{
+              'id': recipeId,
+              'name': recipeName,
+              'category': categoryId,
+              'categoryName': categoryNameFromMCP ?? '用户创建',
+              'difficulty': recipeData['difficulty'] ?? 3,
+              'images': recipeData['images'] ?? [],
+              'ingredients': ingredients,
+              'tools': recipeData['tools'] ?? [],
+              'steps': steps,
+              'tips': tipsText,
+              'warnings': recipeData['warnings'] ?? [],
+              'hash': hash,
+            };
+
+            debugPrint('=== 清洗后的食谱数据 ===');
+            debugPrint('Generated ID: $recipeId');
+            debugPrint('Generated hash: $hash');
+            debugPrint('Mapped category: $categoryNameFromMCP -> $categoryId');
+            debugPrint('Ingredients: ${ingredients.length} items');
+            debugPrint('Steps: ${steps.length} items');
+
+            try {
+              // 将食谱数据转换为 Recipe 实体
+              final recipe = Recipe.fromJson(sanitizedData);
+
+              // 保存到 _createdRecipes 以便在聊天中显示卡片
+              setState(() {
+                _createdRecipes[recipe.id] = recipe.copyWith(
+                  source: RecipeSource.aiGenerated, // 标记为 AI 生成
+                );
+              });
+
+              // 立即保存到存储（避免切换页面时丢失）
+              _saveCreatedRecipes();
+
+              debugPrint('✅ Recipe created and saved: ${recipe.name} (ID: ${recipe.id})');
+
+              // 在返回结果中添加生成的食谱 ID（用于外部收集）
+              result = {
+                'success': true,
+                ...createResult,
+                'recipe': {
+                  ...sanitizedData,  // 使用清洗后的数据（包含生成的 ID）
+                },
+              };
+            } catch (e, stackTrace) {
+              debugPrint('❌ Failed to parse recipe data: $e');
+              debugPrint('Stack trace: $stackTrace');
+              throw Exception('Failed to parse recipe data: $e');
+            }
+          } else {
+            // 食谱创建失败或没有数据
+            result = {
+              'success': true,
+              ...createResult,
+            };
+          }
+          break;
 
         default:
           throw Exception('Unknown MCP tool: $cleanToolName');
@@ -1035,11 +1327,35 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
     } catch (e, stackTrace) {
       debugPrint('MCP tool execution error: $e');
       debugPrint('Stack trace: $stackTrace');
-      return {
+      errorMessage = e.toString();
+      result = {
         'success': false,
         'error': e.toString(),
       };
     }
+
+    // 记录工具调用（仅在 debug 模式）
+    if (kDebugMode) {
+      final duration = DateTime.now().difference(startTime);
+      final toolCall = MCPToolCall(
+        toolName: cleanToolName,
+        timestamp: startTime,
+        input: input,
+        output: result,
+        error: errorMessage,
+        duration: duration,
+      );
+
+      setState(() {
+        _mcpCallHistory.add(toolCall);
+        // 只保留最近 50 条记录
+        if (_mcpCallHistory.length > 50) {
+          _mcpCallHistory.removeAt(0);
+        }
+      });
+    }
+
+    return result;
   }
 
   /// 解析整数参数（容错处理）
@@ -1175,7 +1491,10 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
           ),
           TextButton(
             onPressed: () {
-              setState(() => _messages.clear());
+              setState(() {
+                _messages.clear();
+                _createdRecipes.clear(); // 同时清空 AI 创建的食谱
+              });
               _saveChatHistory();
               Navigator.pop(context);
 
@@ -1191,5 +1510,200 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
         ],
       ),
     );
+  }
+
+  /// 显示 MCP 调试面板
+  void _showMCPDebugPanel() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.3,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              // 标题栏
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: Colors.grey[300]!,
+                      width: 1,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.bug_report, color: AppColors.primary),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'MCP 工具调用记录',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (_mcpCallHistory.isNotEmpty)
+                      TextButton.icon(
+                        icon: const Icon(Icons.clear_all, size: 18),
+                        label: const Text('清空'),
+                        onPressed: () {
+                          setState(() {
+                            _mcpCallHistory.clear();
+                          });
+                          Navigator.pop(context);
+                        },
+                      ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+
+              // 工具调用列表
+              Expanded(
+                child: _mcpCallHistory.isEmpty
+                    ? const Center(
+                        child: Text(
+                          '暂无工具调用记录',
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 16,
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        controller: scrollController,
+                        itemCount: _mcpCallHistory.length,
+                        itemBuilder: (context, index) {
+                          final call = _mcpCallHistory[_mcpCallHistory.length - 1 - index]; // 倒序显示
+                          return _buildMCPCallCard(call);
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 构建 MCP 工具调用卡片
+  Widget _buildMCPCallCard(MCPToolCall call) {
+    final hasError = call.error != null;
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      elevation: 2,
+      child: ExpansionTile(
+        leading: Icon(
+          hasError ? Icons.error : Icons.check_circle,
+          color: hasError ? AppColors.error : Colors.green,
+        ),
+        title: Text(
+          call.toolName,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+        subtitle: Text(
+          '${_formatCallTime(call.timestamp)} · ${call.duration.inMilliseconds}ms',
+          style: const TextStyle(
+            color: Colors.grey,
+            fontSize: 12,
+          ),
+        ),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            width: double.infinity,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 输入参数
+                const Text(
+                  '📥 输入参数',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: SelectableText(
+                    _formatJson(call.input),
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // 输出结果
+                Text(
+                  hasError ? '❌ 错误信息' : '📤 输出结果',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: hasError ? Colors.red[50] : Colors.green[50],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: SelectableText(
+                    hasError ? call.error! : _formatJson(call.output),
+                    style: TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                      color: hasError ? Colors.red[900] : Colors.green[900],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 格式化时间（HH:mm:ss）
+  String _formatCallTime(DateTime time) {
+    return '${time.hour.toString().padLeft(2, '0')}:'
+        '${time.minute.toString().padLeft(2, '0')}:'
+        '${time.second.toString().padLeft(2, '0')}';
+  }
+
+  /// 格式化 JSON
+  String _formatJson(Map<String, dynamic> json) {
+    try {
+      const encoder = JsonEncoder.withIndent('  ');
+      return encoder.convert(json);
+    } catch (e) {
+      return json.toString();
+    }
   }
 }
