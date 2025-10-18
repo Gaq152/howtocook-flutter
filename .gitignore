@@ -1,47 +1,73 @@
+# IDE 和编辑器
 .vscode/
+.idea/
 .claude/
-docs/
-
-# Environment variables (contains API keys)
-.env
-
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
-
-# IntelliJ related
 *.iml
 *.ipr
 *.iws
-.idea/
+.atom/
+*.sublime-*
 
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
+# 环境变量（包含 API 密钥和敏感信息）
+.env
+.env.*
+!.env.example
+
+# 操作系统文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# 构建产物和临时文件
+/build/
+.build/
+.buildlog/
+.history
+*.class
+*.log
+*.bak
+*.tmp
+*.temp
+
+# Flutter/Dart 相关
 .dart_tool/
+.flutter-plugins
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-/build/
-/coverage/
+.packages
+# pubspec.lock - 应该提交以确保依赖版本一致
+build/
+coverage/
 
-# Symbolication related
+# 符号化相关
 app.*.symbols
 
-# Obfuscation related
+# 混淆相关
 app.*.map.json
 
-# Android Studio will place build artifacts here
+# Android 相关
 /android/app/debug
 /android/app/profile
 /android/app/release
+/android/local.properties
+/android/.gradle/
+/android/captures/
+/android/keystore.properties
+
+
+# Hive 数据库文件
+*.hive
+*.hive.lock
+
+# 本地开发文件
+*.txt
+docs
+scripts/

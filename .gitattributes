@@ -1,0 +1,81 @@
+# Set the default behavior, in case people don't have core.autocrlf set.
+* text=auto
+
+# Explicitly declare text files you want to always be normalized and converted
+# to native line endings on checkout.
+*.dart text
+*.yaml text
+*.yml text
+*.json text
+*.md text
+*.txt text
+*.html text
+*.css text
+*.js text
+*.ts text
+*.xml text
+*.gradle text
+*.kt text
+*.properties text
+*.gitignore text
+*.gitattributes text
+
+# Declare files that will always have CRLF line endings on checkout.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Declare files that will always have LF line endings on checkout.
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Denote all files that are truly binary and should not be modified.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.tar.gz binary
+*.rar binary
+*.apk binary
+*.ipa binary
+*.aab binary
+*.dmg binary
+*.pkg binary
+*.msi binary
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary
+
+# Large files
+*.mp4 binary
+*.avi binary
+*.mov binary
+*.wmv binary
+*.flv binary
+*.webm binary
+*.mp3 binary
+*.wav binary
+*.flac binary
+*.aac binary
+
+# Flutter specific
+*.dart text
+*.g.dart text
+*.freezed.dart text
+*.generated.dart text
+
+# Android specific
+*.so binary
+*.aar binary
+*.jar binary
+*.class binary
+*.dex binary
+
+# iOS specific
+*.framework binary
+*.bundle binary
+*.xcarchive binary
