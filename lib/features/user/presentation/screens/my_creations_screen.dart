@@ -6,8 +6,10 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../recipe/application/providers/recipe_providers.dart';
 import '../../../recipe/domain/entities/recipe.dart';
+import '../../../recipe/infrastructure/services/recipe_share_service.dart';
 import '../../../tips/application/providers/tip_providers.dart';
 import '../../../tips/domain/entities/tip.dart';
+import '../../../tips/infrastructure/services/tip_share_service.dart';
 
 class MyCreationsScreen extends ConsumerStatefulWidget {
   const MyCreationsScreen({super.key});
@@ -25,54 +27,83 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
     final recipesAsync = ref.watch(allRecipesProvider);
     final tipsAsync = ref.watch(allTipsProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('我的自创'),
-      ),
-      body: recipesAsync.when(
-        data: (recipes) => tipsAsync.when(
-          data: (tips) => _buildContent(context, recipes, tips),
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('我的自创'),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: '我的菜谱'),
+              Tab(text: '我的教程'),
+            ],
+          ),
+        ),
+        body: recipesAsync.when(
+          data: (recipes) => tipsAsync.when(
+            data: (tips) => TabBarView(
+              children: [
+                _buildRecipeTab(context, recipes),
+                _buildTipTab(context, tips),
+              ],
+            ),
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, stack) => _buildErrorPlaceholder(error),
+          ),
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, stack) => _buildErrorPlaceholder(error),
         ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => _buildErrorPlaceholder(error),
       ),
     );
   }
 
-  Widget _buildContent(
-    BuildContext context,
-    List<Recipe> allRecipes,
-    List<Tip> allTips,
-  ) {
-    final myRecipes = allRecipes.where(_isMyRecipe).toList();
-    final myTips = allTips.where(_isMyTip).toList();
-
-    if (myRecipes.isEmpty && myTips.isEmpty) {
-      return _buildEmptyPlaceholder(context);
+  Widget _buildRecipeTab(BuildContext context, List<Recipe> allRecipes) {
+    final recipes = allRecipes.where(_isMyRecipe).toList();
+    if (recipes.isEmpty) {
+      return _buildEmptyState(
+        context: context,
+        icon: Icons.restaurant_menu,
+        title: '还没有自创菜谱',
+        description: '创建菜谱后会显示在这里',
+        actionLabel: '创建菜谱',
+        onCreate: () => context.push('/create-recipe'),
+      );
     }
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       children: [
-        _buildHeader(context),
-        if (myRecipes.isNotEmpty) ...[
-          _buildSectionTitle('我的菜谱'),
-          const SizedBox(height: 12),
-          for (final recipe in myRecipes) _buildRecipeCard(recipe),
-        ],
-        if (myTips.isNotEmpty) ...[
-          if (myRecipes.isNotEmpty) const SizedBox(height: 24),
-          _buildSectionTitle('我的教程'),
-          const SizedBox(height: 12),
-          for (final tip in myTips) _buildTipCard(tip),
-        ],
+        _buildRecipeQuickCard(context),
+        const SizedBox(height: 16),
+        for (final recipe in recipes) _buildRecipeCard(recipe),
       ],
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildTipTab(BuildContext context, List<Tip> allTips) {
+    final tips = allTips.where(_isMyTip).toList();
+    if (tips.isEmpty) {
+      return _buildEmptyState(
+        context: context,
+        icon: Icons.menu_book_outlined,
+        title: '还没有自创教程',
+        description: '新增教程后会显示在这里',
+        actionLabel: '新增教程',
+        onCreate: () => context.push('/tips/create'),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      children: [
+        _buildTipQuickCard(context),
+        const SizedBox(height: 16),
+        for (final tip in tips) _buildTipCard(tip),
+      ],
+    );
+  }
+
+  Widget _buildRecipeQuickCard(BuildContext context) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
@@ -81,30 +112,16 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-            Text('快速创建',
+              '快速创建菜谱',
               style: AppTextStyles.h4.copyWith(
                 color: Theme.of(context).colorScheme.primary,
               ),
             ),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () => context.push('/create-recipe'),
-                    icon: const Icon(Icons.add),
-                    label: const Text('创建菜谱'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => context.push('/tips/create'),
-                    icon: const Icon(Icons.menu_book_outlined),
-                    label: const Text('新增教程'),
-                  ),
-                ),
-              ],
+            FilledButton.icon(
+              onPressed: () => context.push('/create-recipe'),
+              icon: const Icon(Icons.add),
+              label: const Text('创建菜谱'),
             ),
           ],
         ),
@@ -112,15 +129,64 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w600),
+  Widget _buildTipQuickCard(BuildContext context) {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '快速创建教程',
+              style: AppTextStyles.h4.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: () => context.push('/tips/create'),
+              icon: const Icon(Icons.menu_book_outlined),
+              label: const Text('新增教程'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   Widget _buildRecipeCard(Recipe recipe) {
     final isDeleting = _deletingRecipeIds.contains(recipe.id);
+
+    final trailing = isDeleting
+        ? const SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        : PopupMenuButton<_RecipeAction>(
+            tooltip: '更多操作',
+            onSelected: (action) {
+              switch (action) {
+                case _RecipeAction.edit:
+                  context.push('/recipe/${recipe.id}/edit');
+                  break;
+                case _RecipeAction.share:
+                  _showRecipeShareOptions(context, recipe);
+                  break;
+                case _RecipeAction.delete:
+                  _confirmDeleteRecipe(recipe);
+                  break;
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(value: _RecipeAction.edit, child: Text('编辑')),
+              PopupMenuItem(value: _RecipeAction.share, child: Text('分享')),
+              PopupMenuItem(value: _RecipeAction.delete, child: Text('删除')),
+            ],
+            icon: const Icon(Icons.more_vert),
+          );
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
@@ -144,17 +210,7 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
             _buildRecipeSourceChip(recipe),
           ],
         ),
-        trailing: IconButton(
-          tooltip: '删除',
-          icon: isDeleting
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.delete_outline),
-          onPressed: isDeleting ? null : () => _confirmDeleteRecipe(recipe),
-        ),
+        trailing: trailing,
       ),
     );
   }
@@ -163,10 +219,39 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
     final isDeleting = _deletingTipIds.contains(tip.id);
     final preview = tip.content.isNotEmpty
         ? tip.content
-            .replaceAll('\n', ' ')
-            .replaceAll(RegExp(r'\s+'), ' ')
-            .trim()
+              .replaceAll('\n', ' ')
+              .replaceAll(RegExp(r'\s+'), ' ')
+              .trim()
         : (tip.sections.isNotEmpty ? tip.sections.first.content : '');
+
+    final trailing = isDeleting
+        ? const SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        : PopupMenuButton<_TipAction>(
+            tooltip: '更多操作',
+            onSelected: (action) {
+              switch (action) {
+                case _TipAction.edit:
+                  context.push('/tips/${tip.id}/edit');
+                  break;
+                case _TipAction.share:
+                  _showTipShareOptions(context, tip);
+                  break;
+                case _TipAction.delete:
+                  _confirmDeleteTip(tip);
+                  break;
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(value: _TipAction.edit, child: Text('编辑')),
+              PopupMenuItem(value: _TipAction.share, child: Text('分享')),
+              PopupMenuItem(value: _TipAction.delete, child: Text('删除')),
+            ],
+            icon: const Icon(Icons.more_vert),
+          );
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -174,7 +259,10 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
         onTap: () => context.push('/tips/${tip.category}/${tip.id}'),
         leading: CircleAvatar(
           backgroundColor: AppColors.secondary.withValues(alpha: 0.12),
-          child: const Icon(Icons.menu_book_outlined, color: AppColors.secondary),
+          child: const Icon(
+            Icons.menu_book_outlined,
+            color: AppColors.secondary,
+          ),
         ),
         title: Text(tip.title, style: AppTextStyles.h4),
         subtitle: Column(
@@ -190,7 +278,9 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
             if (preview.isNotEmpty) ...[
               const SizedBox(height: 6),
               Text(
-                preview.length > 60 ? '${preview.substring(0, 57)}...' : preview,
+                preview.length > 60
+                    ? '${preview.substring(0, 57)}...'
+                    : preview,
                 style: AppTextStyles.bodySmall.copyWith(
                   color: AppColors.textSecondary,
                 ),
@@ -200,17 +290,7 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
             _buildTipSourceChip(tip),
           ],
         ),
-        trailing: IconButton(
-          tooltip: '删除',
-          icon: isDeleting
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.delete_outline),
-          onPressed: isDeleting ? null : () => _confirmDeleteTip(tip),
-        ),
+        trailing: trailing,
       ),
     );
   }
@@ -225,7 +305,7 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
         color = AppColors.primary;
         break;
       case RecipeSource.userModified:
-        label = '我的修改';
+        label = '自创';
         color = Colors.orange;
         break;
       case RecipeSource.scanned:
@@ -254,7 +334,7 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
         color = AppColors.primary;
         break;
       case TipSource.userModified:
-        label = '我的修改';
+        label = '自创';
         color = Colors.orange;
         break;
       case TipSource.scanned:
@@ -288,23 +368,29 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
     );
   }
 
-  Widget _buildEmptyPlaceholder(BuildContext context) {
+  Widget _buildEmptyState({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    required String description,
+    required String actionLabel,
+    required VoidCallback onCreate,
+  }) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 64),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.sentiment_satisfied_alt,
-                size: 88, color: Colors.grey.shade300),
+            Icon(icon, size: 88, color: Colors.grey.shade300),
             const SizedBox(height: 16),
             Text(
-          Text('还没有自创内容', style: AppTextStyles.h2.copyWith(color: Colors.grey.shade500)),
+              title,
               style: AppTextStyles.h2.copyWith(color: Colors.grey.shade500),
             ),
             const SizedBox(height: 8),
             Text(
-              '创建菜谱或新增教程后会显示在这里',
+              description,
               style: AppTextStyles.bodySmall.copyWith(
                 color: Colors.grey.shade500,
               ),
@@ -312,9 +398,9 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
             ),
             const SizedBox(height: 24),
             FilledButton.icon(
-              onPressed: () => context.push('/create-recipe'),
+              onPressed: onCreate,
               icon: const Icon(Icons.add),
-              label: const Text('立即创建'),
+              label: Text(actionLabel),
             ),
           ],
         ),
@@ -340,17 +426,178 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
       RecipeSource.userCreated ||
       RecipeSource.userModified ||
       RecipeSource.scanned ||
-      RecipeSource.aiGenerated =>
-        true,
+      RecipeSource.aiGenerated => true,
       _ => false,
     };
   }
 
-  bool _isMyTip(Tip tip) {
-    return tip.source != TipSource.bundled;
+  Future<void> _showRecipeShareOptions(
+    BuildContext context,
+    Recipe recipe,
+  ) async {
+    final option = await showModalBottomSheet<_ShareOption>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.copy_all_outlined),
+              title: const Text('复制为文本'),
+              onTap: () => Navigator.pop(sheetContext, _ShareOption.text),
+            ),
+            ListTile(
+              leading: const Icon(Icons.image_outlined),
+              title: const Text('分享图片'),
+              onTap: () => Navigator.pop(sheetContext, _ShareOption.image),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (option == null || !mounted) {
+      return;
+    }
+
+    final shareService = RecipeShareService();
+    if (option == _ShareOption.text) {
+      final result = await shareService.shareAsText(recipe);
+      if (!mounted) return;
+
+      String message;
+      switch (result) {
+        case RecipeShareResult.success:
+          message = '已复制菜谱内容，快去粘贴分享吧';
+          break;
+        case RecipeShareResult.cancelled:
+          message = '已取消复制';
+          break;
+        case RecipeShareResult.failed:
+          message = '复制失败，请稍后再试';
+          break;
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+      return;
+    }
+
+    final result = await shareService.shareAsImage(recipe, context);
+    if (!mounted) return;
+
+    String message;
+    switch (result) {
+      case RecipeShareResult.success:
+        message = '已生成图片，快去分享吧';
+        break;
+      case RecipeShareResult.cancelled:
+        message = '已取消分享';
+        break;
+      case RecipeShareResult.failed:
+        message = '生成图片失败，请稍后再试';
+        break;
+    }
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _showTipShareOptions(BuildContext context, Tip tip) async {
+    final option = await showModalBottomSheet<_ShareOption>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.copy_all_outlined),
+              title: const Text('复制为文本'),
+              onTap: () => Navigator.pop(sheetContext, _ShareOption.text),
+            ),
+            ListTile(
+              leading: const Icon(Icons.image_outlined),
+              title: const Text('分享图片'),
+              onTap: () => Navigator.pop(sheetContext, _ShareOption.image),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (option == null || !mounted) {
+      return;
+    }
+
+    final shareService = TipShareService();
+    if (option == _ShareOption.text) {
+      final result = await shareService.shareAsText(tip);
+      if (!mounted) return;
+
+      String message;
+      switch (result) {
+        case TipShareResult.success:
+          message = '已复制教程内容，快去粘贴分享吧';
+          break;
+        case TipShareResult.cancelled:
+          message = '已取消复制';
+          break;
+        case TipShareResult.failed:
+          message = '复制失败，请稍后再试';
+          break;
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+      return;
+    }
+
+    final result = await shareService.shareAsImage(tip, context);
+    if (!mounted) return;
+
+    String message;
+    switch (result) {
+      case TipShareResult.success:
+        message = '已生成图片，快去分享吧';
+        break;
+      case TipShareResult.cancelled:
+        message = '已取消分享';
+        break;
+      case TipShareResult.failed:
+        message = '生成图片失败，请稍后再试';
+        break;
+    }
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  bool _canDeleteRecipe(Recipe recipe) {
+    return recipe.source == RecipeSource.userCreated ||
+        recipe.source == RecipeSource.userModified ||
+        recipe.source == RecipeSource.scanned ||
+        recipe.source == RecipeSource.aiGenerated;
+  }
+
+  bool _isMyTip(Tip tip) => tip.source != TipSource.bundled;
+
+  bool _canDeleteTip(Tip tip) => tip.source != TipSource.bundled;
+
   Future<void> _confirmDeleteRecipe(Recipe recipe) async {
+    if (!_canDeleteRecipe(recipe)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('【${recipe.name}】为内置菜谱，无法删除'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -376,17 +623,6 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
   }
 
   Future<void> _deleteRecipe(Recipe recipe) async {
-    if (recipe.source == RecipeSource.bundled ||
-        recipe.source == RecipeSource.cloud) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('「${recipe.name}」为内置菜谱，无法删除'), backgroundColor: Colors.orange),
-        ),
-      );
-      return;
-    }
-
     setState(() => _deletingRecipeIds.add(recipe.id));
 
     try {
@@ -394,15 +630,14 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
       await repository.deleteRecipe(recipe.id);
       ref.invalidate(allRecipesProvider);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('已删除「${recipe.name}」')),
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('已删除「${recipe.name}」')));
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('删除失败: $e'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('删除失败: $e'), backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) {
@@ -412,6 +647,16 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
   }
 
   Future<void> _confirmDeleteTip(Tip tip) async {
+    if (!_canDeleteTip(tip)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('【${tip.title}】为内置教程，无法删除'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -437,33 +682,23 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
   }
 
   Future<void> _deleteTip(Tip tip) async {
-    if (tip.source == TipSource.bundled) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('「${tip.title}」为内置教程，无法删除'), backgroundColor: Colors.orange),
-        ),
-      );
-      return;
-    }
-
     setState(() => _deletingTipIds.add(tip.id));
 
     try {
       final repository = ref.read(tipRepositoryProvider);
       await repository.deleteTip(tip.id);
-      ref.invalidate(allTipsProvider);
-      ref.invalidate(tipsByCategoryProvider(tip.category));
+      ref
+        ..invalidate(allTipsProvider)
+        ..invalidate(tipsByCategoryProvider(tip.category));
 
-      ScaffoldMessenger.of(context).showSnackBar(
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('已删除「${tip.title}」')),
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('已删除「${tip.title}」')));
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('删除失败: $e'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('删除失败: $e'), backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) {
@@ -473,3 +708,8 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
   }
 }
 
+enum _RecipeAction { edit, share, delete }
+
+enum _TipAction { edit, share, delete }
+
+enum _ShareOption { text, image }

@@ -119,8 +119,12 @@ class ImageDownloadManager extends _$ImageDownloadManager {
         continue;
       }
 
+      // 如果任务是暂停状态，将其重置为 idle 并继续下载
       if (task.status == DownloadStatus.paused) {
-        break;
+        print('🔄 恢复下载暂停的任务: ${task.id}');
+        task.status = DownloadStatus.idle;
+        task.progress = 0;
+        task.error = null;
       }
 
       await _downloadSingleTask(task);
@@ -253,8 +257,16 @@ class ImageDownloadManager extends _$ImageDownloadManager {
 
   /// 恢复下载
   void resumeDownload() {
+    print('▶️ 恢复下载请求...');
+    print('   - 当前状态: ${state.status}');
+    print('   - 当前索引: $_currentIndex');
+    print('   - 总任务数: ${_tasks.length}');
+
     if (state.status == DownloadStatus.paused) {
+      print('🚀 开始恢复下载...');
       _startDownload();
+    } else {
+      print('⚠️ 无法恢复：当前状态不是暂停状态');
     }
   }
 
