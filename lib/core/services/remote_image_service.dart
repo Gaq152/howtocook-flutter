@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:crypto/crypto.dart';
 
 /// 远程图片服务
 ///
@@ -20,12 +20,12 @@ class RemoteImageService {
   /// 初始化服务（下载索引文件）
   Future<void> initialize() async {
     try {
-      print('🔄 正在下载图片索引...');
+      debugPrint('🔄 正在下载图片索引...');
       final response = await _dio.get(_indexUrl);
       _imageIndex = jsonDecode(response.data);
-      print('✅ 图片索引下载成功');
+      debugPrint('✅ 图片索引下载成功');
     } catch (e) {
-      print('❌ 图片索引下载失败: $e');
+      debugPrint('❌ 图片索引下载失败: $e');
       _imageIndex = {};
     }
   }
@@ -67,7 +67,7 @@ class RemoteImageService {
       // 获取远程图片信息
       final imageInfo = _getImageInfo(category, imageId);
       if (imageInfo == null) {
-        print('⚠️ 图片信息未找到: $category/$imageId');
+        debugPrint('⚠️ 图片信息未找到: $category/$imageId');
         _downloading.remove(downloadKey);
         return null;
       }
@@ -78,7 +78,7 @@ class RemoteImageService {
 
       // 下载图片
       final imageUrl = '$_baseUrl/images/$category/${imageInfo['webp']}';
-      print('📥 下载图片: $imageUrl');
+      debugPrint('📥 下载图片: $imageUrl');
 
       final response = await _dio.get(
         imageUrl,
@@ -90,12 +90,12 @@ class RemoteImageService {
 
       // 保存到本地
       await file.writeAsBytes(response.data);
-      print('✅ 图片下载完成: $localPath');
+      debugPrint('✅ 图片下载完成: $localPath');
 
       _downloading.remove(downloadKey);
       return localPath;
     } catch (e) {
-      print('❌ 图片下载失败: $category/$imageId, 错误: $e');
+      debugPrint('❌ 图片下载失败: $category/$imageId, 错误: $e');
       _downloading.remove(downloadKey);
       return null;
     }
@@ -122,7 +122,7 @@ class RemoteImageService {
   ///
   /// 批量下载常用图片
   Future<void> preloadImages(List<String> categoryImageIds) async {
-    print('🚀 开始预加载图片...');
+    debugPrint('🚀 开始预加载图片...');
 
     for (final categoryImageId in categoryImageIds) {
       final parts = categoryImageId.split('/');
@@ -131,7 +131,7 @@ class RemoteImageService {
       await getImagePath(parts[0], parts[1]);
     }
 
-    print('✅ 图片预加载完成');
+    debugPrint('✅ 图片预加载完成');
   }
 
   /// 清理缓存
@@ -142,10 +142,10 @@ class RemoteImageService {
 
       if (await imageCacheDir.exists()) {
         await imageCacheDir.delete(recursive: true);
-        print('🗑️ 图片缓存已清理');
+        debugPrint('🗑️ 图片缓存已清理');
       }
     } catch (e) {
-      print('❌ 清理缓存失败: $e');
+      debugPrint('❌ 清理缓存失败: $e');
     }
   }
 
@@ -166,7 +166,7 @@ class RemoteImageService {
 
       return totalSize;
     } catch (e) {
-      print('❌ 计算缓存大小失败: $e');
+      debugPrint('❌ 计算缓存大小失败: $e');
       return 0;
     }
   }

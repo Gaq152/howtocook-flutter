@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../../domain/entities/recipe.dart';
 import '../../domain/repositories/recipe_repository.dart';
 import '../../../sync/infrastructure/bundled_data_loader.dart';
@@ -35,7 +36,7 @@ class RecipeRepositoryImpl implements RecipeRepository {
           ));
           loadedIds.add(id.toString());
         } catch (e) {
-          print('Warning: Failed to load modified recipe $id: $e');
+          debugPrint('Warning: Failed to load modified recipe $id: $e');
         }
       }
 
@@ -60,7 +61,7 @@ class RecipeRepositoryImpl implements RecipeRepository {
           ));
         } catch (e) {
           // 跳过加载失败的菜谱
-          print('Warning: Failed to load recipe ${recipeIndex.id}: $e');
+          debugPrint('Warning: Failed to load recipe ${recipeIndex.id}: $e');
         }
       }
 
@@ -107,13 +108,13 @@ class RecipeRepositoryImpl implements RecipeRepository {
     }
   }
 
-  /// 深度转换Map<dynamic, dynamic>为Map<String, dynamic>
+  /// 深度转换Map\<dynamic, dynamic\>为Map\<String, dynamic\>
   Map<String, dynamic> _deepConvertMap(Map<dynamic, dynamic> source) {
     final result = <String, dynamic>{};
     source.forEach((key, value) {
       final stringKey = key.toString();
-      if (value is Map) {
-        result[stringKey] = _deepConvertMap(value as Map<dynamic, dynamic>);
+      if (value is Map<dynamic, dynamic>) {
+        result[stringKey] = _deepConvertMap(value);
       } else if (value is List) {
         result[stringKey] = _deepConvertList(value);
       } else {
@@ -126,8 +127,8 @@ class RecipeRepositoryImpl implements RecipeRepository {
   /// 深度转换List中的Map
   List<dynamic> _deepConvertList(List<dynamic> source) {
     return source.map((item) {
-      if (item is Map) {
-        return _deepConvertMap(item as Map<dynamic, dynamic>);
+      if (item is Map<dynamic, dynamic>) {
+        return _deepConvertMap(item);
       } else if (item is List) {
         return _deepConvertList(item);
       } else {
@@ -212,7 +213,7 @@ class RecipeRepositoryImpl implements RecipeRepository {
             favorites.add(recipe);
           }
         } catch (e) {
-          print('Warning: Failed to load favorite recipe $id: $e');
+          debugPrint('Warning: Failed to load favorite recipe $id: $e');
         }
       }
 

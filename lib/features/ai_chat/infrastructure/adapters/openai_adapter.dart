@@ -324,18 +324,6 @@ class OpenAIAdapter implements AIService {
     }
   }
 
-  /// 转换工具定义（从 MCP 格式到 OpenAI 格式）
-  Map<String, dynamic> _convertTool(Map<String, dynamic> tool) {
-    return {
-      'type': 'function',
-      'function': {
-        'name': tool['name'],
-        'description': tool['description'],
-        'parameters': tool['input_schema'] ?? tool['parameters'],
-      },
-    };
-  }
-
   /// 解析响应
   ChatMessage _parseResponse(Map<String, dynamic> data) {
     final choices = data['choices'] as List<dynamic>;

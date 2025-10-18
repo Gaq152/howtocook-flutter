@@ -143,12 +143,6 @@ class LinkableTextRich extends StatelessWidget {
       caseSensitive: false,
     );
 
-    // 普通URL正则
-    final urlPattern = RegExp(
-      r'https?://[^\s\)\]]+',
-      caseSensitive: false,
-    );
-
     int lastMatchEnd = 0;
 
     // 先处理Markdown格式的链接

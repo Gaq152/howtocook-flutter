@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -18,19 +19,19 @@ class ImageCacheService extends _$ImageCacheService {
       final coverPath = '${cacheDir.path}/recipe_images/covers/$category/$recipeName.webp';
       final file = File(coverPath);
 
-      print('🔍 查找封面图缓存:');
-      print('   - 分类: $category');
-      print('   - 菜名: $recipeName');
-      print('   - 路径: $coverPath');
+      debugPrint('🔍 查找封面图缓存:');
+      debugPrint('   - 分类: $category');
+      debugPrint('   - 菜名: $recipeName');
+      debugPrint('   - 路径: $coverPath');
 
       if (await file.exists()) {
-        print('   ✅ 缓存存在');
+        debugPrint('   ✅ 缓存存在');
         return coverPath;
       }
-      print('   ❌ 缓存不存在');
+      debugPrint('   ❌ 缓存不存在');
       return null;
     } catch (e) {
-      print('❌ 获取封面图路径失败: $category/$recipeName, 错误: $e');
+      debugPrint('❌ 获取封面图路径失败: $category/$recipeName, 错误: $e');
       return null;
     }
   }
@@ -43,20 +44,20 @@ class ImageCacheService extends _$ImageCacheService {
       final imagePath = '${cacheDir.path}/recipe_images/details/$category/${recipeId}_$index.webp';
       final file = File(imagePath);
 
-      print('🔍 查找详情图缓存:');
-      print('   - 分类: $category');
-      print('   - ID: $recipeId');
-      print('   - 索引: $index');
-      print('   - 路径: $imagePath');
+      debugPrint('🔍 查找详情图缓存:');
+      debugPrint('   - 分类: $category');
+      debugPrint('   - ID: $recipeId');
+      debugPrint('   - 索引: $index');
+      debugPrint('   - 路径: $imagePath');
 
       if (await file.exists()) {
-        print('   ✅ 缓存存在');
+        debugPrint('   ✅ 缓存存在');
         return imagePath;
       }
-      print('   ❌ 缓存不存在');
+      debugPrint('   ❌ 缓存不存在');
       return null;
     } catch (e) {
-      print('❌ 获取详情图路径失败: $category/$recipeId\_$index, 错误: $e');
+      debugPrint('❌ 获取详情图路径失败: $category/${recipeId}_$index, 错误: $e');
       return null;
     }
   }
@@ -109,10 +110,10 @@ class ImageCacheService extends _$ImageCacheService {
 
       if (await imageCacheDir.exists()) {
         await imageCacheDir.delete(recursive: true);
-        print('✅ 图片缓存已清除');
+        debugPrint('✅ 图片缓存已清除');
       }
     } catch (e) {
-      print('❌ 清除图片缓存失败: $e');
+      debugPrint('❌ 清除图片缓存失败: $e');
     }
   }
 
@@ -133,7 +134,7 @@ class ImageCacheService extends _$ImageCacheService {
 
       return totalSize;
     } catch (e) {
-      print('❌ 计算缓存大小失败: $e');
+      debugPrint('❌ 计算缓存大小失败: $e');
       return 0;
     }
   }

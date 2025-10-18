@@ -42,7 +42,7 @@ final stream = adapter.sendMessage(
 );
 
 await for (final chunk in stream) {
-  print(chunk); // 逐字输出
+  debugPrint(chunk); // 逐字输出
 }
 
 // 非流式响应
@@ -273,7 +273,7 @@ final adapter = ClaudeAdapter(
 ```dart
 final models = AIServiceFactory.getBuiltinModels();
 for (final model in models) {
-  print('${model.displayName}: ${model.description}');
+  debugPrint('${model.displayName}: ${model.description}');
 }
 ```
 
