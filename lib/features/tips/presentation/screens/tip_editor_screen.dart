@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
@@ -128,7 +130,7 @@ class _TipEditorScreenState extends ConsumerState<TipEditorScreen> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value:
+                  initialValue:
                       _selectedCategory ??
                       (categories.isNotEmpty ? categories.keys.first : null),
                   items: categories.entries
@@ -212,9 +214,7 @@ class _TipEditorScreenState extends ConsumerState<TipEditorScreen> {
   }
 
   void _initializeForCreate() {
-    if (_selectedCategory == null) {
-      _selectedCategory = 'learn';
-    }
+    _selectedCategory ??= 'learn';
     _categoryNameController.text = _categoryNameController.text.isEmpty
         ? '基础技巧'
         : _categoryNameController.text;
@@ -694,7 +694,7 @@ class _TipEditorScreenState extends ConsumerState<TipEditorScreen> {
               '• 覆盖：替换现有教程\n• 重命名：输入新名称\n• 取消：放弃保存',
               style: TextStyle(
                 fontSize: 14,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
           ],

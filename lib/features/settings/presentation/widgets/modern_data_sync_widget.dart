@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:howtocook/features/settings/domain/models/sync_item_state.dart';
@@ -63,7 +65,7 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
         });
       }
     } catch (e) {
-      print('❌ 计算存储大小失败: $e');
+      debugPrint('❌ 计算存储大小失败: $e');
       if (mounted) {
         setState(() {
           _storageSize = '计算失败';
@@ -215,7 +217,7 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: _getStatusColor(state.status, theme).withOpacity(0.1),
+                    color: _getStatusColor(state.status, theme).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
@@ -403,7 +405,7 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
                   child: LinearProgressIndicator(
                     value: state.totalItems > 0 ? state.completedItems / state.totalItems : 0.0,
                     minHeight: 6,
-                    backgroundColor: theme.colorScheme.surfaceVariant,
+                    backgroundColor: theme.colorScheme.surfaceContainerHighest,
                     valueColor: AlwaysStoppedAnimation<Color>(
                       state.status == SyncItemStatus.paused
                           ? theme.colorScheme.tertiary
@@ -434,7 +436,7 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: _getStatusColor(state.status, theme).withOpacity(0.1),
+        color: _getStatusColor(state.status, theme).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -651,8 +653,8 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
 
         final recipes = localIndex['recipes'] as List<dynamic>? ?? [];
 
-        print('📊 正在计算准确的图片数量...');
-        print('   - 总食谱数: ${recipes.length}');
+        debugPrint('📊 正在计算准确的图片数量...');
+        debugPrint('   - 总食谱数: ${recipes.length}');
 
         // 计算准确的图片数量（实际读取每个食谱的JSON文件）
         int recipesWithImages = 0;
@@ -680,8 +682,8 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
           totalImages += tasks.length;
         }
 
-        print('   - 有图食谱数: $recipesWithImages');
-        print('   - 准确图片数: $totalImages 张');
+        debugPrint('   - 有图食谱数: $recipesWithImages');
+        debugPrint('   - 准确图片数: $totalImages 张');
 
         if (totalImages > 0) {
           setState(() {
@@ -803,7 +805,7 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
               });
             }
           } catch (e) {
-            print('❌ 下载单个食谱失败: $e');
+            debugPrint('❌ 下载单个食谱失败: $e');
           }
         }
 
@@ -863,8 +865,8 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
         int recipesWithImages = 0;
         int totalImagesCount = 0;
 
-        print('📊 开始扫描详情图任务...');
-        print('   - 总食谱数: ${recipes.length}');
+        debugPrint('📊 开始扫描详情图任务...');
+        debugPrint('   - 总食谱数: ${recipes.length}');
 
         // 为所有食谱创建详情图下载任务
         for (final recipe in recipes) {
@@ -890,9 +892,9 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
           imageTasks.addAll(tasks);
         }
 
-        print('   - 有图食谱数: $recipesWithImages');
-        print('   - 总图片数: $totalImagesCount');
-        print('   - 平均每食谱: ${recipesWithImages > 0 ? (totalImagesCount / recipesWithImages).toStringAsFixed(1) : 0} 张');
+        debugPrint('   - 有图食谱数: $recipesWithImages');
+        debugPrint('   - 总图片数: $totalImagesCount');
+        debugPrint('   - 平均每食谱: ${recipesWithImages > 0 ? (totalImagesCount / recipesWithImages).toStringAsFixed(1) : 0} 张');
 
         if (imageTasks.isNotEmpty) {
           setState(() {

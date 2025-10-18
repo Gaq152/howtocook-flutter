@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:io';
 import 'dart:convert';
 import 'dart:async';
@@ -130,8 +132,6 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
 
   /// 构建可展开的应用栏
   Widget _buildSliverAppBar(BuildContext context, Recipe recipe) {
-    final isFavoriteAsync = ref.watch(isFavoriteProvider(widget.recipeId));
-
     return SliverAppBar(
       expandedHeight: 300,
       pinned: true,
@@ -336,6 +336,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   }
 
   /// 构建图片组件（支持本地、网络、资源、Base64图片）
+  // ignore: unused_element
   Widget _buildImageWidget(String imagePath) {
     // 规范化路径：在Web端将反斜杠转换为正斜杠
     final normalizedPath = kIsWeb ? imagePath.replaceAll('\\', '/') : imagePath;
@@ -347,8 +348,8 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            AppColors.primary.withOpacity(0.1),
-            AppColors.secondary.withOpacity(0.1),
+            AppColors.primary.withValues(alpha: 0.1),
+            AppColors.secondary.withValues(alpha: 0.1),
           ],
         ),
       ),
@@ -359,13 +360,13 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
             Icon(
               Icons.cloud_download_outlined,
               size: 64,
-              color: AppColors.primary.withOpacity(0.6),
+              color: AppColors.primary.withValues(alpha: 0.6),
             ),
             const SizedBox(height: 12),
             Text(
               '图片未下载',
               style: TextStyle(
-                color: AppColors.textPrimary.withOpacity(0.8),
+                color: AppColors.textPrimary.withValues(alpha: 0.8),
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),
@@ -374,7 +375,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
             Text(
               '请前往数据同步页面下载',
               style: TextStyle(
-                color: AppColors.textSecondary.withOpacity(0.8),
+                color: AppColors.textSecondary.withValues(alpha: 0.8),
                 fontSize: 12,
               ),
             ),
@@ -991,6 +992,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   }
 
   /// 处理菜单操作
+  // ignore: unused_element
   void _handleMenuAction(BuildContext context, Recipe recipe, String action) {
     switch (action) {
       case 'edit':
@@ -1217,6 +1219,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   }
 
   /// 分享为图片
+  // ignore: unused_element
   Future<void> _shareAsImage(Recipe recipe, {bool saveOnly = false}) async {
     // 显示加载提示
     if (mounted) {

@@ -1,5 +1,5 @@
-import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -45,7 +45,6 @@ class DownloadTask {
 /// 图片下载管理器
 @riverpod
 class ImageDownloadManager extends _$ImageDownloadManager {
-  static const String _baseUrl = 'https://username.github.io/recipe-images';
   static const String _cacheDirName = 'recipe_images';
 
   final Dio _dio = Dio();
@@ -66,11 +65,11 @@ class ImageDownloadManager extends _$ImageDownloadManager {
 
   /// 添加下载任务
   void addDownloadTasks(List<DownloadTask> tasks) {
-    print('📋 添加下载任务: ${tasks.length} 个');
+    debugPrint('📋 添加下载任务: ${tasks.length} 个');
 
     for (final task in tasks) {
       _tasks[task.id] = task;
-      print('   - ${task.id}: ${task.imageUrl}');
+      debugPrint('   - ${task.id}: ${task.imageUrl}');
     }
 
     // 按优先级排序
@@ -82,7 +81,7 @@ class ImageDownloadManager extends _$ImageDownloadManager {
       _tasks[task.id] = task;
     }
 
-    print('🎯 总下载任务数: ${_tasks.length}');
+    debugPrint('🎯 总下载任务数: ${_tasks.length}');
 
     state = state.copyWith(
       totalTasks: _tasks.length,
@@ -91,7 +90,7 @@ class ImageDownloadManager extends _$ImageDownloadManager {
 
     // 如果没有正在下载，开始下载
     if (!_isDownloading) {
-      print('🚀 开始下载...');
+      debugPrint('🚀 开始下载...');
       _startDownload();
     }
   }
@@ -108,7 +107,7 @@ class ImageDownloadManager extends _$ImageDownloadManager {
     while (_currentIndex < _tasks.length) {
       // 检查是否应该停止下载
       if (!_isDownloading) {
-        print('⏸️ 下载已被暂停或取消');
+        debugPrint('⏸️ 下载已被暂停或取消');
         break;
       }
 
@@ -121,7 +120,7 @@ class ImageDownloadManager extends _$ImageDownloadManager {
 
       // 如果任务是暂停状态，将其重置为 idle 并继续下载
       if (task.status == DownloadStatus.paused) {
-        print('🔄 恢复下载暂停的任务: ${task.id}');
+        debugPrint('🔄 恢复下载暂停的任务: ${task.id}');
         task.status = DownloadStatus.idle;
         task.progress = 0;
         task.error = null;
@@ -152,7 +151,7 @@ class ImageDownloadManager extends _$ImageDownloadManager {
   Future<void> _downloadSingleTask(DownloadTask task) async {
     // 在开始下载前检查是否应该继续
     if (!_isDownloading) {
-      print('⏸️ 任务 ${task.id} 被跳过（下载已停止）');
+      debugPrint('⏸️ 任务 ${task.id} 被跳过（下载已停止）');
       return;
     }
 
@@ -160,12 +159,12 @@ class ImageDownloadManager extends _$ImageDownloadManager {
     task.progress = 0;
     task.error = null;
 
-    print('📥 开始下载图片:');
-    print('   - ID: ${task.id}');
-    print('   - 分类: ${task.category}');
-    print('   - 食谱ID: ${task.recipeId}');
-    print('   - URL: ${task.imageUrl}');
-    print('   - 本地路径: ${task.localPath}');
+    debugPrint('📥 开始下载图片:');
+    debugPrint('   - ID: ${task.id}');
+    debugPrint('   - 分类: ${task.category}');
+    debugPrint('   - 食谱ID: ${task.recipeId}');
+    debugPrint('   - URL: ${task.imageUrl}');
+    debugPrint('   - 本地路径: ${task.localPath}');
 
     state = state.copyWith(); // 触发状态更新
 
@@ -176,7 +175,7 @@ class ImageDownloadManager extends _$ImageDownloadManager {
       // 创建本地目录
       final file = File(task.localPath);
       await file.parent.create(recursive: true);
-      print('   - 目录已创建: ${file.parent.path}');
+      debugPrint('   - 目录已创建: ${file.parent.path}');
 
       // 下载文件
       await _dio.download(
@@ -201,29 +200,29 @@ class ImageDownloadManager extends _$ImageDownloadManager {
       final exists = await file.exists();
       final fileSize = exists ? await file.length() : 0;
 
-      print('✅ 图片下载完成:');
-      print('   - 路径: ${task.localPath}');
-      print('   - 文件存在: $exists');
-      print('   - 文件大小: $fileSize 字节');
+      debugPrint('✅ 图片下载完成:');
+      debugPrint('   - 路径: ${task.localPath}');
+      debugPrint('   - 文件存在: $exists');
+      debugPrint('   - 文件大小: $fileSize 字节');
 
     } on DioException catch (e) {
       // 如果是取消操作，不标记为错误
       if (e.type == DioExceptionType.cancel) {
-        print('⏸️ 图片下载被取消: ${task.imageUrl}');
+        debugPrint('⏸️ 图片下载被取消: ${task.imageUrl}');
         task.status = DownloadStatus.paused;
       } else {
         task.status = DownloadStatus.error;
         task.error = e.toString();
-        print('❌ 图片下载失败:');
-        print('   - URL: ${task.imageUrl}');
-        print('   - 错误: $e');
+        debugPrint('❌ 图片下载失败:');
+        debugPrint('   - URL: ${task.imageUrl}');
+        debugPrint('   - 错误: $e');
       }
     } catch (e) {
       task.status = DownloadStatus.error;
       task.error = e.toString();
-      print('❌ 图片下载失败:');
-      print('   - URL: ${task.imageUrl}');
-      print('   - 错误: $e');
+      debugPrint('❌ 图片下载失败:');
+      debugPrint('   - URL: ${task.imageUrl}');
+      debugPrint('   - 错误: $e');
     }
 
     _cancelTokens.remove(task.id);
@@ -232,8 +231,8 @@ class ImageDownloadManager extends _$ImageDownloadManager {
 
   /// 暂停下载
   void pauseDownload() {
-    print('⏸️ 暂停下载请求...');
-    print('   - 当前正在下载的任务数: ${_cancelTokens.length}');
+    debugPrint('⏸️ 暂停下载请求...');
+    debugPrint('   - 当前正在下载的任务数: ${_cancelTokens.length}');
 
     // 先设置标志，防止新任务开始
     _isDownloading = false;
@@ -248,25 +247,25 @@ class ImageDownloadManager extends _$ImageDownloadManager {
     if (_currentIndex < _tasks.length) {
       final currentTask = _tasks.values.elementAt(_currentIndex);
       currentTask.status = DownloadStatus.paused;
-      print('   - 当前任务已标记为暂停: ${currentTask.id}');
+      debugPrint('   - 当前任务已标记为暂停: ${currentTask.id}');
     }
 
     state = state.copyWith(status: DownloadStatus.paused);
-    print('✅ 下载已暂停');
+    debugPrint('✅ 下载已暂停');
   }
 
   /// 恢复下载
   void resumeDownload() {
-    print('▶️ 恢复下载请求...');
-    print('   - 当前状态: ${state.status}');
-    print('   - 当前索引: $_currentIndex');
-    print('   - 总任务数: ${_tasks.length}');
+    debugPrint('▶️ 恢复下载请求...');
+    debugPrint('   - 当前状态: ${state.status}');
+    debugPrint('   - 当前索引: $_currentIndex');
+    debugPrint('   - 总任务数: ${_tasks.length}');
 
     if (state.status == DownloadStatus.paused) {
-      print('🚀 开始恢复下载...');
+      debugPrint('🚀 开始恢复下载...');
       _startDownload();
     } else {
-      print('⚠️ 无法恢复：当前状态不是暂停状态');
+      debugPrint('⚠️ 无法恢复：当前状态不是暂停状态');
     }
   }
 
@@ -311,7 +310,7 @@ class ImageDownloadManager extends _$ImageDownloadManager {
 
       return totalSize;
     } catch (e) {
-      print('❌ 计算缓存大小失败: $e');
+      debugPrint('❌ 计算缓存大小失败: $e');
       return 0;
     }
   }
@@ -324,10 +323,10 @@ class ImageDownloadManager extends _$ImageDownloadManager {
 
       if (await imageCacheDir.exists()) {
         await imageCacheDir.delete(recursive: true);
-        print('🗑️ 图片缓存已清理');
+        debugPrint('🗑️ 图片缓存已清理');
       }
     } catch (e) {
-      print('❌ 清理缓存失败: $e');
+      debugPrint('❌ 清理缓存失败: $e');
     }
   }
 }

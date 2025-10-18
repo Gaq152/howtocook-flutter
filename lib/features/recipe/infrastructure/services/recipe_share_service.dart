@@ -229,7 +229,7 @@ class RecipeShareService {
             'src': 'b',  // bundled
             'id': recipe.id,
             'n': recipe.name,  // 用于显示
-            if (recipe.hash != null && recipe.hash!.isNotEmpty) 'hash': recipe.hash,
+            if (recipe.hash.isNotEmpty) 'hash': recipe.hash,
           };
           debugPrint('📦 生成内置食谱二维码: ${recipe.name}');
           break;
@@ -248,7 +248,7 @@ class RecipeShareService {
             's': recipe.steps.map((step) => step.description).toList(),
             if (recipe.tips != null && recipe.tips!.isNotEmpty) 't': recipe.tips,
             if (recipe.warnings.isNotEmpty) 'w': recipe.warnings,
-            if (recipe.hash != null && recipe.hash!.isNotEmpty) 'hash': recipe.hash,
+            if (recipe.hash.isNotEmpty) 'hash': recipe.hash,
           };
           debugPrint('✏️  生成修改版食谱二维码: ${recipe.name}');
           break;
@@ -266,7 +266,7 @@ class RecipeShareService {
             's': recipe.steps.map((step) => step.description).toList(),
             if (recipe.tips != null && recipe.tips!.isNotEmpty) 't': recipe.tips,
             if (recipe.warnings.isNotEmpty) 'w': recipe.warnings,
-            if (recipe.hash != null && recipe.hash!.isNotEmpty) 'hash': recipe.hash,
+            if (recipe.hash.isNotEmpty) 'hash': recipe.hash,
           };
           debugPrint('👤 生成用户创建食谱二维码: ${recipe.name}');
           break;
@@ -284,14 +284,13 @@ class RecipeShareService {
             's': recipe.steps.map((step) => step.description).toList(),
             if (recipe.tips != null && recipe.tips!.isNotEmpty) 't': recipe.tips,
             if (recipe.warnings.isNotEmpty) 'w': recipe.warnings,
-            if (recipe.hash != null && recipe.hash!.isNotEmpty) 'hash': recipe.hash,
+            if (recipe.hash.isNotEmpty) 'hash': recipe.hash,
           };
           debugPrint('🤖 生成 AI 创建食谱二维码: ${recipe.name}');
           break;
 
         case RecipeSource.scanned:
         case RecipeSource.cloud:
-        default:
           // 扫码导入/云端下载：完整信息（兼容旧版，默认当作用户创建处理）
           payload = {
             'src': 'u',  // 默认当作用户创建
@@ -304,7 +303,7 @@ class RecipeShareService {
             's': recipe.steps.map((step) => step.description).toList(),
             if (recipe.tips != null && recipe.tips!.isNotEmpty) 't': recipe.tips,
             if (recipe.warnings.isNotEmpty) 'w': recipe.warnings,
-            if (recipe.hash != null && recipe.hash!.isNotEmpty) 'hash': recipe.hash,
+            if (recipe.hash.isNotEmpty) 'hash': recipe.hash,
           };
           debugPrint('📥 生成扫码/云端食谱二维码: ${recipe.name}');
       }

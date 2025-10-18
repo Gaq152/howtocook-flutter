@@ -43,7 +43,7 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
   List<String> _tools = [];
   String? _tips;
   List<String> _warnings = [];
-  List<String> _images = [];
+  final List<String> _images = [];
 
   // 可用的分类列表
   final List<Map<String, String>> _categories = [
@@ -559,7 +559,7 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
                     ],
                   ),
                 );
-              }).toList(),
+              }),
           ],
         ),
       ),
@@ -631,7 +631,7 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
                     ],
                   ),
                 );
-              }).toList(),
+              }),
           ],
         ),
       ),
@@ -676,7 +676,7 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
             ),
             border: const OutlineInputBorder(),
           ),
@@ -808,7 +808,7 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
           decoration: InputDecoration(
             hintText: '输入图片URL地址',
             hintStyle: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
             ),
             border: const OutlineInputBorder(),
           ),
@@ -1443,7 +1443,7 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
               '• 覆盖：替换现有食谱\n• 重命名：输入新名称\n• 取消：放弃保存',
               style: TextStyle(
                 fontSize: 14,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
           ],
@@ -1497,11 +1497,11 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
               decoration: InputDecoration(
                 labelText: '新名称',
                 labelStyle: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
                 hintText: '请输入新的食谱名称',
                 hintStyle: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                 ),
                 border: const OutlineInputBorder(),
               ),

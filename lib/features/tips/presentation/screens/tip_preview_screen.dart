@@ -117,7 +117,7 @@ class _TipPreviewBody extends StatelessWidget {
                     elevation: 0,
                     color: Theme.of(
                       context,
-                    ).colorScheme.surfaceVariant.withValues(alpha: 0.4),
+                    ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
                     child: Padding(
                       padding: const EdgeInsets.all(16),
                       child: LinkableTextRich(

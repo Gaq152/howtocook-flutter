@@ -140,25 +140,6 @@ class CachedRecipeImage extends ConsumerWidget {
     return image;
   }
 
-  Widget _buildPlaceholder(BuildContext context) {
-    if (placeholder != null) return placeholder!;
-
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant,
-        borderRadius: borderRadius,
-      ),
-      child: Center(
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
-      ),
-    );
-  }
-
   Widget _buildError(BuildContext context) {
     if (errorWidget != null) return errorWidget!;
 
@@ -166,14 +147,14 @@ class CachedRecipeImage extends ConsumerWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: borderRadius,
       ),
       child: Center(
         child: Icon(
           Icons.image_not_supported_outlined,
           size: 48,
-          color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.5),
+          color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
         ),
       ),
     );
@@ -219,14 +200,14 @@ class RecipePlaceholderImage extends StatelessWidget {
           Icon(
             icon,
             size: 64,
-            color: Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.6),
+            color: Theme.of(context).colorScheme.onPrimaryContainer.withValues(alpha: 0.6),
           ),
           if (text != null) ...[
             const SizedBox(height: 8),
             Text(
               text!,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.6),
+                    color: Theme.of(context).colorScheme.onPrimaryContainer.withValues(alpha: 0.6),
                   ),
             ),
           ],

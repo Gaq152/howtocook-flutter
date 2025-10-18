@@ -10,7 +10,7 @@ abstract class AIService {
   /// [tools] MCP 工具定义（可选）
   /// [maxTokens] 最大生成 token 数
   ///
-  /// 返回: Stream<String> - 流式文本响应
+  /// 返回: Stream\<String\> - 流式文本响应
   Stream<String> sendMessage({
     required List<ChatMessage> messages,
     List<Map<String, dynamic>>? tools,
@@ -37,6 +37,6 @@ abstract class AIService {
 
   /// 获取模型信息
   ///
-  /// 返回: Map<String, dynamic> - 模型信息（名称、能力等）
+  /// 返回: Map\<String, dynamic\> - 模型信息（名称、能力等）
   Future<Map<String, dynamic>> getModelInfo();
 }

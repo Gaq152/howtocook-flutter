@@ -82,6 +82,6 @@ final favorites = await mcpService.getFavoriteRecipes(['id1', 'id2']);
 try {
   final recipes = await mcpService.searchRecipes(query);
 } catch (e) {
-  print('搜索失败: $e');
+  debugPrint('搜索失败: $e');
 }
 ```

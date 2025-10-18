@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import '../../recipe/domain/entities/recipe.dart';
 import '../../tips/domain/entities/tip.dart';
@@ -74,7 +75,7 @@ class BundledDataLoader {
         recipes.add(recipe);
       } catch (e) {
         // 记录错误但继续加载其他菜谱
-        print('Warning: Failed to load recipe $id: $e');
+        debugPrint('Warning: Failed to load recipe $id: $e');
       }
     }
 
@@ -134,7 +135,7 @@ class BundledDataLoader {
 
       return loadTip(target.category, target.id);
     } catch (e) {
-      print('Warning: Failed to load tip $tipId: $e');
+      debugPrint('Warning: Failed to load tip $tipId: $e');
       return null;
     }
   }
@@ -147,7 +148,7 @@ class BundledDataLoader {
         final tip = await loadTip(index.category, index.id);
         tips.add(tip);
       } catch (e) {
-        print('Warning: Failed to load tip ${index.id}: $e');
+        debugPrint('Warning: Failed to load tip ${index.id}: $e');
       }
     }
     return tips;

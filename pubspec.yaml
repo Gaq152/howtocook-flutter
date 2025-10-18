@@ -74,9 +74,6 @@ dev_dependencies:
   # 代码规范
   flutter_lints: ^5.0.0
 
-  # 测试工具
-  image: ^4.3.0  # 图片处理和分析
-
   # 图标生成
   flutter_launcher_icons: ^0.14.1
 

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../../../sync/infrastructure/bundled_data_loader.dart';
 import '../../../../core/storage/hive_service.dart';
 import '../../domain/entities/tip.dart';
@@ -18,8 +19,8 @@ class TipRepositoryImpl implements TipRepository {
       for (final key in modifiedBox.keys) {
         try {
           final raw = modifiedBox.get(key);
-          if (raw is! Map) continue;
-          final converted = _deepConvertMap(raw as Map<dynamic, dynamic>);
+          if (raw is! Map<dynamic, dynamic>) continue;
+          final converted = _deepConvertMap(raw);
           final hasSource = converted.containsKey('source');
           final tip = Tip.fromJson(converted);
           final isFav = await isFavorite(tip.id);
@@ -32,7 +33,7 @@ class TipRepositoryImpl implements TipRepository {
           );
           loadedIds.add(tip.id);
         } catch (e) {
-          print('Warning: Failed to load modified tip $key: $e');
+          debugPrint('Warning: Failed to load modified tip $key: $e');
         }
       }
 
@@ -51,7 +52,7 @@ class TipRepositoryImpl implements TipRepository {
 
           tips.add(tip.copyWith(isFavorite: isFav, source: TipSource.bundled));
         } catch (e) {
-          print('Warning: Failed to load tip ${tipIndex.id}: $e');
+          debugPrint('Warning: Failed to load tip ${tipIndex.id}: $e');
         }
       }
 
@@ -73,8 +74,8 @@ class TipRepositoryImpl implements TipRepository {
       final modifiedBox = HiveService.getModifiedTipsBox();
       if (modifiedBox.containsKey(tipId)) {
         final raw = modifiedBox.get(tipId);
-        if (raw is Map) {
-          final converted = _deepConvertMap(raw as Map<dynamic, dynamic>);
+        if (raw is Map<dynamic, dynamic>) {
+          final converted = _deepConvertMap(raw);
           final tip = Tip.fromJson(converted);
           final isFav = await isFavorite(tipId);
           return tip.copyWith(isFavorite: isFav);
@@ -91,7 +92,7 @@ class TipRepositoryImpl implements TipRepository {
       final isFav = await isFavorite(tip.id);
       return tip.copyWith(isFavorite: isFav);
     } catch (e) {
-      print('Warning: Failed to load tip $tipId: $e');
+      debugPrint('Warning: Failed to load tip $tipId: $e');
       return null;
     }
   }
@@ -191,8 +192,8 @@ class TipRepositoryImpl implements TipRepository {
     final result = <String, dynamic>{};
     source.forEach((key, value) {
       final stringKey = key.toString();
-      if (value is Map) {
-        result[stringKey] = _deepConvertMap(value as Map<dynamic, dynamic>);
+      if (value is Map<dynamic, dynamic>) {
+        result[stringKey] = _deepConvertMap(value);
       } else if (value is List) {
         result[stringKey] = _deepConvertList(value);
       } else {
@@ -204,8 +205,8 @@ class TipRepositoryImpl implements TipRepository {
 
   List<dynamic> _deepConvertList(List<dynamic> source) {
     return source.map((item) {
-      if (item is Map) {
-        return _deepConvertMap(item as Map<dynamic, dynamic>);
+      if (item is Map<dynamic, dynamic>) {
+        return _deepConvertMap(item);
       } else if (item is List) {
         return _deepConvertList(item);
       } else {
