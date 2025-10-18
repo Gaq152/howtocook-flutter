@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -15,6 +16,7 @@ import '../../infrastructure/services/recipe_share_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/linkable_text.dart';
+import '../../../../core/widgets/cached_recipe_image.dart';
 
 /// Provider for RecipeShareService
 final recipeShareServiceProvider = Provider<RecipeShareService>((ref) {
@@ -27,10 +29,7 @@ final recipeShareServiceProvider = Provider<RecipeShareService>((ref) {
 class RecipeDetailScreen extends ConsumerStatefulWidget {
   final String recipeId;
 
-  const RecipeDetailScreen({
-    super.key,
-    required this.recipeId,
-  });
+  const RecipeDetailScreen({super.key, required this.recipeId});
 
   @override
   ConsumerState<RecipeDetailScreen> createState() => _RecipeDetailScreenState();
@@ -38,11 +37,41 @@ class RecipeDetailScreen extends ConsumerStatefulWidget {
 
 class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   final TextEditingController _noteController = TextEditingController();
+  bool _isDeleting = false;
+
+  // 图片轮播相关
+  PageController? _pageController;
+  Timer? _autoScrollTimer;
+  int _currentPage = 0;
+  int _totalImages = 0;
 
   @override
   void dispose() {
     _noteController.dispose();
+    _autoScrollTimer?.cancel();
+    _pageController?.dispose();
     super.dispose();
+  }
+
+  /// 初始化图片轮播
+  void _initImageCarousel(int imageCount) {
+    if (imageCount <= 1) return; // 单图或无图不需要轮播
+
+    _totalImages = imageCount;
+    _pageController = PageController(initialPage: 0);
+
+    // 启动自动滚动定时器（每3秒切换一次）
+    _autoScrollTimer?.cancel();
+    _autoScrollTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (_pageController != null && _pageController!.hasClients) {
+        final nextPage = (_currentPage + 1) % _totalImages;
+        _pageController!.animateToPage(
+          nextPage,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
   }
 
   @override
@@ -136,51 +165,113 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
           tooltip: '分享菜谱',
           onPressed: () => _showShareDialog(context, recipe),
         ),
+        if (_isDeleting)
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            ),
+          )
+        else
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: Colors.white),
+            tooltip: '删除菜谱',
+            onPressed: () => _confirmDeleteRecipe(context, recipe),
+          ),
       ],
     );
   }
 
   /// 构建头部图片
   Widget _buildHeaderImage(Recipe recipe) {
-    if (recipe.images.isEmpty) {
-      return Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppColors.primary,
-              AppColors.primaryDark,
-            ],
+    // 提取 recipeId（去掉分类前缀）
+    // 例如: "meat_dish_003ec59b" -> "003ec59b"
+    final recipeIdParts = recipe.id.split('_');
+    final recipeId = recipeIdParts.length > 1
+        ? recipeIdParts.sublist(1).join('_')
+        : recipe.id;
+
+    // 获取图片数量
+    final imageCount = recipe.images.length;
+
+    // 初始化轮播（如果有多张图片）
+    if (imageCount > 1 && _pageController == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _initImageCarousel(imageCount);
+      });
+    }
+
+    // 单图或无图的情况，显示单张图片
+    if (imageCount <= 1) {
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          CachedRecipeImage.detail(
+            category: recipe.category,
+            recipeId: recipeId,
+            imageIndex: 0,
+            width: double.infinity,
+            height: double.infinity,
+            fit: BoxFit.cover,
+            errorWidget: _buildImagePlaceholder(),
           ),
-        ),
-        child: Center(
-          child: Icon(
-            Icons.restaurant_menu,
-            size: 120,
-            color: Colors.white.withValues(alpha: 0.3),
-          ),
-        ),
+          _buildGradientOverlay(),
+        ],
       );
     }
 
-    final imagePath = recipe.images.first;
-
+    // 多图情况，显示轮播
     return Stack(
       fit: StackFit.expand,
       children: [
-        _buildImageWidget(imagePath),
-        // 渐变遮罩，确保文字可读
-        Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.transparent,
-                Colors.black.withValues(alpha: 0.7),
-              ],
-              stops: const [0.5, 1.0],
+        // PageView 轮播
+        PageView.builder(
+          controller: _pageController,
+          itemCount: imageCount,
+          onPageChanged: (index) {
+            setState(() {
+              _currentPage = index;
+            });
+          },
+          itemBuilder: (context, index) {
+            return CachedRecipeImage.detail(
+              category: recipe.category,
+              recipeId: recipeId,
+              imageIndex: index,
+              width: double.infinity,
+              height: double.infinity,
+              fit: BoxFit.cover,
+              errorWidget: _buildImagePlaceholder(),
+            );
+          },
+        ),
+        // 渐变遮罩
+        _buildGradientOverlay(),
+        // 页面指示器（小圆点）
+        Positioned(
+          bottom: 16,
+          left: 0,
+          right: 0,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              imageCount,
+              (index) => Container(
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _currentPage == index
+                      ? Colors.white
+                      : Colors.white.withValues(alpha: 0.4),
+                ),
+              ),
             ),
           ),
         ),
@@ -188,12 +279,66 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     );
   }
 
+  /// 构建图片占位符
+  Widget _buildImagePlaceholder() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.primary, AppColors.primaryDark],
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.cloud_download_outlined,
+              size: 64,
+              color: Colors.white.withValues(alpha: 0.6),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '图片未下载',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.9),
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '请前往数据同步页面下载',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7),
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 构建渐变遮罩
+  Widget _buildGradientOverlay() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.transparent, Colors.black.withValues(alpha: 0.7)],
+          stops: const [0.5, 1.0],
+        ),
+      ),
+    );
+  }
+
   /// 构建图片组件（支持本地、网络、资源、Base64图片）
   Widget _buildImageWidget(String imagePath) {
     // 规范化路径：在Web端将反斜杠转换为正斜杠
-    final normalizedPath = kIsWeb
-        ? imagePath.replaceAll('\\', '/')
-        : imagePath;
+    final normalizedPath = kIsWeb ? imagePath.replaceAll('\\', '/') : imagePath;
 
     // 错误时显示的占位符
     Widget errorWidget = Container(
@@ -252,16 +397,15 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
       } catch (e) {
         return errorWidget;
       }
-    } else if (normalizedPath.startsWith('http://') || normalizedPath.startsWith('https://')) {
+    } else if (normalizedPath.startsWith('http://') ||
+        normalizedPath.startsWith('https://')) {
       // 网络图片
       return CachedNetworkImage(
         imageUrl: normalizedPath,
         fit: BoxFit.cover,
         placeholder: (context, url) => Container(
           color: AppColors.surface,
-          child: const Center(
-            child: CircularProgressIndicator(),
-          ),
+          child: const Center(child: CircularProgressIndicator()),
         ),
         errorWidget: (context, url, error) => errorWidget,
       );
@@ -289,6 +433,81 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     }
   }
 
+  bool _canDeleteRecipe(Recipe recipe) {
+    return switch (recipe.source) {
+      RecipeSource.userCreated ||
+      RecipeSource.userModified ||
+      RecipeSource.scanned ||
+      RecipeSource.aiGenerated => true,
+      _ => false,
+    };
+  }
+
+  Future<void> _confirmDeleteRecipe(BuildContext context, Recipe recipe) async {
+    if (!_canDeleteRecipe(recipe)) {
+      final message = recipe.source == RecipeSource.bundled
+          ? '【${recipe.name}】为内置菜谱，无法删除'
+          : '【${recipe.name}】暂不支持删除';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('删除菜谱'),
+        content: Text('确定要删除「${recipe.name}」吗？删除后无法恢复。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _deleteRecipe(context, recipe);
+    }
+  }
+
+  Future<void> _deleteRecipe(BuildContext context, Recipe recipe) async {
+    setState(() => _isDeleting = true);
+
+    try {
+      final repository = ref.read(recipeRepositoryProvider);
+      await repository.deleteRecipe(recipe.id);
+      ref
+        ..invalidate(allRecipesProvider)
+        ..invalidate(favoriteRecipesProvider)
+        ..invalidate(favoriteIdsProvider)
+        ..invalidate(recipeByIdProvider(recipe.id));
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('已删除「${recipe.name}」')));
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('删除失败: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isDeleting = false);
+      }
+    }
+  }
+
   /// 构建元信息
   Widget _buildMetaInfo(Recipe recipe) {
     final isFavoriteAsync = ref.watch(isFavoriteProvider(widget.recipeId));
@@ -309,11 +528,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
             mainAxisSize: MainAxisSize.min,
             children: List.generate(
               recipe.difficulty.clamp(1, 5),
-              (index) => const Icon(
-                Icons.star,
-                color: Colors.orange,
-                size: 16,
-              ),
+              (index) => const Icon(Icons.star, color: Colors.orange, size: 16),
             ),
           ),
           backgroundColor: Colors.orange.withValues(alpha: 0.1),
@@ -446,7 +661,11 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
       children: [
         Row(
           children: [
-            Icon(Icons.format_list_numbered, color: AppColors.primary, size: 24),
+            Icon(
+              Icons.format_list_numbered,
+              color: AppColors.primary,
+              size: 24,
+            ),
             const SizedBox(width: 8),
             Text('制作步骤', style: AppTextStyles.h2),
           ],
@@ -516,11 +735,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      Icons.circle,
-                      size: 6,
-                      color: AppColors.warning,
-                    ),
+                    Icon(Icons.circle, size: 6, color: AppColors.warning),
                     const SizedBox(width: 8),
                     Expanded(
                       child: LinkableTextRich(
@@ -622,10 +837,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               color: Theme.of(context).colorScheme.error,
             ),
             const SizedBox(height: 16),
-            Text(
-              '加载失败',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
+            Text('加载失败', style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 8),
             Text(
               error.toString(),
@@ -641,10 +853,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               label: const Text('重试'),
             ),
             const SizedBox(height: 8),
-            TextButton(
-              onPressed: () => context.pop(),
-              child: const Text('返回'),
-            ),
+            TextButton(onPressed: () => context.pop(), child: const Text('返回')),
           ],
         ),
       ),
@@ -665,10 +874,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               color: Theme.of(context).colorScheme.secondary,
             ),
             const SizedBox(height: 16),
-            Text(
-              '菜谱不存在',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
+            Text('菜谱不存在', style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 8),
             Text(
               '该菜谱可能已被删除',
@@ -710,10 +916,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('操作失败: $e'),
-            backgroundColor: AppColors.error,
-          ),
+          SnackBar(content: Text('操作失败: $e'), backgroundColor: AppColors.error),
         );
       }
     }
@@ -721,7 +924,9 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
 
   /// 显示备注编辑对话框
   void _showNoteDialog(Recipe recipe) async {
-    final currentNote = await ref.read(userNoteProvider(widget.recipeId).future);
+    final currentNote = await ref.read(
+      userNoteProvider(widget.recipeId).future,
+    );
     _noteController.text = currentNote ?? '';
 
     if (!mounted) return;
@@ -779,10 +984,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('保存失败: $e'),
-            backgroundColor: AppColors.error,
-          ),
+          SnackBar(content: Text('保存失败: $e'), backgroundColor: AppColors.error),
         );
       }
     }
@@ -810,10 +1012,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.all(16),
-              child: Text(
-                '分享菜谱',
-                style: AppTextStyles.h3,
-              ),
+              child: Text('分享菜谱', style: AppTextStyles.h3),
             ),
             const Divider(height: 1),
             ListTile(
@@ -930,7 +1129,8 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     try {
       await Gal.putImageBytes(
         imageBytes,
-        name: 'recipe_${recipe.id}_${DateTime.now().millisecondsSinceEpoch}', // gal 会自动添加 .png
+        name:
+            'recipe_${recipe.id}_${DateTime.now().millisecondsSinceEpoch}', // gal 会自动添加 .png
       );
 
       if (mounted) {
@@ -945,10 +1145,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('保存失败: $e'),
-            backgroundColor: AppColors.error,
-          ),
+          SnackBar(content: Text('保存失败: $e'), backgroundColor: AppColors.error),
         );
       }
     }
@@ -963,10 +1160,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
       );
       await file.writeAsBytes(imageBytes);
 
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        text: '分享食谱：${recipe.name}',
-      );
+      await Share.shareXFiles([XFile(file.path)], text: '分享食谱：${recipe.name}');
 
       // 清理临时文件
       try {
@@ -977,10 +1171,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('分享失败: $e'),
-            backgroundColor: AppColors.error,
-          ),
+          SnackBar(content: Text('分享失败: $e'), backgroundColor: AppColors.error),
         );
       }
     }
@@ -1019,10 +1210,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('分享失败: $e'),
-            backgroundColor: AppColors.error,
-          ),
+          SnackBar(content: Text('分享失败: $e'), backgroundColor: AppColors.error),
         );
       }
     }
@@ -1039,7 +1227,10 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               const SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
               ),
               const SizedBox(width: 12),
               Text(saveOnly ? '正在生成并保存图片...' : '正在生成图片...'),
@@ -1053,7 +1244,11 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     try {
       // 导入分享服务
       final shareService = ref.read(recipeShareServiceProvider);
-      final result = await shareService.shareAsImage(recipe, context, saveOnly: saveOnly);
+      final result = await shareService.shareAsImage(
+        recipe,
+        context,
+        saveOnly: saveOnly,
+      );
 
       if (!mounted) return;
 
@@ -1096,10 +1291,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('操作失败: $e'),
-            backgroundColor: AppColors.error,
-          ),
+          SnackBar(content: Text('操作失败: $e'), backgroundColor: AppColors.error),
         );
       }
     }
@@ -1122,10 +1314,7 @@ class _InfoChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Chip(
       avatar: Icon(icon, size: 16, color: color),
-      label: Text(
-        label,
-        style: AppTextStyles.badge.copyWith(color: color),
-      ),
+      label: Text(label, style: AppTextStyles.badge.copyWith(color: color)),
       backgroundColor: color.withValues(alpha: 0.1),
       side: BorderSide(color: color.withValues(alpha: 0.3)),
     );
@@ -1137,10 +1326,7 @@ class _StepCard extends StatelessWidget {
   final int stepNumber;
   final String description;
 
-  const _StepCard({
-    required this.stepNumber,
-    required this.description,
-  });
+  const _StepCard({required this.stepNumber, required this.description});
 
   @override
   Widget build(BuildContext context) {
@@ -1210,10 +1396,7 @@ class _ImageSharePreviewDialog extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                Text(
-                  '分享预览',
-                  style: AppTextStyles.h3,
-                ),
+                Text('分享预览', style: AppTextStyles.h3),
                 const Spacer(),
                 IconButton(
                   icon: const Icon(Icons.close),
@@ -1235,10 +1418,7 @@ class _ImageSharePreviewDialog extends StatelessWidget {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.memory(
-                    imageBytes,
-                    fit: BoxFit.contain,
-                  ),
+                  child: Image.memory(imageBytes, fit: BoxFit.contain),
                 ),
               ),
             ),
@@ -1249,9 +1429,7 @@ class _ImageSharePreviewDialog extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.grey.shade50,
-              border: Border(
-                top: BorderSide(color: Colors.grey.shade200),
-              ),
+              border: Border(top: BorderSide(color: Colors.grey.shade200)),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,

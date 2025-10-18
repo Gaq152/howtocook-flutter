@@ -27,10 +27,24 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
   // 存储大小
   String _storageSize = '计算中...';
 
+  // 当前正在下载图片的类型
+  SyncItemType? _currentImageDownloadType;
+
+  // 当前下载的总任务数
+  int _currentTotalTasks = 0;
+
   @override
   void initState() {
     super.initState();
     _calculateStorageSize();
+    // 初始化时自动检查各项状态
+    _checkInitialStates();
+  }
+
+  /// 初始化时检查各项状态
+  void _checkInitialStates() {
+    // 自动检查完整详情图下载状态
+    _handleCheckUpdate(SyncItemType.fullDetailImages);
   }
 
   /// 计算本地存储大小
@@ -70,14 +84,59 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
 
   @override
   Widget build(BuildContext context) {
+    // 监听图片下载进度 - 必须在 build 方法中
+    ref.listen<ImageDownloadState>(
+      imageDownloadManagerProvider,
+      (previous, next) {
+        if (!mounted || _currentImageDownloadType == null) return;
+
+        final type = _currentImageDownloadType!;
+        final totalTasks = _currentTotalTasks;
+
+        setState(() {
+          _itemStates[type] = _itemStates[type]!.copyWith(
+            completedItems: next.completedTasks,
+            message: '已下载 ${next.completedTasks}/$totalTasks 张图片',
+          );
+        });
+
+        // 检查下载状态
+        if (next.status == DownloadStatus.completed) {
+          setState(() {
+            _itemStates[type] = _itemStates[type]!.copyWith(
+              status: SyncItemStatus.completed,
+              completedItems: totalTasks,
+              message: '图片下载完成',
+            );
+            _currentImageDownloadType = null;
+          });
+        } else if (next.status == DownloadStatus.error) {
+          setState(() {
+            _itemStates[type] = _itemStates[type]!.copyWith(
+              status: SyncItemStatus.error,
+              error: '图片下载失败',
+            );
+            _currentImageDownloadType = null;
+          });
+        }
+      },
+    );
+
     return Column(
       children: [
         // 标题卡片
         _buildHeaderCard(context),
         const SizedBox(height: 16),
 
-        // 同步项列表
-        ...SyncItemInfo.items.map((info) => Padding(
+        // 同步项列表（已完成的 fullDetailImages 不显示）
+        ...SyncItemInfo.items.where((info) {
+          // 如果是初始化详情图且状态为已完成，则隐藏该卡片
+          if (info.type == SyncItemType.fullDetailImages) {
+            final state = _itemStates[info.type]!;
+            return state.status != SyncItemStatus.completed;
+          }
+          return true;
+        }).map((info) => Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: _buildSyncItemCard(context, info),
             )),
@@ -633,10 +692,11 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
             );
           });
         } else {
+          // 所有图片已下载，显示已完成状态
           setState(() {
             _itemStates[type] = _itemStates[type]!.copyWith(
-              status: SyncItemStatus.idle,
-              message: '没有可下载的详情图',
+              status: SyncItemStatus.completed,
+              message: recipesWithImages > 0 ? '所有图片已下载' : '没有可下载的详情图',
             );
           });
         }
@@ -654,15 +714,34 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
         }
 
         if (_pendingUpdates != null && _pendingUpdates!.isNotEmpty) {
-          setState(() {
-            _itemStates[type] = _itemStates[type]!.copyWith(
-              status: SyncItemStatus.updateAvailable,
-              message: '图片可以下载',
-              totalItems: type == SyncItemType.coverImages
-                ? _pendingUpdates!.length
-                : _pendingUpdates!.length * 2,
-            );
-          });
+          // 实际计算需要下载的图片数量（考虑已存在的文件）
+          int actualTaskCount = 0;
+          for (final update in _pendingUpdates!) {
+            if (type == SyncItemType.coverImages) {
+              final task = await dataSyncService.extractCoverImageTask(update);
+              if (task != null) actualTaskCount++;
+            } else if (type == SyncItemType.detailImages) {
+              final tasks = await dataSyncService.extractDetailImageTasks(update);
+              actualTaskCount += tasks.length;
+            }
+          }
+
+          if (actualTaskCount > 0) {
+            setState(() {
+              _itemStates[type] = _itemStates[type]!.copyWith(
+                status: SyncItemStatus.updateAvailable,
+                message: '可下载 $actualTaskCount 张图片',
+                totalItems: actualTaskCount,
+              );
+            });
+          } else {
+            setState(() {
+              _itemStates[type] = _itemStates[type]!.copyWith(
+                status: SyncItemStatus.completed,
+                message: '所有图片已下载',
+              );
+            });
+          }
         } else {
           setState(() {
             _itemStates[type] = _itemStates[type]!.copyWith(
@@ -864,10 +943,6 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
         message: '正在下载...',
       );
     });
-
-    // 继续监听进度
-    final state = _itemStates[type]!;
-    _monitorImageDownloadProgress(type, state.totalItems);
   }
 
   void _handleCancelDownload(SyncItemType type) {
@@ -876,6 +951,8 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
 
     setState(() {
       _itemStates[type] = SyncItemState.initial(type);
+      _currentImageDownloadType = null;
+      _currentTotalTasks = 0;
     });
   }
 
@@ -883,49 +960,12 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
   Future<void> _downloadImages(SyncItemType type, List<DownloadTask> tasks) async {
     final imageDownloadManager = ref.read(imageDownloadManagerProvider.notifier);
 
-    // 添加下载任务
+    // 设置当前下载类型和总任务数，让 build 方法中的监听器知道更新哪个类型
+    _currentImageDownloadType = type;
+    _currentTotalTasks = tasks.length;
+
+    // 添加下载任务（会自动开始下载并触发 build 方法中的监听器）
     imageDownloadManager.addDownloadTasks(tasks);
-
-    // 启动进度监听
-    _monitorImageDownloadProgress(type, tasks.length);
-  }
-
-  /// 监听图片下载进度
-  void _monitorImageDownloadProgress(SyncItemType type, int totalTasks) {
-    Future.delayed(const Duration(milliseconds: 100), () async {
-      if (!mounted) return;
-
-      final imageDownloadState = ref.read(imageDownloadManagerProvider);
-
-      setState(() {
-        _itemStates[type] = _itemStates[type]!.copyWith(
-          completedItems: imageDownloadState.completedTasks,
-          message: '已下载 ${imageDownloadState.completedTasks}/$totalTasks 张图片',
-        );
-      });
-
-      // 检查下载状态
-      if (imageDownloadState.status == DownloadStatus.completed) {
-        setState(() {
-          _itemStates[type] = _itemStates[type]!.copyWith(
-            status: SyncItemStatus.completed,
-            completedItems: totalTasks,
-            message: '图片下载完成',
-          );
-        });
-      } else if (imageDownloadState.status == DownloadStatus.error) {
-        setState(() {
-          _itemStates[type] = _itemStates[type]!.copyWith(
-            status: SyncItemStatus.error,
-            error: '图片下载失败',
-          );
-        });
-      } else if (imageDownloadState.status == DownloadStatus.downloading ||
-                 imageDownloadState.status == DownloadStatus.paused) {
-        // 继续监听
-        _monitorImageDownloadProgress(type, totalTasks);
-      }
-    });
   }
 
   void _handleClearCache() {
@@ -968,38 +1008,4 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
     );
   }
 
-  // 模拟下载进度
-  void _simulateDownload(SyncItemType type) {
-    final state = _itemStates[type]!;
-
-    if (state.progress >= 100) {
-      setState(() {
-        _itemStates[type] = state.copyWith(
-          status: SyncItemStatus.completed,
-          progress: 100,
-          completedItems: state.totalItems,
-          message: '下载完成',
-        );
-      });
-      return;
-    }
-
-    if (state.status != SyncItemStatus.downloading) return;
-
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (mounted && _itemStates[type]!.status == SyncItemStatus.downloading) {
-        setState(() {
-          final newProgress = (state.progress + 2).clamp(0, 100);
-          final newCompleted = (state.totalItems * newProgress / 100).round();
-
-          _itemStates[type] = state.copyWith(
-            progress: newProgress,
-            completedItems: newCompleted,
-          );
-        });
-
-        _simulateDownload(type);
-      }
-    });
-  }
 }

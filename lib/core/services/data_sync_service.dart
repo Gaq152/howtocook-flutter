@@ -648,6 +648,13 @@ class DataSyncService extends _$DataSyncService {
       final localPath =
           '${cacheDir.path}/recipe_images/covers/${update.category}/$recipeName.webp';
 
+      // 检查文件是否已存在，如果存在则跳过
+      final coverFile = File(localPath);
+      if (await coverFile.exists()) {
+        print('   ⏭️  跳过已下载的封面图: $recipeName.webp');
+        return null;
+      }
+
       print('📋 封面图下载任务:');
       print('   - 分类: ${update.category}');
       print('   - 菜名: $recipeName');
@@ -696,12 +703,26 @@ class DataSyncService extends _$DataSyncService {
 
       final cacheDir = await getApplicationDocumentsDirectory();
 
+      // 提取纯净的 recipeId（去掉分类前缀）
+      // 例如: "aquatic_2749d071" -> "2749d071"
+      final recipeIdParts = update.recipeId.split('_');
+      final pureRecipeId = recipeIdParts.length > 1
+          ? recipeIdParts.sublist(1).join('_')
+          : update.recipeId;
+
       for (int i = 0; i < images.length; i++) {
-        // 详情图按ID存储：images/{category}/{recipeId}_$i.webp
+        // 详情图按纯净ID存储：images/{category}/{pureRecipeId}_$i.webp
         final imageUrl =
             '$_remoteBaseUrl/images/${update.category}/${update.recipeId}_$i.webp';
         final localPath =
-            '${cacheDir.path}/recipe_images/details/${update.category}/${update.recipeId}_$i.webp';
+            '${cacheDir.path}/recipe_images/details/${update.category}/${pureRecipeId}_$i.webp';
+
+        // 检查文件是否已存在，如果存在则跳过
+        final file = File(localPath);
+        if (await file.exists()) {
+          print('   ⏭️  跳过已下载的图片: ${pureRecipeId}_$i.webp');
+          continue;
+        }
 
         tasks.add(
           DownloadTask(
@@ -750,12 +771,26 @@ class DataSyncService extends _$DataSyncService {
         return tasks;
       }
 
+      // 提取纯净的 recipeId（去掉分类前缀）
+      // 例如: "aquatic_2749d071" -> "2749d071"
+      final recipeIdParts = update.recipeId.split('_');
+      final pureRecipeId = recipeIdParts.length > 1
+          ? recipeIdParts.sublist(1).join('_')
+          : update.recipeId;
+
       for (int i = 0; i < images.length; i++) {
-        // 详情图按ID存储：images/{category}/{recipeId}_$i.webp
+        // 详情图按纯净ID存储：images/{category}/{pureRecipeId}_$i.webp
         final imageUrl =
             '$_remoteBaseUrl/images/${update.category}/${update.recipeId}_$i.webp';
         final localPath =
-            '${cacheDir.path}/recipe_images/details/${update.category}/${update.recipeId}_$i.webp';
+            '${cacheDir.path}/recipe_images/details/${update.category}/${pureRecipeId}_$i.webp';
+
+        // 检查文件是否已存在，如果存在则跳过
+        final file = File(localPath);
+        if (await file.exists()) {
+          print('   ⏭️  跳过已下载的图片: ${pureRecipeId}_$i.webp');
+          continue;
+        }
 
         print('   [$i] URL: $imageUrl');
         print('   [$i] 本地: $localPath');
