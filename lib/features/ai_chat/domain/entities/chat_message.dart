@@ -14,6 +14,7 @@ class ChatMessage with _$ChatMessage {
     @Default(MessageStatus.sent) MessageStatus status,
     String? modelId, // 消息使用的模型ID（用于显示模型名称）
     List<RecipeCard>? recipeCards, // 菜谱卡片（UI 展示用）
+    List<String>? createdRecipeIds, // 该消息创建的食谱ID列表（用于持久化关联）
   }) = _ChatMessage;
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => _$ChatMessageFromJson(json);

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/storage/hive_service.dart';
 import 'core/storage/database_manager.dart';
 import 'core/router/app_router.dart';
@@ -65,6 +66,17 @@ class HowToCookApp extends ConsumerWidget {
       themeMode: themeMode,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
+      // 本地化配置
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('zh', 'CN'), // 简体中文
+        Locale('en', 'US'), // 英文（备用）
+      ],
+      locale: const Locale('zh', 'CN'), // 默认语言
     );
   }
 }

@@ -422,6 +422,46 @@ class MCPService {
     }
   }
 
+  /// 6. 创建新食谱
+  ///
+  /// [recipeText] 自然语言格式的食谱文本
+  /// [checkDuplicate] 是否检查重复（默认 true）
+  /// [similarityThreshold] 相似度检测阈值（0-1，默认 0.75）
+  /// 对应 MCP 工具: mcp_howtocook_createRecipe
+  ///
+  /// 返回格式: {
+  ///   recipe: {...},  // 创建的食谱对象
+  ///   warnings: [...] // 警告信息（如相似度检测结果）
+  /// }
+  Future<Map<String, dynamic>> createRecipe({
+    required String recipeText,
+    bool checkDuplicate = true,
+    double similarityThreshold = 0.75,
+  }) async {
+    try {
+      final arguments = <String, dynamic>{
+        'recipeText': recipeText,
+        'checkDuplicate': checkDuplicate,
+        'similarityThreshold': similarityThreshold,
+      };
+
+      final result = await _callTool('createRecipe', arguments);
+
+      if (result is Map<String, dynamic>) {
+        // 检查是否有错误
+        if (result.containsKey('error')) {
+          throw Exception('创建食谱失败: ${result['error']}');
+        }
+
+        return result;
+      }
+
+      throw Exception('Invalid createRecipe result format');
+    } catch (e) {
+      throw Exception('Failed to create recipe: $e');
+    }
+  }
+
   /// 获取可用的工具列表
   Future<List<Map<String, dynamic>>> listTools() async {
     try {
