@@ -56,12 +56,20 @@ class TipPreviewScreen extends ConsumerWidget {
     final router = GoRouter.of(context);
 
     try {
-      await repository.saveTip(tip);
+      final now = DateTime.now();
+      final toSave = tip.copyWith(
+        source: tip.source == TipSource.bundled
+            ? TipSource.scanned
+            : tip.source,
+        createdAt: tip.createdAt ?? now,
+        updatedAt: now,
+      );
+      await repository.saveTip(toSave);
       ref.invalidate(allTipsProvider);
-      ref.invalidate(tipsByCategoryProvider(tip.category));
-      ref.invalidate(tipByIdProvider(tip.id));
+      ref.invalidate(tipsByCategoryProvider(toSave.category));
+      ref.invalidate(tipByIdProvider(toSave.id));
       messenger.showSnackBar(const SnackBar(content: Text('教程已保存')));
-      router.go('/tips/${tip.category}/${tip.id}');
+      router.go('/tips/${toSave.category}/${toSave.id}');
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('保存失败: $e')));
     }

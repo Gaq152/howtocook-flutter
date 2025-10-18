@@ -53,3 +53,9 @@ final isTipFavoriteProvider = FutureProvider.family<bool, String>((
   final repository = ref.watch(tipRepositoryProvider);
   return repository.isFavorite(tipId);
 });
+
+/// 收藏的教程列表 Provider
+final favoriteTipsProvider = FutureProvider<List<Tip>>((ref) async {
+  final repository = ref.watch(tipRepositoryProvider);
+  return repository.getFavoriteTips();
+});

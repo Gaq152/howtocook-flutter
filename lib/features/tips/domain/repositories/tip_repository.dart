@@ -17,4 +17,6 @@ abstract class TipRepository {
   Future<bool> isFavorite(String tipId);
 
   Future<List<String>> getFavoriteTipIds();
+
+  Future<List<Tip>> getFavoriteTips();
 }

@@ -110,7 +110,7 @@ class BundledDataLoader {
       final path = getTipPath(category, tipId);
       final jsonString = await rootBundle.loadString(path);
       final jsonData = jsonDecode(jsonString) as Map<String, dynamic>;
-      return Tip.fromJson(jsonData);
+      return Tip.fromJson(jsonData).copyWith(source: TipSource.bundled);
     } catch (e) {
       throw Exception('Failed to load tip $tipId: $e');
     }

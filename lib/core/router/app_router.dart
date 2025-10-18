@@ -9,7 +9,7 @@ import '../../features/recipe/presentation/screens/recipe_create_screen.dart';
 import '../../features/recipe/presentation/screens/favorite_recipes_screen.dart';
 import '../../features/recipe/presentation/screens/qr_scanner_screen.dart';
 import '../../features/recipe/presentation/screens/recipe_preview_screen.dart';
-import '../../features/recipe/presentation/screens/my_recipes_screen.dart';
+import '../../features/user/presentation/screens/my_creations_screen.dart';
 import '../../features/recipe/domain/entities/recipe.dart';
 import '../../features/tips/domain/entities/tip.dart';
 import '../../features/ai_chat/presentation/screens/ai_chat_screen.dart';
@@ -109,12 +109,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
 
-      // 我的菜谱
+      // 我的自创
       GoRoute(
-        path: '/my-recipes',
-        name: 'my-recipes',
+        path: '/my-creations',
+        name: 'my-creations',
         builder: (context, state) {
-          return const MyRecipesScreen();
+          return const MyCreationsScreen();
         },
       ),
 

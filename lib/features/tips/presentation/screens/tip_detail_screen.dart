@@ -7,7 +7,7 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/linkable_text.dart';
 import '../../application/providers/tip_providers.dart';
 import '../../domain/entities/tip.dart';
-import '../../infrastructure/services/tip_share_service.dart';
+import '../utils/tip_share_helpers.dart';
 
 class TipDetailScreen extends ConsumerWidget {
   const TipDetailScreen({
@@ -22,53 +22,45 @@ class TipDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tipAsync = ref.watch(tipByIdProvider(tipId));
+    final tip = tipAsync.asData?.value;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('教程详情'),
         actions: [
-          tipAsync.maybeWhen(
-            data: (tip) => IconButton(
-              tooltip: tip?.isFavorite == true ? '取消收藏' : '收藏',
+          if (tip != null) ...[
+            IconButton(
+              tooltip: tip.isFavorite ? '取消收藏' : '收藏',
               icon: Icon(
-                tip?.isFavorite == true
-                    ? Icons.bookmark
-                    : Icons.bookmark_outline,
+                tip.isFavorite ? Icons.bookmark : Icons.bookmark_outline,
               ),
-              onPressed: tip == null
-                  ? null
-                  : () => _toggleFavorite(ref, tipId, tip.isFavorite),
+              onPressed: () => _toggleFavorite(context, ref, tip),
             ),
-            orElse: () => const SizedBox.shrink(),
-          ),
-          tipAsync.maybeWhen(
-            data: (tip) => IconButton(
+            IconButton(
               tooltip: '编辑',
               icon: const Icon(Icons.edit_outlined),
-              onPressed: tip == null
-                  ? null
-                  : () => context.push('/tips/${tip.id}/edit'),
+              onPressed: () => context.push('/tips/${tip.id}/edit'),
             ),
-            orElse: () => const SizedBox.shrink(),
-          ),
-          tipAsync.maybeWhen(
-            data: (tip) => IconButton(
+            IconButton(
               tooltip: '分享',
               icon: const Icon(Icons.share_outlined),
-              onPressed: tip == null
-                  ? null
-                  : () => _showShareOptions(context, ref, tip),
+              onPressed: () =>
+                  showTipShareSheet(context: context, ref: ref, tip: tip),
             ),
-            orElse: () => const SizedBox.shrink(),
-          ),
+            IconButton(
+              tooltip: '删除',
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () => _confirmDeleteTip(context, ref, tip),
+            ),
+          ],
         ],
       ),
       body: tipAsync.when(
-        data: (tip) {
-          if (tip == null) {
+        data: (data) {
+          if (data == null) {
             return _buildNotFound(context);
           }
-          return _TipDetailView(tip: tip);
+          return _TipDetailView(tip: data);
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => _buildError(context, error),
@@ -76,94 +68,96 @@ class TipDetailScreen extends ConsumerWidget {
     );
   }
 
-  void _toggleFavorite(WidgetRef ref, String tipId, bool isFavorite) {
-    ref.read(tipRepositoryProvider).toggleFavorite(tipId, !isFavorite).then((
-      _,
-    ) {
-      ref.invalidate(tipByIdProvider(tipId));
-      ref.invalidate(favoriteTipIdsProvider);
-    });
-  }
-
-  Future<void> _showShareOptions(
+  Future<void> _toggleFavorite(
     BuildContext context,
     WidgetRef ref,
     Tip tip,
   ) async {
-    final shareService = ref.read(tipShareServiceProvider);
-    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref
+          .read(tipRepositoryProvider)
+          .toggleFavorite(tip.id, !tip.isFavorite);
+      ref.invalidate(tipByIdProvider(tip.id));
+      ref.invalidate(favoriteTipIdsProvider);
 
-    await showModalBottomSheet<void>(
-      context: context,
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.text_snippet_outlined),
-                title: const Text('复制纯文本'),
-                onTap: () async {
-                  Navigator.pop(sheetContext);
-                  final result = await shareService.shareAsText(tip);
-                  _showShareResult(
-                    messenger,
-                    result,
-                    successMessage: '教程已复制到剪贴板',
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.share_outlined),
-                title: const Text('分享图片'),
-                onTap: () async {
-                  Navigator.pop(sheetContext);
-                  final result = await shareService.shareAsImage(tip, context);
-                  _showShareResult(
-                    messenger,
-                    result,
-                    successMessage: '教程图片已分享',
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.download_outlined),
-                title: const Text('保存图片到相册'),
-                onTap: () async {
-                  Navigator.pop(sheetContext);
-                  final result = await shareService.shareAsImage(
-                    tip,
-                    context,
-                    saveOnly: true,
-                  );
-                  _showShareResult(
-                    messenger,
-                    result,
-                    successMessage: '图片已保存到相册',
-                  );
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
+      if (!context.mounted) {
+        return;
+      }
+
+      final message = tip.isFavorite ? '已取消收藏' : '已收藏';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('$message「${tip.title}」')));
+    } catch (e) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('操作失败: $e')));
+    }
   }
 
-  void _showShareResult(
-    ScaffoldMessengerState messenger,
-    TipShareResult result, {
-    required String successMessage,
-  }) {
-    switch (result) {
-      case TipShareResult.success:
-        messenger.showSnackBar(SnackBar(content: Text(successMessage)));
-        break;
-      case TipShareResult.failed:
-        messenger.showSnackBar(const SnackBar(content: Text('分享失败，请稍后重试')));
-        break;
-      case TipShareResult.cancelled:
-        break;
+  Future<void> _confirmDeleteTip(
+    BuildContext context,
+    WidgetRef ref,
+    Tip tip,
+  ) async {
+    if (tip.source == TipSource.bundled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('【${tip.title}】为内置教程，无法删除'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('删除教程'),
+        content: Text('确定要删除「${tip.title}」吗？删除后无法恢复。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    try {
+      await ref.read(tipRepositoryProvider).deleteTip(tip.id);
+      ref
+        ..invalidate(allTipsProvider)
+        ..invalidate(tipsByCategoryProvider(category))
+        ..invalidate(tipByIdProvider(tip.id));
+
+      if (!context.mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('已删除「${tip.title}」')));
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('删除失败: $e')));
     }
   }
 
@@ -172,7 +166,7 @@ class TipDetailScreen extends ConsumerWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.error_outline, size: 64, color: Colors.grey),
+          const Icon(Icons.info_outline, size: 64, color: Colors.grey),
           const SizedBox(height: 16),
           Text('未找到教程', style: Theme.of(context).textTheme.titleLarge),
         ],
@@ -217,7 +211,6 @@ class _TipDetailView extends StatelessWidget {
 
     return RefreshIndicator(
       onRefresh: () async {
-        // 交由外部 Provider 负责刷新，这里仅触发刷新动画
         await Future<void>.delayed(const Duration(milliseconds: 300));
       },
       child: CustomScrollView(
@@ -290,13 +283,15 @@ class _TipDetailView extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            section.title,
-                            style: AppTextStyles.h4.copyWith(
-                              color: colorScheme.onSurface,
+                          if (section.title.isNotEmpty)
+                            Text(
+                              section.title,
+                              style: AppTextStyles.h4.copyWith(
+                                color: colorScheme.onSurface,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 12),
+                          if (section.title.isNotEmpty)
+                            const SizedBox(height: 12),
                           LinkableTextRich(
                             _normalizeTipText(section.content),
                             style: bodyTextStyle,
@@ -334,8 +329,9 @@ String _normalizeTipText(String value) {
   }
 
   final decoded = _htmlUnescape.convert(value).replaceAll('\r\n', '\n');
-  final withoutDefinitions =
-      decoded.replaceAll(_footnoteDefinitionPattern, '').trimRight();
+  final withoutDefinitions = decoded
+      .replaceAll(_footnoteDefinitionPattern, '')
+      .trimRight();
 
   final cleaned = withoutDefinitions.replaceAllMapped(
     _footnoteReferencePattern,
