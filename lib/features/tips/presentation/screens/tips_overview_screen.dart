@@ -8,7 +8,9 @@ import '../../../recipe/application/providers/recipe_providers.dart'
     show manifestProvider;
 import '../../application/providers/tip_providers.dart';
 import '../../domain/entities/tip.dart';
-import '../../infrastructure/services/tip_share_service.dart';
+import '../utils/tip_share_helpers.dart';
+
+enum _TipMenuAction { edit, share, delete }
 
 class TipsOverviewScreen extends ConsumerStatefulWidget {
   const TipsOverviewScreen({super.key});
@@ -78,8 +80,9 @@ class _TipsOverviewScreenState extends ConsumerState<TipsOverviewScreen> {
                             color: isSelected
                                 ? Theme.of(context).colorScheme.primary
                                 : Theme.of(context).colorScheme.onSurface,
-                            fontWeight:
-                                isSelected ? FontWeight.w600 : FontWeight.w500,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.w500,
                           ),
                         ),
                         selected: isSelected,
@@ -87,17 +90,14 @@ class _TipsOverviewScreenState extends ConsumerState<TipsOverviewScreen> {
                         side: BorderSide(
                           color: isSelected
                               ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context)
-                                  .colorScheme
-                                  .outline
-                                  .withValues(alpha: 0.4),
+                              : Theme.of(
+                                  context,
+                                ).colorScheme.outline.withValues(alpha: 0.4),
                         ),
-                        backgroundColor:
-                            Theme.of(context).colorScheme.surface,
-                        selectedColor: Theme.of(context)
-                            .colorScheme
-                            .primary
-                            .withValues(alpha: 0.12),
+                        backgroundColor: Theme.of(context).colorScheme.surface,
+                        selectedColor: Theme.of(
+                          context,
+                        ).colorScheme.primary.withValues(alpha: 0.12),
                         pressElevation: 0,
                         onSelected: (_) {
                           setState(() {
@@ -145,8 +145,6 @@ class _TipsOverviewScreenState extends ConsumerState<TipsOverviewScreen> {
                         tip: tip,
                         onTap: () =>
                             context.push('/tips/${tip.category}/${tip.id}'),
-                        onEdit: () => context.push('/tips/${tip.id}/edit'),
-                        onShare: () => _showShareSheet(context, ref, tip),
                       );
                     },
                   ),
@@ -161,105 +159,19 @@ class _TipsOverviewScreenState extends ConsumerState<TipsOverviewScreen> {
       ),
     );
   }
-
-  Future<void> _showShareSheet(
-    BuildContext context,
-    WidgetRef ref,
-    Tip tip,
-  ) async {
-    final shareService = ref.read(tipShareServiceProvider);
-    final messenger = ScaffoldMessenger.of(context);
-
-    await showModalBottomSheet<void>(
-      context: context,
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.text_snippet_outlined),
-                title: const Text('复制纯文本'),
-                onTap: () async {
-                  Navigator.pop(sheetContext);
-                  final result = await shareService.shareAsText(tip);
-                  _showShareResult(
-                    messenger,
-                    result,
-                    successMessage: '教程已复制到剪贴板',
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.share_outlined),
-                title: const Text('分享图片'),
-                onTap: () async {
-                  Navigator.pop(sheetContext);
-                  final result = await shareService.shareAsImage(tip, context);
-                  _showShareResult(
-                    messenger,
-                    result,
-                    successMessage: '教程图片已分享',
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.download_outlined),
-                title: const Text('保存图片到相册'),
-                onTap: () async {
-                  Navigator.pop(sheetContext);
-                  final result = await shareService.shareAsImage(
-                    tip,
-                    context,
-                    saveOnly: true,
-                  );
-                  _showShareResult(
-                    messenger,
-                    result,
-                    successMessage: '图片已保存到相册',
-                  );
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _showShareResult(
-    ScaffoldMessengerState messenger,
-    TipShareResult result, {
-    required String successMessage,
-  }) {
-    switch (result) {
-      case TipShareResult.success:
-        messenger.showSnackBar(SnackBar(content: Text(successMessage)));
-        break;
-      case TipShareResult.failed:
-        messenger.showSnackBar(const SnackBar(content: Text('分享失败，请稍后重试')));
-        break;
-      case TipShareResult.cancelled:
-        break;
-    }
-  }
 }
 
-class _TipListTile extends StatelessWidget {
+class _TipListTile extends ConsumerWidget {
   const _TipListTile({
     required this.tip,
     required this.onTap,
-    required this.onEdit,
-    required this.onShare,
   });
 
   final Tip tip;
   final VoidCallback onTap;
-  final VoidCallback onEdit;
-  final VoidCallback onShare;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Material(
       elevation: 1,
       borderRadius: BorderRadius.circular(16),
@@ -276,25 +188,182 @@ class _TipListTile extends StatelessWidget {
             color: AppColors.textSecondary,
           ),
         ),
-        trailing: PopupMenuButton<String>(
-          onSelected: (value) {
-            switch (value) {
-              case 'edit':
-                onEdit();
-                break;
-              case 'share':
-                onShare();
-                break;
-            }
-          },
-          itemBuilder: (context) => [
-            const PopupMenuItem(value: 'edit', child: Text('编辑')),
-            const PopupMenuItem(value: 'share', child: Text('分享')),
-          ],
-        ),
+        trailing: _buildActions(context, ref),
         onTap: onTap,
       ),
     );
+  }
+
+  /// 构建操作按钮（收藏 + 菜单）
+  Widget _buildActions(BuildContext context, WidgetRef ref) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // 收藏按钮（书签图标）
+        _buildBookmarkButton(context, ref),
+        // 三点菜单
+        _buildMenuButton(context, ref),
+      ],
+    );
+  }
+
+  /// 构建收藏按钮（使用书签图标）
+  Widget _buildBookmarkButton(BuildContext context, WidgetRef ref) {
+    return IconButton(
+      icon: Icon(
+        tip.isFavorite ? Icons.bookmark : Icons.bookmark_outline,
+        color: tip.isFavorite ? AppColors.primary : AppColors.textSecondary,
+        size: 24,
+      ),
+      tooltip: tip.isFavorite ? '取消收藏' : '收藏',
+      onPressed: () => _toggleFavorite(context, ref),
+    );
+  }
+
+  /// 构建三点菜单按钮
+  Widget _buildMenuButton(BuildContext context, WidgetRef ref) {
+    return PopupMenuButton<_TipMenuAction>(
+      onSelected: (action) {
+        switch (action) {
+          case _TipMenuAction.edit:
+            context.push('/tips/${tip.id}/edit');
+            break;
+          case _TipMenuAction.share:
+            showTipShareSheet(context: context, ref: ref, tip: tip);
+            break;
+          case _TipMenuAction.delete:
+            _confirmDeleteTip(context, ref);
+            break;
+        }
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: _TipMenuAction.edit,
+          child: Row(
+            children: [
+              Icon(Icons.edit_outlined, size: 20),
+              SizedBox(width: 12),
+              Text('编辑'),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: _TipMenuAction.share,
+          child: Row(
+            children: [
+              Icon(Icons.share_outlined, size: 20),
+              SizedBox(width: 12),
+              Text('分享'),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: _TipMenuAction.delete,
+          child: Row(
+            children: [
+              Icon(Icons.delete_outline, size: 20, color: Colors.red),
+              SizedBox(width: 12),
+              Text('删除', style: TextStyle(color: Colors.red)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 切换收藏状态
+  Future<void> _toggleFavorite(BuildContext context, WidgetRef ref) async {
+    try {
+      await ref
+          .read(tipRepositoryProvider)
+          .toggleFavorite(tip.id, !tip.isFavorite);
+
+      // 刷新相关数据
+      ref.invalidate(allTipsProvider);
+      ref.invalidate(favoriteTipsProvider);
+      ref.invalidate(favoriteTipIdsProvider);
+
+      if (!context.mounted) return;
+
+      final message = tip.isFavorite ? '已取消收藏' : '已收藏';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$message「${tip.title}」')),
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('操作失败: $e')),
+        );
+      }
+    }
+  }
+
+  /// 检查是否可以删除
+  bool _canDeleteTip(Tip tip) {
+    return tip.source != TipSource.bundled;
+  }
+
+  /// 确认删除教程
+  Future<void> _confirmDeleteTip(BuildContext context, WidgetRef ref) async {
+    if (!_canDeleteTip(tip)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('【${tip.title}】为内置教程，无法删除'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('删除教程'),
+        content: Text('确定要删除「${tip.title}」吗？删除后无法恢复。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      await _deleteTip(context, ref);
+    }
+  }
+
+  /// 删除教程
+  Future<void> _deleteTip(BuildContext context, WidgetRef ref) async {
+    try {
+      final repository = ref.read(tipRepositoryProvider);
+      await repository.deleteTip(tip.id);
+
+      // 刷新相关数据
+      ref.invalidate(allTipsProvider);
+      ref.invalidate(favoriteTipsProvider);
+
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('已删除「${tip.title}」')),
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('删除失败: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }
 

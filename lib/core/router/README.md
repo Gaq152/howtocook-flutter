@@ -14,7 +14,7 @@
 - `/search` - 搜索页面
 - `/create-recipe` - 创建菜谱
 - `/favorites` - 收藏列表
-- `/my-recipes` - 我的菜谱
+- `/my-creations` - 我的自创（菜谱 & 教程）
 - `/model-management` - 模型管理
 - `/settings` - 设置
 

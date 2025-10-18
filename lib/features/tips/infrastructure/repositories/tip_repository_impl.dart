@@ -20,10 +20,16 @@ class TipRepositoryImpl implements TipRepository {
           final raw = modifiedBox.get(key);
           if (raw is! Map) continue;
           final converted = _deepConvertMap(raw as Map<dynamic, dynamic>);
+          final hasSource = converted.containsKey('source');
           final tip = Tip.fromJson(converted);
           final isFav = await isFavorite(tip.id);
 
-          tips.add(tip.copyWith(isFavorite: isFav));
+          tips.add(
+            tip.copyWith(
+              isFavorite: isFav,
+              source: hasSource ? tip.source : TipSource.userCreated,
+            ),
+          );
           loadedIds.add(tip.id);
         } catch (e) {
           print('Warning: Failed to load modified tip $key: $e');
@@ -43,7 +49,7 @@ class TipRepositoryImpl implements TipRepository {
           );
           final isFav = await isFavorite(tip.id);
 
-          tips.add(tip.copyWith(isFavorite: isFav));
+          tips.add(tip.copyWith(isFavorite: isFav, source: TipSource.bundled));
         } catch (e) {
           print('Warning: Failed to load tip ${tipIndex.id}: $e');
         }
@@ -96,7 +102,15 @@ class TipRepositoryImpl implements TipRepository {
       final modifiedBox = HiveService.getModifiedTipsBox();
       final now = DateTime.now();
       final createdAt = tip.createdAt ?? now;
-      final tipToSave = tip.copyWith(createdAt: createdAt, updatedAt: now);
+      final resolvedSource = tip.source == TipSource.bundled
+          ? TipSource.userModified
+          : tip.source;
+
+      final tipToSave = tip.copyWith(
+        createdAt: createdAt,
+        updatedAt: now,
+        source: resolvedSource,
+      );
       final data = tipToSave.toJson();
 
       await modifiedBox.put(tip.id, data);
@@ -110,7 +124,7 @@ class TipRepositoryImpl implements TipRepository {
     try {
       final modifiedBox = HiveService.getModifiedTipsBox();
       if (!modifiedBox.containsKey(tipId)) {
-        throw Exception('Tip not found: $tipId');
+        throw Exception('仅支持删除自创建或导入的教程');
       }
 
       await modifiedBox.delete(tipId);
@@ -153,6 +167,21 @@ class TipRepositoryImpl implements TipRepository {
     try {
       final favBox = HiveService.getFavoriteTipsBox();
       return favBox.keys.cast<String>().toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  @override
+  Future<List<Tip>> getFavoriteTips() async {
+    try {
+      final favoriteIds = await getFavoriteTipIds();
+      if (favoriteIds.isEmpty) {
+        return [];
+      }
+
+      final allTips = await getAllTips();
+      return allTips.where((tip) => favoriteIds.contains(tip.id)).toList();
     } catch (e) {
       return [];
     }

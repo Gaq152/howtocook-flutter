@@ -40,10 +40,11 @@ class UserScreen extends StatelessWidget {
           ),
           _buildMenuItem(
             context,
-            icon: Icons.book,
-            title: '我的菜谱',
+            icon: Icons.workspace_premium_outlined,
+            title: '我的自创',
+            subtitle: '管理自创菜谱与教程',
             onTap: () {
-              context.push('/my-recipes');
+              context.push('/my-creations');
             },
           ),
           _buildMenuItem(

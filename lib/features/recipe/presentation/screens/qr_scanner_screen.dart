@@ -14,10 +14,10 @@ import '../../../tips/domain/entities/tip.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 
-/// 二维码扫描页面
+/// 二维码扫描页�?
 ///
 /// 支持相机实时扫描和从相册选择图片扫描
-/// 扫描成功后解析菜谱数据并跳转到预览页面
+/// 扫描成功后解析菜谱数据并跳转到预览页�?
 class QRScannerScreen extends ConsumerStatefulWidget {
   const QRScannerScreen({super.key});
 
@@ -48,14 +48,14 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('扫描二维码'),
+        title: const Text('扫描二维�?),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
             icon: const Icon(Icons.flash_off),
             onPressed: () => _controller.toggleTorch(),
-            tooltip: '手电筒',
+            tooltip: '手电�?,
           ),
           IconButton(
             icon: const Icon(Icons.cameraswitch),
@@ -73,7 +73,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
             onDetect: _onBarcodeDetect,
           ),
 
-          // 扫描框遮罩
+          // 扫描框遮�?
           _buildScanMask(),
 
           // 提示文字
@@ -123,7 +123,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
     );
   }
 
-  /// 构建扫描框遮罩
+  /// 构建扫描框遮�?
   Widget _buildScanMask() {
     const double scanAreaSize = 250.0;
 
@@ -133,13 +133,13 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
     );
   }
 
-  /// 处理条码检测（相机实时扫描 - 使用 WeChatQRCode）
+  /// 处理条码检测（相机实时扫描 - 使用 WeChatQRCode�?
   Future<void> _onBarcodeDetect(mobile.BarcodeCapture capture) async {
     if (_isProcessing || _isDecodingFrame) {
       return;
     }
 
-    // 先尝试使用 mobile_scanner 自带的识别结果
+    // 先尝试使�?mobile_scanner 自带的识别结�?
     for (final barcode in capture.barcodes) {
       final rawValue = barcode.rawValue ?? barcode.displayValue;
       if (rawValue != null && rawValue.isNotEmpty) {
@@ -149,7 +149,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
       }
     }
 
-    // 如未识别到结果，则降级使用 WeChatQRCode 兜底扫描
+    // 如未识别到结果，则降级使�?WeChatQRCode 兜底扫描
     final image = capture.image;
     if (image == null) {
       debugPrint('⚠️ MobileScanner 未返回二维码且无图像可供兜底识别');
@@ -173,13 +173,13 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
 
       if (results.isNotEmpty) {
         final code = results.first;
-        debugPrint('🧠 WeChatQRCode 兜底识别成功，长度: ${code.length} 字符');
+        debugPrint('🧠 WeChatQRCode 兜底识别成功，长�? ${code.length} 字符');
         _processQRCode(code);
       } else {
-        debugPrint('ℹ️ WeChatQRCode 兜底识别未找到二维码，等待下一帧');
+        debugPrint('ℹ️ WeChatQRCode 兜底识别未找到二维码，等待下一�?);
       }
     } catch (e, stackTrace) {
-      debugPrint('❌ 实时兜底识别失败: $e');
+      debugPrint('�?实时兜底识别失败: $e');
       debugPrint('堆栈: $stackTrace');
     } finally {
       _isDecodingFrame = false;
@@ -193,10 +193,10 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
     }
   }
 
-  /// 从相册选择图片扫描（使用 WeChat QRCode 强力扫描）
+  /// 从相册选择图片扫描（使�?WeChat QRCode 强力扫描�?
   Future<void> _pickImageFromGallery() async {
     if (_isProcessing || _isDecodingFrame) {
-      debugPrint('⚠️ 忙于处理当前扫码结果，忽略相册扫描请求');
+      debugPrint('⚠️ 忙于处理当前扫码结果，忽略相册扫描请�?);
       return;
     }
 
@@ -211,12 +211,12 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
         return;
       }
 
-      debugPrint('✅ 图片已选择: ${image.path}');
+      debugPrint('�?图片已选择: ${image.path}');
 
-      // 使用 WeChat QRCode 扫描器（强力 CNN 模型）
+      // 使用 WeChat QRCode 扫描器（强力 CNN 模型�?
       debugPrint('🚀 使用 WeChatQRCode 扫描...');
 
-      // 初始化扫描器（首次调用会加载模型）
+      // 初始化扫描器（首次调用会加载模型�?
       await _wechatScanner.initialize();
 
       // 扫描图片
@@ -227,7 +227,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('未在图片中找到二维码\n请确保图片清晰且二维码完整'),
+              content: Text('未在图片中找到二维码\n请确保图片清晰且二维码完�?),
               backgroundColor: AppColors.warning,
               duration: Duration(seconds: 3),
             ),
@@ -236,12 +236,12 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
         return;
       }
 
-      // 找到了！使用第一个结果
+      // 找到了！使用第一个结�?
       final code = results.first;
-      debugPrint('✅ WeChatQRCode 扫描成功！二维码长度: ${code.length} 字符');
+      debugPrint('�?WeChatQRCode 扫描成功！二维码长度: ${code.length} 字符');
       _processQRCode(code);
     } catch (e, stackTrace) {
-      debugPrint('❌ WeChatQRCode 扫描失败: $e');
+      debugPrint('�?WeChatQRCode 扫描失败: $e');
       debugPrint('堆栈: $stackTrace');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -256,7 +256,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
     }
   }
 
-  /// 处理二维码内容
+  /// 处理二维码内�?
   void _processQRCode(String code) {
     if (_isProcessing) return;
 
@@ -280,7 +280,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
       final recipe = _parseRecipeQRCode(code);
 
       if (recipe == null) {
-        debugPrint('✅ 内置食谱跳转完成');
+        debugPrint('�?内置食谱跳转完成');
         Future.delayed(const Duration(milliseconds: 500), () {
           if (mounted) {
             setState(() {
@@ -302,7 +302,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
             }
           });
         } catch (e, stackTrace) {
-          debugPrint('❌ 跳转失败: $e');
+          debugPrint('�?跳转失败: $e');
           debugPrint('堆栈: $stackTrace');
           if (mounted) {
             showDialog(
@@ -321,10 +321,10 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
           }
         }
       } else {
-        debugPrint('❌ 无法跳转：widget 已卸载 (mounted=false)');
+        debugPrint('�?无法跳转：widget 已卸�?(mounted=false)');
       }
     } catch (e) {
-      debugPrint('解析二维码失败: $e');
+      debugPrint('解析二维码失�? $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('解析失败: $e'), backgroundColor: AppColors.error),
@@ -351,7 +351,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('无法解析教程二维码'),
+              content: Text('无法解析教程二维�?),
               backgroundColor: AppColors.error,
             ),
           );
@@ -381,7 +381,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
         }
       });
     } catch (e) {
-      debugPrint('处理教程二维码失败: $e');
+      debugPrint('处理教程二维码失�? $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -475,12 +475,13 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
       id:
           json['id'] as String? ??
           'tip_${DateTime.now().millisecondsSinceEpoch}',
-      title: json['title'] as String? ?? '未命名教程',
+      title: json['title'] as String? ?? '未命名教�?,
       category: json['category'] as String? ?? 'general',
       categoryName: json['categoryName'] as String? ?? '教程',
       content: json['content'] as String? ?? '',
       sections: sections,
       hash: json['hash'] as String? ?? '',
+      source: TipSource.scanned,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );
@@ -488,8 +489,8 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
 
   /// 解析二维码数据为 Recipe 对象
   ///
-  /// 支持三种格式：
-  /// 1. Raw Scheme: howtocook://recipe?raw=BASE64URL(JSON) - 未压缩格式
+  /// 支持三种格式�?
+  /// 1. Raw Scheme: howtocook://recipe?raw=BASE64URL(JSON) - 未压缩格�?
   /// 2. Compressed Scheme: howtocook://recipe?data=BASE64URL(GZIP(JSON)) - 压缩格式
   /// 3. Fallback Scheme: howtocook://recipe?json=URL_ENCODED_JSON - 降级格式
   Recipe? _parseRecipeQRCode(String code) {
@@ -498,11 +499,11 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
 
       // 检查协议和路径
       if (uri.scheme != 'howtocook' || uri.host != 'recipe') {
-        debugPrint('不是有效的 howtocook 协议');
+        debugPrint('不是有效�?howtocook 协议');
         return null;
       }
 
-      // 优先处理未压缩 Base64URL 格式
+      // 优先处理未压�?Base64URL 格式
       if (uri.queryParameters.containsKey('raw')) {
         return _parseRawData(uri.queryParameters['raw']!);
       }
@@ -512,39 +513,39 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
         return _parseCompressedData(uri.queryParameters['data']!);
       }
 
-      // 处理降级格式（URL 编码 JSON）
+      // 处理降级格式（URL 编码 JSON�?
       if (uri.queryParameters.containsKey('json')) {
         return _parseFallbackData(uri.queryParameters['json']!);
       }
 
-      debugPrint('二维码缺少数据参数');
+      debugPrint('二维码缺少数据参�?);
       return null;
     } catch (e) {
-      debugPrint('解析二维码 URI 失败: $e');
+      debugPrint('解析二维�?URI 失败: $e');
       return null;
     }
   }
 
-  /// 解析未压缩 Base64URL 数据
+  /// 解析未压�?Base64URL 数据
   Recipe? _parseRawData(String base64Data) {
     try {
-      // 1. Base64URL 解码（补齐 padding）
+      // 1. Base64URL 解码（补�?padding�?
       String paddedBase64 = base64Data;
       while (paddedBase64.length % 4 != 0) {
         paddedBase64 += '=';
       }
       final utf8Bytes = base64Url.decode(paddedBase64);
 
-      // 2. UTF-8 解码为 JSON 字符串
+      // 2. UTF-8 解码�?JSON 字符�?
       final jsonString = utf8.decode(utf8Bytes);
 
       // 3. JSON 解析
       final Map<String, dynamic> json = jsonDecode(jsonString);
 
-      debugPrint('✅ 解析未压缩数据成功: ${utf8Bytes.length} 字节');
+      debugPrint('�?解析未压缩数据成�? ${utf8Bytes.length} 字节');
       return _buildRecipeFromJson(json);
     } catch (e) {
-      debugPrint('解析未压缩数据失败: $e');
+      debugPrint('解析未压缩数据失�? $e');
       return null;
     }
   }
@@ -552,14 +553,14 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
   /// 解析 GZIP 压缩数据
   Recipe? _parseCompressedData(String base64Data) {
     try {
-      // 1. Base64URL 解码（补齐 padding）
+      // 1. Base64URL 解码（补�?padding�?
       String paddedBase64 = base64Data;
       while (paddedBase64.length % 4 != 0) {
         paddedBase64 += '=';
       }
       final gzipBytes = base64Url.decode(paddedBase64);
 
-      // 2. GZIP 解压缩
+      // 2. GZIP 解压�?
       final utf8Bytes = GZipDecoder().decodeBytes(gzipBytes);
 
       // 3. UTF-8 解码
@@ -568,7 +569,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
       // 4. JSON 解析
       final Map<String, dynamic> json = jsonDecode(jsonString);
 
-      debugPrint('✅ 解析压缩数据成功: ${gzipBytes.length} → ${utf8Bytes.length} 字节');
+      debugPrint('�?解析压缩数据成功: ${gzipBytes.length} �?${utf8Bytes.length} 字节');
       return _buildRecipeFromJson(json);
     } catch (e) {
       debugPrint('解析压缩数据失败: $e');
@@ -576,7 +577,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
     }
   }
 
-  /// 解析降级格式数据（未压缩 JSON）
+  /// 解析降级格式数据（未压缩 JSON�?
   Recipe? _parseFallbackData(String encodedJson) {
     try {
       final jsonString = Uri.decodeComponent(encodedJson);
@@ -588,32 +589,32 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
     }
   }
 
-  /// 从 JSON 构建 Recipe 对象
+  /// �?JSON 构建 Recipe 对象
   ///
-  /// 根据 'src' 字段决定处理方式：
+  /// 根据 'src' 字段决定处理方式�?
   /// - 'b' (bundled): 内置食谱，直接跳转详情页
-  /// - 'm' (modified): 修改的内置食谱，显示预览页
+  /// - 'm' (modified): 修改的内置食谱，显示预览�?
   /// - 'u' (user): 用户创建食谱，显示预览页
   /// - 'a' (ai): AI 生成食谱，显示预览页
   Recipe? _buildRecipeFromJson(Map<String, dynamic> json) {
-    debugPrint('📋 开始构建 Recipe 对象...');
+    debugPrint('📋 开始构�?Recipe 对象...');
     debugPrint('JSON keys: ${json.keys.toList()}');
 
     // 1. 读取来源类型标记
     final String? sourceType = json['src'] as String?;
     debugPrint('📦 食谱来源类型: $sourceType');
 
-    // 2. 处理内置食谱（直接跳转到详情页，不显示预览页）
+    // 2. 处理内置食谱（直接跳转到详情页，不显示预览页�?
     if (sourceType == 'b') {
-      debugPrint('🔄 内置食谱：准备跳转到详情页');
+      debugPrint('🔄 内置食谱：准备跳转到详情�?);
       final recipeId = json['id'] as String?;
 
       if (recipeId == null || recipeId.isEmpty) {
-        debugPrint('❌ 内置食谱缺少 ID');
+        debugPrint('�?内置食谱缺少 ID');
         return null;
       }
 
-      // 直接跳转到详情页（使用 push 保留返回按钮）
+      // 直接跳转到详情页（使�?push 保留返回按钮�?
       if (mounted) {
         debugPrint('🚀 跳转到内置食谱详情页: $recipeId');
         context.push('/recipe/$recipeId');
@@ -621,22 +622,22 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
       return null;
     }
 
-    // 3. 处理其他类型（需要显示预览页）
-    // 优先使用新格式的 'id' 字段，兼容旧格式的 'baseId'
+    // 3. 处理其他类型（需要显示预览页�?
+    // 优先使用新格式的 'id' 字段，兼容旧格式�?'baseId'
     final rawId = json['id'] as String? ?? json['baseId'] as String? ?? '';
     final recipeId = rawId.isNotEmpty
         ? rawId
         : 'preview_${DateTime.now().millisecondsSinceEpoch}';
 
     debugPrint('🆔 原始 ID: $rawId');
-    debugPrint('🆔 最终 ID: $recipeId');
+    debugPrint('🆔 最�?ID: $recipeId');
 
     // 4. 确定食谱来源
     RecipeSource recipeSource;
     switch (sourceType) {
       case 'm':
         recipeSource = RecipeSource.userModified;
-        debugPrint('✏️  修改的内置食谱');
+        debugPrint('✏️  修改的内置食�?);
         break;
       case 'u':
         recipeSource = RecipeSource.userCreated;
@@ -647,9 +648,9 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
         debugPrint('🤖 AI 生成食谱');
         break;
       default:
-        // 兼容旧版本（没有 src 字段）
+        // 兼容旧版本（没有 src 字段�?
         recipeSource = RecipeSource.scanned;
-        debugPrint('📥 默认：扫码导入食谱');
+        debugPrint('📥 默认：扫码导入食�?);
     }
 
     // 5. 构建 Recipe 对象
@@ -675,13 +676,13 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
       warnings: json['w'] != null
           ? List<String>.from(json['w'] as List<dynamic>)
           : [],
-      tools: [], // 二维码中不包含工具列表
-      images: [], // 二维码中不包含图片
+      tools: [], // 二维码中不包含工具列�?
+      images: [], // 二维码中不包含图�?
       hash: json['hash'] as String? ?? '', // 用于版本追踪（默认空字符串）
       source: recipeSource,
     );
 
-    debugPrint('✅ Recipe 构建完成:');
+    debugPrint('�?Recipe 构建完成:');
     debugPrint('  - ID: ${recipe.id}');
     debugPrint('  - Name: ${recipe.name}');
     debugPrint('  - Source: ${recipe.source}');
@@ -715,7 +716,7 @@ class _ScanMaskPainter extends CustomPainter {
 
     canvas.drawPath(maskPath, maskPaint);
 
-    // 绘制扫描框边角
+    // 绘制扫描框边�?
     final Paint cornerPaint = Paint()
       ..color = AppColors.primary
       ..strokeWidth = 4
@@ -723,7 +724,7 @@ class _ScanMaskPainter extends CustomPainter {
 
     const double cornerLength = 20;
 
-    // 左上角
+    // 左上�?
     canvas.drawLine(
       Offset(left, top),
       Offset(left + cornerLength, top),
@@ -735,7 +736,7 @@ class _ScanMaskPainter extends CustomPainter {
       cornerPaint,
     );
 
-    // 右上角
+    // 右上�?
     canvas.drawLine(
       Offset(left + scanAreaSize, top),
       Offset(left + scanAreaSize - cornerLength, top),
@@ -747,7 +748,7 @@ class _ScanMaskPainter extends CustomPainter {
       cornerPaint,
     );
 
-    // 左下角
+    // 左下�?
     canvas.drawLine(
       Offset(left, top + scanAreaSize),
       Offset(left + cornerLength, top + scanAreaSize),
@@ -759,7 +760,7 @@ class _ScanMaskPainter extends CustomPainter {
       cornerPaint,
     );
 
-    // 右下角
+    // 右下�?
     canvas.drawLine(
       Offset(left + scanAreaSize, top + scanAreaSize),
       Offset(left + scanAreaSize - cornerLength, top + scanAreaSize),
@@ -775,3 +776,4 @@ class _ScanMaskPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+
