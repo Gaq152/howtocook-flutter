@@ -197,7 +197,9 @@ class __$$DataSyncStateImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$DataSyncStateImpl implements _DataSyncState {
+class _$DataSyncStateImpl
+    with DiagnosticableTreeMixin
+    implements _DataSyncState {
   const _$DataSyncStateImpl(
       {required this.status,
       required this.progress,
@@ -229,8 +231,24 @@ class _$DataSyncStateImpl implements _DataSyncState {
   final String? error;
 
   @override
-  String toString() {
+  String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
     return 'DataSyncState(status: $status, progress: $progress, downloadedRecipes: $downloadedRecipes, totalRecipes: $totalRecipes, downloadedTips: $downloadedTips, totalTips: $totalTips, downloadedImages: $downloadedImages, totalImages: $totalImages, error: $error)';
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties
+      ..add(DiagnosticsProperty('type', 'DataSyncState'))
+      ..add(DiagnosticsProperty('status', status))
+      ..add(DiagnosticsProperty('progress', progress))
+      ..add(DiagnosticsProperty('downloadedRecipes', downloadedRecipes))
+      ..add(DiagnosticsProperty('totalRecipes', totalRecipes))
+      ..add(DiagnosticsProperty('downloadedTips', downloadedTips))
+      ..add(DiagnosticsProperty('totalTips', totalTips))
+      ..add(DiagnosticsProperty('downloadedImages', downloadedImages))
+      ..add(DiagnosticsProperty('totalImages', totalImages))
+      ..add(DiagnosticsProperty('error', error));
   }
 
   @override

@@ -6,7 +6,7 @@ part of 'image_cache_service.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$imageCacheServiceHash() => r'1e5a8a28f2d4e4db962de5f8a6f3f4890ddddce9';
+String _$imageCacheServiceHash() => r'375760d29802ef177528e7b54448832b7981f3eb';
 
 /// 图片缓存服务 - 管理本地图片缓存的路径和访问
 ///

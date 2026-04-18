@@ -145,7 +145,9 @@ class __$$ImageDownloadStateImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$ImageDownloadStateImpl implements _ImageDownloadState {
+class _$ImageDownloadStateImpl
+    with DiagnosticableTreeMixin
+    implements _ImageDownloadState {
   const _$ImageDownloadStateImpl(
       {required this.status,
       required this.totalTasks,
@@ -165,8 +167,20 @@ class _$ImageDownloadStateImpl implements _ImageDownloadState {
   final String? error;
 
   @override
-  String toString() {
+  String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
     return 'ImageDownloadState(status: $status, totalTasks: $totalTasks, completedTasks: $completedTasks, progress: $progress, error: $error)';
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties
+      ..add(DiagnosticsProperty('type', 'ImageDownloadState'))
+      ..add(DiagnosticsProperty('status', status))
+      ..add(DiagnosticsProperty('totalTasks', totalTasks))
+      ..add(DiagnosticsProperty('completedTasks', completedTasks))
+      ..add(DiagnosticsProperty('progress', progress))
+      ..add(DiagnosticsProperty('error', error));
   }
 
   @override
