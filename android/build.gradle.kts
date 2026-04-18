@@ -53,6 +53,24 @@ subprojects {
             }
             androidExt.compileOptions.sourceCompatibility = JavaVersion.VERSION_17
             androidExt.compileOptions.targetCompatibility = JavaVersion.VERSION_17
+            // 有些插件（flutter_image_compress_common 等）会把 kotlinOptions.jvmTarget 硬编码成 11，
+            // 这里在 task 级别最后一次覆盖，保证 Kotlin 与 Java 都是 17。
+            tasks.matching {
+                it.name.startsWith("compile") &&
+                    it.name.endsWith("Kotlin") &&
+                    it.javaClass.name.contains("KotlinCompile")
+            }.configureEach {
+                val opts = javaClass.methods
+                    .firstOrNull { it.name == "getKotlinOptions" }
+                    ?.invoke(this) ?: return@configureEach
+                opts.javaClass.methods
+                    .firstOrNull {
+                        it.name == "setJvmTarget" &&
+                            it.parameterTypes.size == 1 &&
+                            it.parameterTypes[0] == String::class.java
+                    }
+                    ?.invoke(opts, "17")
+            }
         }
     }
 }
