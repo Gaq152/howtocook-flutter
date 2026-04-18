@@ -646,8 +646,12 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
           runSpacing: 8,
           children: recipe.tools.map((tool) {
             return Chip(
-              label: Text(tool),
-              avatar: const Icon(Icons.check, size: 16),
+              label: Text(tool,
+                  style: TextStyle(
+                      fontSize: 13, color: AppColors.secondary)),
+              avatar: Icon(Icons.check, size: 16, color: AppColors.secondary),
+              backgroundColor: AppColors.secondary.withOpacity(0.12),
+              side: BorderSide(color: AppColors.secondary.withOpacity(0.4)),
             );
           }).toList(),
         ),

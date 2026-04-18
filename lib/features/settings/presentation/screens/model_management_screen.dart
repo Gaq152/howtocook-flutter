@@ -90,6 +90,15 @@ class _ModelManagementScreenState
           _buildSectionHeader('我的模型', Icons.person_outline),
           if (userModels.isEmpty) _buildEmptyHint(),
           ...userModels.map(_buildModelCard),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text(
+              '自定义模型的输出质量取决于所选服务商，可能不完全遵循应用内提示词规范，仅供参考。',
+              style: TextStyle(fontSize: 11, color: Colors.grey[500], height: 1.5),
+              textAlign: TextAlign.center,
+            ),
+          ),
         ],
       ),
     );
