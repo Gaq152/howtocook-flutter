@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async'; // 用于 scheduleMicrotask
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'; // 用于 kDebugMode
@@ -10,6 +11,8 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/storage/hive_service.dart';
 import '../../../sync/infrastructure/bundled_data_loader.dart';
 import '../../../recipe/domain/entities/recipe.dart';
+import '../../application/providers/ai_providers.dart';
+import '../../domain/entities/ai_model_config.dart';
 import '../../domain/entities/chat_message.dart';
 import '../../infrastructure/services/ai_service_factory.dart';
 import '../../infrastructure/services/mcp_service.dart';
@@ -62,6 +65,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   bool _isLoading = false;
   bool _isStreaming = false;
   String _streamingText = ''; // 流式输出的当前文本
+  String _streamingReasoningText = ''; // 流式思考内容
   bool _shouldStopStreaming = false;
   String? _selectedImagePath;
   List<Map<String, dynamic>>? _mcpTools;
@@ -70,14 +74,11 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   // MCP 工具调用历史（仅 debug 模式）
   final List<MCPToolCall> _mcpCallHistory = [];
 
-  // 当前选择的模型 ID（默认 DeepSeek）
-  String _currentModelId = 'builtin-deepseek-chat';
-
   // 联网搜索开关
   bool _enableWebSearch = false;
 
-  // System Prompt（引导 AI 使用 MCP 工具）
-  String _buildSystemPrompt() {
+  // System Prompt（根据模型能力动态生成）
+  String _buildSystemPrompt({required bool supportsTools}) {
     final now = DateTime.now();
     final hour = now.hour;
     String timeOfDay;
@@ -100,6 +101,30 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
     final weekday = ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日'][now.weekday - 1];
     final dateStr = '${now.year}年${now.month}月${now.day}日 $weekday $timeOfDay ${now.hour}:${now.minute.toString().padLeft(2, '0')}';
 
+    // 如果模型不支持工具调用，返回简化版提示词
+    if (!supportsTools) {
+      return '''你是一个专业的烹饪助手，提供烹饪相关的建议和帮助。
+
+当前时间信息：$dateStr
+
+重要提示：
+⚠️ 当前模型不支持使用MCP工具获取菜谱数据库信息。如果用户需要查询具体菜谱、食材、做法等详细信息，请建议用户：
+1. 切换到支持工具调用的模型（如 Claude 系列模型、deepseek-chat 等）
+2. 或者直接在应用的菜谱页面中浏览和搜索
+
+你可以：
+- 提供通用的烹饪建议和技巧
+- 解答烹饪相关的问题
+- 进行正常的对话交流
+- 根据当前时间（${now.month}月，$timeOfDay）给出适合的饮食建议
+
+但无法：
+- 直接查询菜谱数据库
+- 获取具体菜谱的详细做法
+- 创建新食谱''';
+    }
+
+    // 如果模型支持工具调用，返回完整版提示词（包含MCP工具说明）
     return '''你是一个专业的烹饪助手，可以访问"程序员做饭指南"的完整菜谱数据库。
 
 当前时间信息：$dateStr
@@ -142,8 +167,18 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   Future<void> _loadMCPTools() async {
     try {
       final tools = await _mcpService.listTools();
+
+      // 转换工具格式：MCP 使用 inputSchema，Claude API 需要 input_schema
+      final convertedTools = tools.map((tool) {
+        final converted = Map<String, dynamic>.from(tool);
+        if (converted.containsKey('inputSchema')) {
+          converted['input_schema'] = converted.remove('inputSchema');
+        }
+        return converted;
+      }).toList();
+
       setState(() {
-        _mcpTools = tools;
+        _mcpTools = convertedTools;
       });
       debugPrint('MCP tools loaded: ${tools.length} tools');
     } catch (e) {
@@ -317,9 +352,105 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
 
   /// 构建模型选择器
   Widget _buildModelSelector() {
-    // 获取所有可用模型
-    final models = AIServiceFactory.getBuiltinModels();
+    final selectedModel = ref.watch(selectedModelConfigProvider);
+    final modelsAsync = ref.watch(availableModelsProvider);
 
+    return modelsAsync.when(
+      loading: () => _buildModelSelectorContainer(
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '加载模型...',
+              style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary),
+            ),
+          ],
+        ),
+      ),
+      error: (error, _) => _buildModelSelectorContainer(
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => ref.invalidate(availableModelsProvider),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.warning_amber_rounded, size: 16, color: AppColors.error),
+              const SizedBox(width: 6),
+              Text(
+                '加载失败，点击重试',
+                style: AppTextStyles.bodySmall.copyWith(color: AppColors.error),
+              ),
+            ],
+          ),
+        ),
+      ),
+      data: (models) {
+        if (models.isEmpty) {
+          return _buildModelSelectorContainer(
+            Text(
+              '暂无模型',
+              style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary),
+            ),
+          );
+        }
+
+        // 查找当前选中模型的最新版本
+        final matchingModel = models.where((model) => model.id == selectedModel.id).firstOrNull;
+
+        if (matchingModel != null) {
+          // 找到匹配的模型，检查是否需要更新（对象可能已被编辑）
+          if (matchingModel != selectedModel) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              ref.read(selectedModelConfigProvider.notifier).state = matchingModel;
+            });
+          }
+        } else {
+          // 没有找到匹配的模型，回退到第一个模型
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            ref.read(selectedModelConfigProvider.notifier).state = models.first;
+          });
+        }
+
+        final currentValue = matchingModel?.id ?? models.first.id;
+
+        return _buildModelSelectorContainer(
+          DropdownButton<String>(
+            value: currentValue,
+            underline: const SizedBox(),
+            isDense: true,
+            icon: const Icon(Icons.arrow_drop_down, size: 18),
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.primary,
+              fontWeight: FontWeight.w600,
+            ),
+            items: models.map((model) {
+              return DropdownMenuItem(
+                value: model.id,
+                child: Text(model.displayName),
+              );
+            }).toList(),
+            onChanged: (modelId) {
+              if (modelId == null) return;
+              final nextModel = models.firstWhere((model) => model.id == modelId);
+              ref.read(selectedModelConfigProvider.notifier).state = nextModel;
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  /// 构建模型选择器容器
+  Widget _buildModelSelectorContainer(Widget child) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
@@ -330,29 +461,47 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
           width: 1,
         ),
       ),
-      child: DropdownButton<String>(
-        value: _currentModelId,
-        underline: const SizedBox(),
-        isDense: true,
-        icon: const Icon(Icons.arrow_drop_down, size: 18),
-        style: AppTextStyles.bodySmall.copyWith(
-          color: AppColors.primary,
-          fontWeight: FontWeight.w600,
-        ),
-        items: models.map((model) {
-          return DropdownMenuItem(
-            value: model.id, // 使用 id 而不是 modelId
-            child: Text(model.displayName),
-          );
-        }).toList(),
-        onChanged: (modelId) {
-          if (modelId != null) {
-            setState(() {
-              _currentModelId = modelId;
-            });
-          }
-        },
-      ),
+      child: child,
+    );
+  }
+
+  /// 解析当前有效的模型
+  AIModelConfig _resolveActiveModel() {
+    final selected = ref.read(selectedModelConfigProvider);
+    final modelsAsyncValue = ref.read(availableModelsProvider);
+
+    // 只有当 provider 有具体数据时，才验证选择是否有效
+    // 在 loading/error 状态下，继续使用当前选择
+    return modelsAsyncValue.maybeWhen(
+      data: (models) {
+        if (models.isEmpty) {
+          return selected;
+        }
+
+        final hasSelected = models.any(
+          (model) => model.id == selected.id && model.isEnabled,
+        );
+
+        if (hasSelected) {
+          return selected;
+        }
+
+        // 只有确认当前选择不存在时才回退
+        final fallback = models.firstWhere(
+          (model) => model.isEnabled,
+          orElse: () => models.first,
+        );
+
+        if (fallback.id != selected.id) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            ref.read(selectedModelConfigProvider.notifier).state = fallback;
+          });
+        }
+
+        return fallback;
+      },
+      // loading/error 状态：保持当前选择，不回退
+      orElse: () => selected,
     );
   }
 
@@ -466,6 +615,10 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
 
   /// 构建消息列表
   Widget _buildMessageList() {
+    // 获取所有可用模型（包括用户自定义模型）用于显示模型名称
+    final availableModelsAsync = ref.watch(availableModelsProvider);
+    final builtinModels = AIServiceFactory.getBuiltinModels();
+
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.all(16),
@@ -478,11 +631,17 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
         final message = _messages[index];
 
         // 获取模型名称（从消息保存的modelId，而不是当前选择的模型）
+        // 优先从 availableModelsProvider 查找（包含用户自定义模型）
+        // 找不到时回退到 modelId 本身
         String? modelName;
         if (message.role == MessageRole.assistant && message.modelId != null) {
-          final models = AIServiceFactory.getBuiltinModels();
+          final models = availableModelsAsync.maybeWhen(
+            data: (items) => items,
+            orElse: () => builtinModels,
+          );
           final model = models.where((m) => m.id == message.modelId).firstOrNull;
-          modelName = model?.displayName;
+          // 找不到模型时，显示 modelId 作为后备
+          modelName = model?.displayName ?? message.modelId;
         }
 
         // 判断这是否是最后一条正在流式显示的消息
@@ -493,6 +652,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
           modelName: modelName,
           isStreaming: isLastStreaming,
           streamingText: isLastStreaming ? _streamingText : null,
+          streamingReasoningText: isLastStreaming ? _streamingReasoningText : null,
           recipeRecognizer: _recipeRecognizer,
           createdRecipes: _createdRecipes, // 传递 AI 创建的食谱列表
           onRecipeTap: (recipeId) {
@@ -784,18 +944,61 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
     _scrollToBottom();
 
     try {
-      // 获取 AI 服务
-      final models = AIServiceFactory.getBuiltinModels();
-      final currentModel = models.firstWhere(
-        (m) => m.id == _currentModelId, // 使用 id 而不是 modelId
-        orElse: () => models.first,
-      );
-
+      // 获取当前有效的模型
+      final currentModel = _resolveActiveModel();
       final aiService = AIServiceFactory.create(currentModel);
 
       // 准备消息历史（不包括刚添加的临时消息）
       // 只保留最近3轮对话（6条消息：3条用户+3条AI），避免token超限
       var allHistory = _messages.sublist(0, _messages.length - 1);
+
+      // 处理图片：将本地路径转换为 base64
+      final processedHistory = <ChatMessage>[];
+      for (var msg in allHistory) {
+        var hasImage = false;
+        final processedContent = <MessageContent>[];
+
+        for (var content in msg.content) {
+          if (content is ImageContent && content.data.isEmpty && content.localPath != null) {
+            try {
+              final imageFile = File(content.localPath!);
+              final imageBytes = await imageFile.readAsBytes();
+              final base64Image = base64Encode(imageBytes);
+
+              // 添加带 base64 数据的图片内容
+              processedContent.add(MessageContent.image(
+                data: base64Image,
+                mimeType: content.mimeType ?? 'image/jpeg',
+                localPath: content.localPath,
+              ));
+              hasImage = true;
+            } catch (e) {
+              debugPrint('❌ Failed to read image file: $e');
+              // 即使失败也添加原内容
+              processedContent.add(content);
+            }
+          } else {
+            processedContent.add(content);
+          }
+        }
+
+        // 如果有图片被处理，创建新的消息对象
+        if (hasImage) {
+          processedHistory.add(ChatMessage(
+            id: msg.id,
+            role: msg.role,
+            content: processedContent,
+            timestamp: msg.timestamp,
+            modelId: msg.modelId,
+            reasoningContent: msg.reasoningContent,
+            createdRecipeIds: msg.createdRecipeIds,
+          ));
+        } else {
+          processedHistory.add(msg);
+        }
+      }
+
+      allHistory = processedHistory;
 
       // 筛选用户和AI的消息，保留最近3轮
       final recentMessages = <ChatMessage>[];
@@ -811,19 +1014,24 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
         }
       }
 
-      // 在第一条消息前添加 system prompt（每次都生成新的，包含最新时间）
+      // 检查模型是否支持工具调用（在生成 system prompt 之前）
+      final modelInfo = await aiService.getModelInfo();
+      final supportsTools = modelInfo['supports_tools'] == true;
+      final shouldUseMcpTools = _mcpTools != null && _mcpTools!.isNotEmpty && supportsTools;
+
+      // 在第一条消息前添加 system prompt（根据模型能力动态生成）
       var history = [
         ChatMessage(
           id: 'system',
           role: MessageRole.system,
-          content: [MessageContent.text(text: _buildSystemPrompt())],
+          content: [MessageContent.text(text: _buildSystemPrompt(supportsTools: supportsTools))],
           timestamp: DateTime.now(),
         ),
         ...recentMessages,
       ];
 
       // MCP 工具调用循环
-      if (_mcpTools != null && _mcpTools!.isNotEmpty) {
+      if (shouldUseMcpTools) {
         debugPrint('Starting MCP tool calling loop with ${_mcpTools!.length} tools');
 
         // 使用非流式API进行工具调用循环（最多10轮）
@@ -836,20 +1044,55 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
           toolCallCount++;
           debugPrint('Tool call iteration $toolCallCount');
 
-          // 调用 AI（非流式）
+          // 调用 AI（非流式，但支持文本流式显示）
+          final streamingTextBuffer = StringBuffer();
+
           final response = await aiService.sendMessageSync(
             messages: history,
             tools: _mcpTools,
+            onTextChunk: (chunk) {
+              // 实时显示流式文本（安全地调用 setState）
+              streamingTextBuffer.write(chunk);
+              if (mounted) {
+                // 使用 scheduleMicrotask 避免在 build 期间调用 setState
+                scheduleMicrotask(() {
+                  if (mounted) {
+                    setState(() {
+                      final lastIndex = _messages.length - 1;
+                      _messages[lastIndex] = ChatMessage(
+                        id: tempAssistantMessage.id,
+                        role: MessageRole.assistant,
+                        content: [MessageContent.text(text: streamingTextBuffer.toString())],
+                        timestamp: tempAssistantMessage.timestamp,
+                        modelId: currentModel.id,
+                      );
+                    });
+                  }
+                });
+              }
+            },
           );
 
-          debugPrint('Got response with ${response.content.length} content items');
+          debugPrint('📨 Got response with ${response.content.length} content items');
+
+          // 打印所有 content 类型
+          for (var i = 0; i < response.content.length; i++) {
+            final content = response.content[i];
+            if (content is TextContent) {
+              debugPrint('📨 Content[$i]: Text (${content.text.length} chars)');
+            } else if (content is ToolUseContent) {
+              debugPrint('📨 Content[$i]: ToolUse (name: ${content.name})');
+            } else {
+              debugPrint('📨 Content[$i]: ${content.runtimeType}');
+            }
+          }
 
           // 检查是否有 tool_calls
           final hasToolCalls = response.content.any((c) => c is ToolUseContent);
 
           if (!hasToolCalls) {
             // 没有工具调用，直接显示文本响应
-            debugPrint('No tool calls, displaying final response');
+            debugPrint('📨 No tool calls, displaying final response');
             setState(() {
               final lastIndex = _messages.length - 1;
               _messages[lastIndex] = ChatMessage(
@@ -857,7 +1100,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                 role: MessageRole.assistant,
                 content: response.content,
                 timestamp: tempAssistantMessage.timestamp,
-                modelId: _currentModelId, // 保存使用的模型ID
+                modelId: currentModel.id, // 保存使用的模型ID
                 createdRecipeIds: createdRecipeIds.isNotEmpty ? createdRecipeIds : null,
               );
               _isLoading = false;
@@ -947,64 +1190,217 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
               role: MessageRole.assistant,
               content: [MessageContent.text(text: '抱歉，工具调用次数过多，请重新尝试。')],
               timestamp: tempAssistantMessage.timestamp,
-              modelId: _currentModelId, // 保存使用的模型ID
+              modelId: currentModel.id, // 保存使用的模型ID
               createdRecipeIds: createdRecipeIds.isNotEmpty ? createdRecipeIds : null,
             );
             _isLoading = false;
           });
         }
       } else {
-        // 没有 MCP 工具，使用普通流式响应
-        debugPrint('No MCP tools, using streaming response');
+        // 没有可用的 MCP 工具或模型不支持工具调用
+        // 检查模型是否启用流式输出
+        final enableStreaming = currentModel.capabilities.enableStreaming;
 
-        // 开启流式显示状态
-        setState(() {
-          _isStreaming = true;
-          _streamingText = '';
-          _shouldStopStreaming = false;
-        });
+        if (enableStreaming) {
+          // 使用流式响应
+          debugPrint('Using streaming response (streaming enabled)');
 
-        final responseStream = aiService.sendMessage(
-          messages: history,
-        );
-
-        // 累积响应文本
-        final responseBuffer = StringBuffer();
-        var chunkCount = 0;
-
-        await for (final chunk in responseStream) {
-          // 检查用户是否点击了终止按钮
-          if (_shouldStopStreaming) {
-            debugPrint('Streaming stopped by user at chunk $chunkCount');
-            break;
-          }
-
-          chunkCount++;
-          responseBuffer.write(chunk);
-
-          // 更新流式文本状态（用于MessageBubble显示）
+          // 开启流式显示状态
           setState(() {
-            _streamingText = responseBuffer.toString();
+            _isStreaming = true;
+            _streamingText = '';
+            _streamingReasoningText = '';
+            _shouldStopStreaming = false;
           });
 
-          _scrollToBottom();
-        }
-
-        debugPrint('Streaming complete. Received $chunkCount chunks, total ${responseBuffer.length} characters');
-
-        // 流式完成，更新最终消息并关闭流式状态
-        setState(() {
-          _isStreaming = false;
-          _isLoading = false;
-          final lastIndex = _messages.length - 1;
-          _messages[lastIndex] = ChatMessage(
-            id: tempAssistantMessage.id,
-            role: MessageRole.assistant,
-            content: [MessageContent.text(text: responseBuffer.toString())],
-            timestamp: tempAssistantMessage.timestamp,
-            modelId: _currentModelId, // 保存使用的模型ID
+          String? reasoningContent;
+          final responseStream = aiService.sendMessage(
+            messages: history,
+            onReasoningContent: (value) {
+              reasoningContent = value;
+              // 更新流式思考内容（实时显示）
+              setState(() {
+                _streamingReasoningText = value;
+              });
+            },
           );
-        });
+
+          // 累积响应文本
+          final responseBuffer = StringBuffer();
+          var chunkCount = 0;
+
+          await for (final chunk in responseStream) {
+            // 检查用户是否点击了终止按钮
+            if (_shouldStopStreaming) {
+              debugPrint('Streaming stopped by user at chunk $chunkCount');
+              break;
+            }
+
+            chunkCount++;
+            responseBuffer.write(chunk);
+
+            // 更新流式文本状态（用于MessageBubble显示）
+            setState(() {
+              _streamingText = responseBuffer.toString();
+            });
+          }
+
+          debugPrint('Streaming complete. Received $chunkCount chunks, total ${responseBuffer.length} characters');
+
+          // 检查是否包含 XML 格式的工具调用（思考链模式）
+          final responseText = responseBuffer.toString();
+          final xmlToolCalls = _parseXmlToolCalls(responseText);
+
+          if (xmlToolCalls.isNotEmpty) {
+            debugPrint('🔧 Found ${xmlToolCalls.length} XML tool calls in streaming response');
+
+            // 关闭流式状态，但保持加载状态
+            setState(() {
+              _isStreaming = false;
+            });
+
+            // 收集创建的菜谱 ID
+            final createdRecipeIds = <String>[];
+
+            // 执行所有工具调用并收集结果
+            final toolResultsXml = StringBuffer();
+            for (final toolCall in xmlToolCalls) {
+              final toolUseId = toolCall['id'] as String;
+              final toolName = toolCall['name'] as String;
+              final toolArgs = toolCall['arguments'] as Map<String, dynamic>;
+
+              debugPrint('🔧 Executing XML tool: $toolName (id: $toolUseId)');
+              try {
+                final result = await _executeMCPTool(toolName, toolArgs);
+                toolResultsXml.writeln(_formatToolResultAsXml(toolUseId, toolName, result));
+
+                // 如果是 createRecipe 工具且成功，收集创建的食谱 ID
+                final cleanToolName = toolName.replaceFirst('mcp_howtocook_', '');
+                if (cleanToolName == 'createRecipe' &&
+                    result['success'] == true &&
+                    result.containsKey('recipe')) {
+                  final recipeData = result['recipe'] as Map<String, dynamic>?;
+                  if (recipeData != null && recipeData.containsKey('id')) {
+                    createdRecipeIds.add(recipeData['id'] as String);
+                  }
+                }
+              } catch (e) {
+                debugPrint('❌ XML tool execution failed: $e');
+                toolResultsXml.writeln(_formatToolResultAsXml(toolUseId, toolName, {'error': e.toString()}));
+              }
+            }
+
+            // 移除原文本中的工具调用标签，保留其他内容
+            final cleanResponseText = _removeXmlToolCalls(responseText);
+
+            // 更新历史，添加 AI 响应和工具结果
+            history = [
+              ...history,
+              ChatMessage(
+                id: DateTime.now().toString(),
+                role: MessageRole.assistant,
+                content: [MessageContent.text(text: responseText)],
+                timestamp: DateTime.now(),
+                reasoningContent: reasoningContent,
+              ),
+              ChatMessage(
+                id: DateTime.now().toString(),
+                role: MessageRole.user,
+                content: [MessageContent.text(text: toolResultsXml.toString())],
+                timestamp: DateTime.now(),
+              ),
+            ];
+
+            // 发送下一轮请求让 AI 处理工具结果
+            debugPrint('🔧 Sending tool results back to AI...');
+            final nextResponseBuffer = StringBuffer();
+            String? nextReasoningContent;
+
+            setState(() {
+              _isStreaming = true;
+              _streamingText = cleanResponseText.isNotEmpty ? '$cleanResponseText\n\n' : '';
+              _streamingReasoningText = '';
+            });
+
+            final nextStream = aiService.sendMessage(
+              messages: history,
+              onReasoningContent: (value) {
+                nextReasoningContent = value;
+                setState(() {
+                  _streamingReasoningText = value;
+                });
+              },
+            );
+
+            await for (final chunk in nextStream) {
+              if (_shouldStopStreaming) break;
+              nextResponseBuffer.write(chunk);
+              setState(() {
+                _streamingText = cleanResponseText.isNotEmpty
+                    ? '$cleanResponseText\n\n${nextResponseBuffer.toString()}'
+                    : nextResponseBuffer.toString();
+              });
+            }
+
+            // 最终响应
+            final finalText = cleanResponseText.isNotEmpty
+                ? '$cleanResponseText\n\n${nextResponseBuffer.toString()}'
+                : nextResponseBuffer.toString();
+
+            setState(() {
+              _isStreaming = false;
+              _isLoading = false;
+              final lastIndex = _messages.length - 1;
+              _messages[lastIndex] = ChatMessage(
+                id: tempAssistantMessage.id,
+                role: MessageRole.assistant,
+                content: [MessageContent.text(text: finalText)],
+                timestamp: tempAssistantMessage.timestamp,
+                modelId: currentModel.id,
+                reasoningContent: reasoningContent ?? nextReasoningContent,
+                createdRecipeIds: createdRecipeIds.isNotEmpty ? createdRecipeIds : null,
+              );
+            });
+          } else {
+            // 没有工具调用，直接显示响应
+            setState(() {
+              _isStreaming = false;
+              _isLoading = false;
+              final lastIndex = _messages.length - 1;
+              _messages[lastIndex] = ChatMessage(
+                id: tempAssistantMessage.id,
+                role: MessageRole.assistant,
+                content: [MessageContent.text(text: responseBuffer.toString())],
+                timestamp: tempAssistantMessage.timestamp,
+                modelId: currentModel.id,
+                reasoningContent: (reasoningContent != null && reasoningContent!.isNotEmpty)
+                    ? reasoningContent
+                    : null,
+              );
+            });
+          }
+        } else {
+          // 使用非流式响应（等待完整回复）
+          debugPrint('Using non-streaming response (streaming disabled)');
+
+          final response = await aiService.sendMessageSync(
+            messages: history,
+          );
+
+          // 更新最终消息（使用响应中的reasoning内容）
+          setState(() {
+            _isLoading = false;
+            final lastIndex = _messages.length - 1;
+            _messages[lastIndex] = ChatMessage(
+              id: tempAssistantMessage.id,
+              role: MessageRole.assistant,
+              content: response.content,
+              timestamp: tempAssistantMessage.timestamp,
+              modelId: currentModel.id, // 保存使用的模型ID
+              reasoningContent: response.reasoningContent,
+            );
+          });
+        }
       }
 
       // 保存聊天历史
@@ -1042,6 +1438,72 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
     }
   }
 
+  /// 解析 XML 格式的工具调用（CherryStudio 风格）
+  ///
+  /// 从响应文本中提取 <tool_use> 标签内容
+  /// 返回工具调用列表，每个元素包含 id, name 和 arguments
+  List<Map<String, dynamic>> _parseXmlToolCalls(String text) {
+    final toolCalls = <Map<String, dynamic>>[];
+
+    // 匹配 <tool_use>...</tool_use> 块（支持可选的 <id> 标签）
+    final toolUseRegex = RegExp(
+      r'<tool_use>\s*(?:<id>([^<]*)</id>\s*)?<name>([^<]+)</name>\s*<arguments>([^<]*)</arguments>\s*</tool_use>',
+      multiLine: true,
+      dotAll: true,
+    );
+
+    for (final match in toolUseRegex.allMatches(text)) {
+      final idFromXml = match.group(1)?.trim();
+      final name = match.group(2)?.trim();
+      final argumentsStr = match.group(3)?.trim();
+
+      if (name != null && name.isNotEmpty) {
+        // 生成稳定的 tool_use_id：如果 XML 中有 id 则使用，否则生成一个
+        final toolUseId = (idFromXml != null && idFromXml.isNotEmpty)
+            ? idFromXml
+            : 'xml-${DateTime.now().microsecondsSinceEpoch}-${toolCalls.length}';
+
+        Map<String, dynamic> arguments = {};
+        if (argumentsStr != null && argumentsStr.isNotEmpty) {
+          try {
+            arguments = jsonDecode(argumentsStr) as Map<String, dynamic>;
+          } catch (e) {
+            debugPrint('⚠️ Failed to parse tool arguments JSON: $e');
+          }
+        }
+
+        toolCalls.add({
+          'id': toolUseId,
+          'name': name,
+          'arguments': arguments,
+        });
+        debugPrint('🔧 Parsed XML tool call: id=$toolUseId, name=$name, arguments=$arguments');
+      }
+    }
+
+    return toolCalls;
+  }
+
+  /// 移除响应文本中的 XML 工具调用标签
+  ///
+  /// 保留工具调用之外的正常文本内容
+  String _removeXmlToolCalls(String text) {
+    // 移除 <tool_use>...</tool_use> 块
+    return text.replaceAll(
+      RegExp(r'<tool_use>\s*<name>[^<]+</name>\s*<arguments>[^<]*</arguments>\s*</tool_use>', multiLine: true, dotAll: true),
+      '',
+    ).trim();
+  }
+
+  /// 格式化工具结果为 XML 格式（包含 tool_use_id 以便 AI 关联调用和结果）
+  String _formatToolResultAsXml(String toolUseId, String toolName, Map<String, dynamic> result) {
+    return '''<tool_use_result>
+  <id>$toolUseId</id>
+  <name>$toolName</name>
+  <result>${jsonEncode(result)}</result>
+</tool_use_result>''';
+  }
+
   /// 执行 MCP 工具
   ///
   /// 根据工具名称调用相应的 MCPService 方法
@@ -1052,7 +1514,9 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
     // 移除 mcp_howtocook_ 前缀（如果有）
     final cleanToolName = toolName.replaceFirst('mcp_howtocook_', '');
 
-    debugPrint('Executing MCP tool: $cleanToolName with input: $input');
+    debugPrint('🔧 ===== MCP Tool Call Start =====');
+    debugPrint('🔧 Tool: $cleanToolName');
+    debugPrint('🔧 Input: $input');
 
     // 记录开始时间
     final startTime = DateTime.now();
@@ -1335,8 +1799,19 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
     }
 
     // 记录工具调用（仅在 debug 模式）
+    final duration = DateTime.now().difference(startTime);
+
+    debugPrint('🔧 ===== MCP Tool Call End =====');
+    debugPrint('🔧 Tool: $cleanToolName');
+    debugPrint('🔧 Duration: ${duration.inMilliseconds}ms');
+    debugPrint('🔧 Success: ${result?['success']}');
+    if (errorMessage != null) {
+      debugPrint('🔧 Error: $errorMessage');
+    }
+    debugPrint('🔧 Result keys: ${result?.keys.toList()}');
+    debugPrint('🔧 ==============================');
+
     if (kDebugMode) {
-      final duration = DateTime.now().difference(startTime);
       final toolCall = MCPToolCall(
         toolName: cleanToolName,
         timestamp: startTime,
@@ -1402,13 +1877,14 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
         .join('\n');
 
     final TextEditingController editController = TextEditingController(text: textContent);
+    bool isDisposed = false; // 标记 controller 是否已释放
 
     showDialog(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) {
-          // 检查内容是否有改动
-          final hasChanged = editController.text.trim() != textContent;
+          // 检查内容是否有改动（安全检查 controller 状态）
+          final hasChanged = !isDisposed && editController.text.trim() != textContent;
 
           return AlertDialog(
             title: const Text('编辑消息'),
@@ -1421,29 +1897,55 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                 border: OutlineInputBorder(),
               ),
               onChanged: (_) {
-                // 内容改变时刷新对话框状态
-                setDialogState(() {});
+                // 内容改变时刷新对话框状态（仅当 controller 未释放）
+                if (!isDisposed && mounted) {
+                  setDialogState(() {});
+                }
               },
             ),
             actions: [
               TextButton(
                 onPressed: () {
-                  editController.dispose();
+                  // 取消：先标记已释放，再关闭对话框，最后 dispose
+                  isDisposed = true;
                   Navigator.pop(dialogContext);
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    editController.dispose();
+                  });
                 },
                 child: const Text('取消'),
               ),
               TextButton(
-                onPressed: () {
+                onPressed: () async {
                   final newText = editController.text.trim();
                   if (newText.isEmpty) return;
 
                   // 如果内容没有改动，直接关闭对话框
                   if (!hasChanged) {
-                    editController.dispose();
+                    isDisposed = true;
                     Navigator.pop(dialogContext);
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      editController.dispose();
+                    });
                     return;
                   }
+
+                  // 标记 controller 已释放，避免后续使用
+                  isDisposed = true;
+
+                  // 先关闭对话框
+                  Navigator.pop(dialogContext);
+
+                  // 在下一帧释放 controller（确保对话框动画完成）
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    editController.dispose();
+                  });
+
+                  // 等待对话框动画完成
+                  await Future.delayed(const Duration(milliseconds: 150));
+
+                  // 检查 widget 是否仍然挂载
+                  if (!mounted) return;
 
                   // 更新消息内容
                   setState(() {
@@ -1459,13 +1961,16 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                       _messages.removeRange(index + 1, _messages.length);
                     }
                   });
-                  _saveChatHistory();
-                  editController.dispose();
-                  Navigator.pop(dialogContext);
 
-                  // 如果这是用户消息，自动重新发送
+                  _saveChatHistory();
+
+                  // 如果这是用户消息，延迟重新发送（避免 setState 冲突）
                   if (message.role == MessageRole.user) {
-                    _resendMessage(_messages[index]);
+                    scheduleMicrotask(() {
+                      if (mounted) {
+                        _resendMessage(_messages[index]);
+                      }
+                    });
                   }
                 },
                 child: Text(hasChanged ? '发送' : '确定'),
@@ -1475,6 +1980,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
         },
       ),
     );
+    // 移除 whenComplete，改为在按钮回调中处理 dispose
   }
 
   /// 清空聊天历史

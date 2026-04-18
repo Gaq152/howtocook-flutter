@@ -28,6 +28,7 @@ class MessageBubble extends StatefulWidget {
   final String? modelName;
   final bool isStreaming;
   final String? streamingText;
+  final String? streamingReasoningText; // 流式思考内容
   final RecipeRecognizer? recipeRecognizer;
   final Function(String recipeId)? onRecipeTap;
   final Map<String, Recipe>? createdRecipes; // AI 生成的食谱列表
@@ -42,6 +43,7 @@ class MessageBubble extends StatefulWidget {
     this.modelName,
     this.isStreaming = false,
     this.streamingText,
+    this.streamingReasoningText,
     this.recipeRecognizer,
     this.onRecipeTap,
     this.createdRecipes,
@@ -53,6 +55,7 @@ class MessageBubble extends StatefulWidget {
 
 class _MessageBubbleState extends State<MessageBubble> {
   List<RecipeCardData>? _recognizedRecipes;
+  bool _isReasoningExpanded = false; // 思考过程展开状态
 
   @override
   void initState() {
@@ -176,6 +179,9 @@ class _MessageBubbleState extends State<MessageBubble> {
               child: Column(
                 crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                 children: [
+                  // 思考过程展示（仅AI消息，显示在消息之前）
+                  if (!isUser) _buildReasoningBlock(),
+
                   // 消息气泡
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -492,6 +498,95 @@ class _MessageBubbleState extends State<MessageBubble> {
           fontSize: 12,
         ),
       ),
+    );
+  }
+
+  /// 构建思考过程块
+  Widget _buildReasoningBlock() {
+    // 获取思考内容：优先使用流式思考内容（无论是否正在流式），否则使用消息中的 reasoningContent
+    // 修复：不依赖 isStreaming 状态，避免流结束后到消息保存之间的空窗期丢失显示
+    final reasoningText = (widget.streamingReasoningText?.isNotEmpty ?? false)
+        ? widget.streamingReasoningText!
+        : widget.message.reasoningContent;
+
+    // 如果没有思考内容，不显示
+    if (reasoningText == null || reasoningText.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _isReasoningExpanded = !_isReasoningExpanded;
+            });
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.orange.shade200),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 标题行（可点击展开/收起）
+                Row(
+                  children: [
+                    Icon(Icons.psychology, size: 16, color: Colors.orange[700]),
+                    const SizedBox(width: 4),
+                    Text(
+                      '💭 思考过程',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange[700],
+                        fontSize: 14,
+                      ),
+                    ),
+                    const Spacer(),
+                    Icon(
+                      _isReasoningExpanded ? Icons.expand_less : Icons.expand_more,
+                      size: 20,
+                      color: Colors.orange[700],
+                    ),
+                  ],
+                ),
+
+                // 展开时显示完整内容
+                if (_isReasoningExpanded) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    reasoningText,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Colors.black87,
+                      height: 1.5,
+                    ),
+                  ),
+                ] else ...[
+                  // 收起时显示预览（前50个字符）
+                  const SizedBox(height: 4),
+                  Text(
+                    reasoningText.length > 50
+                        ? '${reasoningText.substring(0, 50)}...'
+                        : reasoningText,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.orange[800],
+                      height: 1.4,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
