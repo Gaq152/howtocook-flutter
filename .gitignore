@@ -70,5 +70,6 @@ app.*.map.json
 # 本地开发文件
 *.txt
 CLAUDE.md
+AGENTS.md
 docs
 scripts/
