@@ -1,6 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 网络（Flutter 默认会注入，这里显式声明便于检查） -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- 应用内下载 APK 调起系统安装器（Android 8.0+ 需显式声明） -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+
     <application
-        android:label="howtocook"
+        android:label="智能菜谱助手"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

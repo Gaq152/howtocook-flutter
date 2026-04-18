@@ -6,7 +6,7 @@ part of 'ai_providers.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$availableModelsHash() => r'0218c5180d4de1a2cb948f47223f7dcc8572f166';
+String _$availableModelsHash() => r'58e8941cd2e8fd7d6c4e5c817b3e49be97cc8383';
 
 /// 所有可用的模型配置列表 Provider
 ///

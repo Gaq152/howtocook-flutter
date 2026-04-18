@@ -1,7 +1,7 @@
 name: howtocook
 description: "智能菜谱助手 - 基于 AI 的跨平台菜谱管理和推荐应用"
 publish_to: 'none'
-version: 0.1.0
+version: 0.1.0+1
 
 environment:
   sdk: ^3.9.2
@@ -44,6 +44,10 @@ dependencies:
 
   # 环境变量
   flutter_dotenv: ^5.2.1
+
+  # 应用更新
+  package_info_plus: ^8.0.2
+  install_plugin: ^2.1.0
 
   # UI 组件
   flutter_markdown: ^0.7.4+1

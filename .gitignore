@@ -62,6 +62,12 @@ app.*.map.json
 /android/captures/
 /android/keystore.properties
 
+# Android 签名（keystore 和密码永不入库）
+/android/key.properties
+/android/keystore/*.jks
+/android/keystore/*.keystore
+!/android/keystore/README.md
+
 
 # Hive 数据库文件
 *.hive

@@ -1,0 +1,162 @@
+name: Release APK
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build signed APK and publish release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate tag matches pubspec version
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME#v}"
+          PUB=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
+          if [ "$TAG" != "$PUB" ]; then
+            echo "::error::tag ($TAG) 与 pubspec.yaml version ($PUB) 不一致"
+            exit 1
+          fi
+          echo "✅ tag=$TAG, pubspec=$PUB"
+
+      - name: Extract changelog section for this version
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME#v}"
+          if [ ! -f CHANGELOG.md ]; then
+            echo "::error::仓库缺少 CHANGELOG.md"
+            exit 1
+          fi
+          awk -v ver="$TAG" '
+            BEGIN { needle = "## [" ver "]"; found = 0 }
+            index($0, "## [") == 1 {
+              if (found) exit
+              if (index($0, needle) == 1) { found = 1; next }
+            }
+            found { print }
+          ' CHANGELOG.md \
+            | awk 'NF { printed=1; for (i=0;i<pending;i++) print ""; pending=0; print; next } printed { pending++ }' \
+            > release_notes.md
+          if ! [ -s release_notes.md ]; then
+            echo "::error::CHANGELOG.md 中缺少 [$TAG] 版本章节，请先补齐再打 tag"
+            exit 1
+          fi
+          echo "---- release_notes.md ----"
+          cat release_notes.md
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Restore keystore from secret
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          mkdir -p android/keystore
+          echo "$KEYSTORE_BASE64" | base64 -d > android/keystore/howtocook-release.jks
+          test -s android/keystore/howtocook-release.jks
+
+      - name: Write key.properties
+        env:
+          STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          cat > android/key.properties <<EOF
+          storeFile=keystore/howtocook-release.jks
+          storePassword=${STORE_PASSWORD}
+          keyAlias=${KEY_ALIAS}
+          keyPassword=${KEY_PASSWORD}
+          EOF
+
+      - name: Ensure .env exists
+        run: |
+          if [ ! -f .env ]; then
+            if [ -f .env.example ]; then
+              cp .env.example .env
+            else
+              touch .env
+            fi
+          fi
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run build_runner
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Print release certificate fingerprint
+        env:
+          STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          keytool -list -v \
+            -keystore android/keystore/howtocook-release.jks \
+            -alias "${{ secrets.KEY_ALIAS }}" \
+            -storepass "$STORE_PASSWORD" \
+            | grep -E "SHA1|SHA256" || true
+
+      - name: Generate manifest.json
+        id: manifest
+        shell: bash
+        env:
+          VNAME: ${{ github.ref_name }}
+          OWNER_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          APK="build/app/outputs/apk/release/howtocook.apk"
+          test -f "$APK"
+          SHA=$(sha256sum "$APK" | cut -d' ' -f1)
+          SIZE=$(stat -c%s "$APK")
+          VCODE=$(grep '^version:' pubspec.yaml | awk '{print $2}' | awk -F'+' '{print ($2==""?1:$2)}')
+          VNAME_STRIPPED="${VNAME#v}"
+          export APK_SHA="$SHA" APK_SIZE="$SIZE" VCODE VNAME_STRIPPED OWNER_REPO
+          python3 - <<'PY' > manifest.json
+          import json, os, pathlib
+          notes = pathlib.Path("release_notes.md").read_text(encoding="utf-8").strip()
+          data = {
+              "versionName": os.environ["VNAME_STRIPPED"],
+              "versionCode": int(os.environ["VCODE"]),
+              "downloadUrl": f"https://github.com/{os.environ['OWNER_REPO']}/releases/latest/download/howtocook.apk",
+              "sha256": os.environ["APK_SHA"],
+              "size": int(os.environ["APK_SIZE"]),
+              "publishedAt": os.environ.get("GITHUB_EVENT_HEAD_COMMIT_TIMESTAMP") or "",
+              "notes": notes,
+          }
+          print(json.dumps(data, ensure_ascii=False, indent=2))
+          PY
+          echo "---- manifest.json ----"
+          cat manifest.json
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+          files: |
+            build/app/outputs/apk/release/howtocook.apk
+            manifest.json

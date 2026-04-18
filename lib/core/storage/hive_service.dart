@@ -15,6 +15,7 @@ class HiveService {
   static const String modifiedRecipesBox = 'modified_recipes'; // 存储修改后的菜谱JSON
   static const String modifiedTipsBox = 'modified_tips';       // 存储用户创建/修改的教程
   static const String favoriteTipsBox = 'favorite_tips';       // 教程收藏
+  static const String updatePrefsBox = 'update_prefs';         // 应用更新偏好（跳过版本号等）
 
   /// 初始化 Hive
   /// 必须在应用启动时调用（main.dart 中）
@@ -85,6 +86,11 @@ class HiveService {
     if (!Hive.isBoxOpen(favoriteTipsBox)) {
       await Hive.openBox<String>(favoriteTipsBox);
     }
+
+    // 应用更新偏好 Box（存储键值对：skippedVersionCode 等）
+    if (!Hive.isBoxOpen(updatePrefsBox)) {
+      await Hive.openBox(updatePrefsBox);
+    }
   }
 
   /// 获取 AI 模型配置 Box
@@ -118,6 +124,9 @@ class HiveService {
 
   /// 获取收藏教程 Box
   static Box<String> getFavoriteTipsBox() => Hive.box<String>(favoriteTipsBox);
+
+  /// 获取应用更新偏好 Box
+  static Box getUpdatePrefsBox() => Hive.box(updatePrefsBox);
 
   /// 关闭所有 Boxes（用于测试或应用退出）
   static Future<void> closeAll() async {

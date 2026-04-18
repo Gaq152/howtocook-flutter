@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'core/services/update_service.dart';
 import 'core/storage/hive_service.dart';
 import 'core/storage/database_manager.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
+import 'features/settings/presentation/widgets/update_dialog.dart';
 
 /// 应用入口
 void main() async {
@@ -51,11 +53,50 @@ Future<void> _initializeServices() async {
 }
 
 /// 主应用
-class HowToCookApp extends ConsumerWidget {
+class HowToCookApp extends ConsumerStatefulWidget {
   const HowToCookApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HowToCookApp> createState() => _HowToCookAppState();
+}
+
+class _HowToCookAppState extends ConsumerState<HowToCookApp> {
+  bool _updateCheckScheduled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_updateCheckScheduled) return;
+      _updateCheckScheduled = true;
+      Future.delayed(const Duration(seconds: 3), _silentCheckUpdate);
+    });
+  }
+
+  Future<void> _silentCheckUpdate() async {
+    if (!mounted || kIsWeb) return;
+    try {
+      final service = ref.read(updateServiceProvider);
+      final result = await service.checkForUpdate();
+      if (!mounted || !result.hasUpdate || result.info == null) return;
+
+      final router = ref.read(routerProvider);
+      final navigatorContext = router.routerDelegate.navigatorKey.currentContext;
+      if (navigatorContext == null || !navigatorContext.mounted) return;
+
+      await showUpdateDialog(
+        context: navigatorContext,
+        ref: ref,
+        info: result.info!,
+        currentVersionName: result.currentVersionName,
+      );
+    } catch (e) {
+      debugPrint('⚠️ 启动更新检查失败（已静默忽略）：$e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
     final themeMode = ref.watch(currentThemeModeProvider);
 
