@@ -128,36 +128,119 @@ class DeepSeekAdapter implements AIService {
     void Function(String reasoningContent)? onReasoningContent,
   }) async {
     try {
-      // 统一使用流式API然后累积所有响应（兼容更多中转服务）
-      final buffer = StringBuffer();
-      String? reasoningContent;
+      // 直接解析 SSE 流：同时捕获 content / reasoning_content / tool_calls，
+      // 避免复用 sendMessage() 的纯文本流导致 tool_calls 被丢弃。
+      final requestData = _buildRequest(messages, tools, maxTokens, stream: true);
 
-      await for (final chunk in sendMessage(
-        messages: messages,
-        tools: tools,
-        maxTokens: maxTokens,
-        onReasoningContent: (content) {
-          reasoningContent = content;
-          // 同时回调给调用方
-          if (onReasoningContent != null) {
-            onReasoningContent(content);
+      final response = await _dio.post(
+        '/chat/completions',
+        data: requestData,
+        options: Options(responseType: ResponseType.stream),
+      );
+
+      final stream = utf8.decoder.bind(response.data.stream.cast<List<int>>());
+      final textBuffer = StringBuffer();
+      final reasoningBuffer = StringBuffer();
+      final toolCallAccumulators = <int, _ToolCallAccumulator>{};
+      var sseBuffer = '';
+
+      await for (final chunk in stream) {
+        sseBuffer += chunk;
+        final lines = sseBuffer.split('\n');
+        sseBuffer = lines.removeLast();
+
+        for (final rawLine in lines) {
+          final line = rawLine.trim();
+          if (!line.startsWith('data:')) continue;
+          final data = line.substring('data:'.length).trim();
+          if (data.isEmpty || data == '[DONE]') continue;
+
+          try {
+            final json = jsonDecode(data) as Map<String, dynamic>;
+            final choices = json['choices'] as List<dynamic>?;
+            if (choices == null || choices.isEmpty) continue;
+            final delta = choices[0]['delta'] as Map<String, dynamic>?;
+            if (delta == null) continue;
+
+            final content = delta['content'] as String?;
+            if (content != null && content.isNotEmpty) {
+              textBuffer.write(content);
+              if (onTextChunk != null) onTextChunk(content);
+            }
+
+            final reasoning = delta['reasoning_content'] as String?;
+            if (reasoning != null && reasoning.isNotEmpty) {
+              reasoningBuffer.write(reasoning);
+              if (onReasoningContent != null) {
+                onReasoningContent(reasoningBuffer.toString());
+              }
+            }
+
+            final toolCalls = delta['tool_calls'] as List<dynamic>?;
+            if (toolCalls != null) {
+              for (final entry in toolCalls) {
+                if (entry is! Map<String, dynamic>) continue;
+                final index = (entry['index'] as num?)?.toInt() ?? 0;
+                final acc = toolCallAccumulators.putIfAbsent(
+                  index,
+                  () => _ToolCallAccumulator(),
+                );
+                final id = entry['id'] as String?;
+                if (id != null && id.isNotEmpty) acc.id = id;
+                final fn = entry['function'] as Map<String, dynamic>?;
+                if (fn != null) {
+                  final name = fn['name'] as String?;
+                  if (name != null && name.isNotEmpty) acc.name = name;
+                  final args = fn['arguments'] as String?;
+                  if (args != null) acc.argsBuffer.write(args);
+                }
+              }
+            }
+          } catch (_) {
+            continue;
           }
-        },
-      )) {
-        buffer.write(chunk);
-        // 实时回调文本块
-        if (onTextChunk != null) {
-          onTextChunk(chunk);
         }
+      }
+
+      final messageContent = <MessageContent>[];
+      final textResult = textBuffer.toString();
+      if (textResult.isNotEmpty) {
+        messageContent.add(MessageContent.text(text: textResult));
+      }
+      final orderedIndexes = toolCallAccumulators.keys.toList()..sort();
+      for (final idx in orderedIndexes) {
+        final acc = toolCallAccumulators[idx]!;
+        if (acc.id == null || acc.name == null) continue;
+        final argsRaw = acc.argsBuffer.toString();
+        Map<String, dynamic> input;
+        try {
+          input = argsRaw.trim().isEmpty
+              ? <String, dynamic>{}
+              : (jsonDecode(argsRaw) as Map<String, dynamic>);
+        } catch (e) {
+          debugPrint('⚠️ DeepSeek tool_call arguments 解析失败: $e; raw=$argsRaw');
+          input = <String, dynamic>{};
+        }
+        messageContent.add(MessageContent.toolUse(
+          toolUseId: acc.id!,
+          name: acc.name!,
+          input: input,
+        ));
+      }
+
+      if (messageContent.isEmpty) {
+        messageContent.add(const MessageContent.text(text: ''));
       }
 
       return ChatMessage(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         role: MessageRole.assistant,
-        content: [MessageContent.text(text: buffer.toString())],
+        content: messageContent,
         timestamp: DateTime.now(),
-        reasoningContent: reasoningContent,
+        reasoningContent: reasoningBuffer.isEmpty ? null : reasoningBuffer.toString(),
       );
+    } on DioException catch (e) {
+      throw _handleDioException(e);
     } catch (e) {
       throw Exception('DeepSeek API call failed: $e');
     }
@@ -333,4 +416,10 @@ class DeepSeekAdapter implements AIService {
 
     return Exception('Network error: ${e.message}');
   }
+}
+
+class _ToolCallAccumulator {
+  String? id;
+  String? name;
+  final StringBuffer argsBuffer = StringBuffer();
 }
