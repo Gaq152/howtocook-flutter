@@ -13,6 +13,7 @@ class ChatMessage with _$ChatMessage {
     required DateTime timestamp,
     @Default(MessageStatus.sent) MessageStatus status,
     String? modelId, // 消息使用的模型ID（用于显示模型名称）
+    String? reasoningContent, // AI思考过程（仅deepseek-reasoner等模型, JSON序列化为reasoning_content）
     List<RecipeCard>? recipeCards, // 菜谱卡片（UI 展示用）
     List<String>? createdRecipeIds, // 该消息创建的食谱ID列表（用于持久化关联）
   }) = _ChatMessage;

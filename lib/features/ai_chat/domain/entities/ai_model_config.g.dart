@@ -80,6 +80,10 @@ _$ModelCapabilitiesImpl _$$ModelCapabilitiesImplFromJson(
       supportsFileInput: json['supportsFileInput'] as bool? ?? false,
       supportsWebSearch: json['supportsWebSearch'] as bool? ?? false,
       supportsMCP: json['supportsMCP'] as bool? ?? true,
+      enableStreaming: json['enableStreaming'] as bool? ?? true,
+      enableThinking: json['enableThinking'] as bool? ?? false,
+      thinkingBudgetTokens:
+          (json['thinkingBudgetTokens'] as num?)?.toInt() ?? 10000,
       maxTokens: (json['maxTokens'] as num?)?.toInt() ?? 4096,
       contextWindow: (json['contextWindow'] as num?)?.toInt() ?? 128000,
     );
@@ -91,6 +95,9 @@ Map<String, dynamic> _$$ModelCapabilitiesImplToJson(
       'supportsFileInput': instance.supportsFileInput,
       'supportsWebSearch': instance.supportsWebSearch,
       'supportsMCP': instance.supportsMCP,
+      'enableStreaming': instance.enableStreaming,
+      'enableThinking': instance.enableThinking,
+      'thinkingBudgetTokens': instance.thinkingBudgetTokens,
       'maxTokens': instance.maxTokens,
       'contextWindow': instance.contextWindow,
     };

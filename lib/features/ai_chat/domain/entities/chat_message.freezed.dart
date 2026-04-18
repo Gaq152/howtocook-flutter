@@ -27,6 +27,8 @@ mixin _$ChatMessage {
   MessageStatus get status => throw _privateConstructorUsedError;
   String? get modelId =>
       throw _privateConstructorUsedError; // 消息使用的模型ID（用于显示模型名称）
+  String? get reasoningContent =>
+      throw _privateConstructorUsedError; // AI思考过程（仅deepseek-reasoner等模型, JSON序列化为reasoning_content）
   List<RecipeCard>? get recipeCards =>
       throw _privateConstructorUsedError; // 菜谱卡片（UI 展示用）
   List<String>? get createdRecipeIds => throw _privateConstructorUsedError;
@@ -50,6 +52,7 @@ abstract class $ChatMessageCopyWith<$Res> {
       DateTime timestamp,
       MessageStatus status,
       String? modelId,
+      String? reasoningContent,
       List<RecipeCard>? recipeCards,
       List<String>? createdRecipeIds});
 }
@@ -73,6 +76,7 @@ class _$ChatMessageCopyWithImpl<$Res, $Val extends ChatMessage>
     Object? timestamp = null,
     Object? status = null,
     Object? modelId = freezed,
+    Object? reasoningContent = freezed,
     Object? recipeCards = freezed,
     Object? createdRecipeIds = freezed,
   }) {
@@ -101,6 +105,10 @@ class _$ChatMessageCopyWithImpl<$Res, $Val extends ChatMessage>
           ? _value.modelId
           : modelId // ignore: cast_nullable_to_non_nullable
               as String?,
+      reasoningContent: freezed == reasoningContent
+          ? _value.reasoningContent
+          : reasoningContent // ignore: cast_nullable_to_non_nullable
+              as String?,
       recipeCards: freezed == recipeCards
           ? _value.recipeCards
           : recipeCards // ignore: cast_nullable_to_non_nullable
@@ -128,6 +136,7 @@ abstract class _$$ChatMessageImplCopyWith<$Res>
       DateTime timestamp,
       MessageStatus status,
       String? modelId,
+      String? reasoningContent,
       List<RecipeCard>? recipeCards,
       List<String>? createdRecipeIds});
 }
@@ -149,6 +158,7 @@ class __$$ChatMessageImplCopyWithImpl<$Res>
     Object? timestamp = null,
     Object? status = null,
     Object? modelId = freezed,
+    Object? reasoningContent = freezed,
     Object? recipeCards = freezed,
     Object? createdRecipeIds = freezed,
   }) {
@@ -177,6 +187,10 @@ class __$$ChatMessageImplCopyWithImpl<$Res>
           ? _value.modelId
           : modelId // ignore: cast_nullable_to_non_nullable
               as String?,
+      reasoningContent: freezed == reasoningContent
+          ? _value.reasoningContent
+          : reasoningContent // ignore: cast_nullable_to_non_nullable
+              as String?,
       recipeCards: freezed == recipeCards
           ? _value._recipeCards
           : recipeCards // ignore: cast_nullable_to_non_nullable
@@ -199,6 +213,7 @@ class _$ChatMessageImpl implements _ChatMessage {
       required this.timestamp,
       this.status = MessageStatus.sent,
       this.modelId,
+      this.reasoningContent,
       final List<RecipeCard>? recipeCards,
       final List<String>? createdRecipeIds})
       : _content = content,
@@ -228,8 +243,11 @@ class _$ChatMessageImpl implements _ChatMessage {
   @override
   final String? modelId;
 // 消息使用的模型ID（用于显示模型名称）
+  @override
+  final String? reasoningContent;
+// AI思考过程（仅deepseek-reasoner等模型, JSON序列化为reasoning_content）
   final List<RecipeCard>? _recipeCards;
-// 消息使用的模型ID（用于显示模型名称）
+// AI思考过程（仅deepseek-reasoner等模型, JSON序列化为reasoning_content）
   @override
   List<RecipeCard>? get recipeCards {
     final value = _recipeCards;
@@ -254,7 +272,7 @@ class _$ChatMessageImpl implements _ChatMessage {
 
   @override
   String toString() {
-    return 'ChatMessage(id: $id, role: $role, content: $content, timestamp: $timestamp, status: $status, modelId: $modelId, recipeCards: $recipeCards, createdRecipeIds: $createdRecipeIds)';
+    return 'ChatMessage(id: $id, role: $role, content: $content, timestamp: $timestamp, status: $status, modelId: $modelId, reasoningContent: $reasoningContent, recipeCards: $recipeCards, createdRecipeIds: $createdRecipeIds)';
   }
 
   @override
@@ -269,6 +287,8 @@ class _$ChatMessageImpl implements _ChatMessage {
                 other.timestamp == timestamp) &&
             (identical(other.status, status) || other.status == status) &&
             (identical(other.modelId, modelId) || other.modelId == modelId) &&
+            (identical(other.reasoningContent, reasoningContent) ||
+                other.reasoningContent == reasoningContent) &&
             const DeepCollectionEquality()
                 .equals(other._recipeCards, _recipeCards) &&
             const DeepCollectionEquality()
@@ -285,6 +305,7 @@ class _$ChatMessageImpl implements _ChatMessage {
       timestamp,
       status,
       modelId,
+      reasoningContent,
       const DeepCollectionEquality().hash(_recipeCards),
       const DeepCollectionEquality().hash(_createdRecipeIds));
 
@@ -310,6 +331,7 @@ abstract class _ChatMessage implements ChatMessage {
       required final DateTime timestamp,
       final MessageStatus status,
       final String? modelId,
+      final String? reasoningContent,
       final List<RecipeCard>? recipeCards,
       final List<String>? createdRecipeIds}) = _$ChatMessageImpl;
 
@@ -329,6 +351,8 @@ abstract class _ChatMessage implements ChatMessage {
   @override
   String? get modelId;
   @override // 消息使用的模型ID（用于显示模型名称）
+  String? get reasoningContent;
+  @override // AI思考过程（仅deepseek-reasoner等模型, JSON序列化为reasoning_content）
   List<RecipeCard>? get recipeCards;
   @override // 菜谱卡片（UI 展示用）
   List<String>? get createdRecipeIds;

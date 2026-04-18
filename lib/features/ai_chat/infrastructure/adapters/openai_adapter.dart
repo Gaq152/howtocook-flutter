@@ -36,6 +36,7 @@ class OpenAIAdapter implements AIService {
     required List<ChatMessage> messages,
     List<Map<String, dynamic>>? tools,
     int? maxTokens,
+    void Function(String reasoningContent)? onReasoningContent,
   }) async* {
     try {
       final requestData = _buildRequest(messages, tools, maxTokens, stream: true);
@@ -115,15 +116,22 @@ class OpenAIAdapter implements AIService {
     required List<ChatMessage> messages,
     List<Map<String, dynamic>>? tools,
     int? maxTokens,
+    void Function(String textChunk)? onTextChunk,
+    void Function(String reasoningContent)? onReasoningContent, // OpenAI 不支持，忽略
   }) async {
-    // 对于 /responses 端点，强制使用流式（代理API要求）
-    final isResponsesEndpoint = customApiUrl != null && customApiUrl!.contains('lljby.cn');
-
-    if (isResponsesEndpoint) {
-      // Responses API 强制要求流式，所以收集所有流式输出
+    try {
+      // 统一使用流式API然后累积所有响应（兼容更多中转服务）
       final buffer = StringBuffer();
-      await for (final chunk in sendMessage(messages: messages, tools: tools, maxTokens: maxTokens)) {
+      await for (final chunk in sendMessage(
+        messages: messages,
+        tools: tools,
+        maxTokens: maxTokens,
+      )) {
         buffer.write(chunk);
+        // 实时回调文本块
+        if (onTextChunk != null) {
+          onTextChunk(chunk);
+        }
       }
 
       return ChatMessage(
@@ -132,20 +140,6 @@ class OpenAIAdapter implements AIService {
         content: [MessageContent.text(text: buffer.toString())],
         timestamp: DateTime.now(),
       );
-    }
-
-    // 标准 OpenAI API 使用非流式
-    try {
-      final requestData = _buildRequest(messages, tools, maxTokens, stream: false);
-
-      final response = await _dio.post(
-        '/chat/completions',
-        data: requestData,
-      );
-
-      return _parseResponse(response.data);
-    } on DioException catch (e) {
-      throw _handleDioException(e);
     } catch (e) {
       throw Exception('OpenAI API call failed: $e');
     }
@@ -322,41 +316,6 @@ class OpenAIAdapter implements AIService {
       case MessageRole.assistant:
         return 'assistant';
     }
-  }
-
-  /// 解析响应
-  ChatMessage _parseResponse(Map<String, dynamic> data) {
-    final choices = data['choices'] as List<dynamic>;
-    final message = choices[0]['message'] as Map<String, dynamic>;
-    final content = <MessageContent>[];
-
-    // 处理文本内容
-    final textContent = message['content'] as String?;
-    if (textContent != null && textContent.isNotEmpty) {
-      content.add(MessageContent.text(text: textContent));
-    }
-
-    // 处理工具调用
-    final toolCalls = message['tool_calls'] as List<dynamic>?;
-    if (toolCalls != null) {
-      for (final call in toolCalls) {
-        final function = call['function'] as Map<String, dynamic>;
-        content.add(
-          MessageContent.toolUse(
-            toolUseId: call['id'] as String,
-            name: function['name'] as String,
-            input: jsonDecode(function['arguments'] as String) as Map<String, dynamic>,
-          ),
-        );
-      }
-    }
-
-    return ChatMessage(
-      id: data['id'] as String,
-      role: MessageRole.assistant,
-      content: content,
-      timestamp: DateTime.now(),
-    );
   }
 
   /// 处理 Dio 异常

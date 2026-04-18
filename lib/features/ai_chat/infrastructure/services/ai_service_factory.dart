@@ -31,6 +31,8 @@ class AIServiceFactory {
           modelId: config.modelId,
           customApiUrl: apiUrl,
           mcpServerUrl: mcpUrl != null ? '$mcpUrl/mcp' : null,
+          enableThinking: config.capabilities.enableThinking,
+          thinkingBudgetTokens: config.capabilities.thinkingBudgetTokens,
         );
 
       case AIProvider.openai:
@@ -128,80 +130,30 @@ class AIServiceFactory {
     }
   }
 
+  /// 检查服务商是否有内置 API Key
+  ///
+  /// [provider] AI 服务商
+  /// 返回: true 表示有内置 Key，可以使用"使用内置 Key"功能
+  static bool hasBuiltinKey(AIProvider provider) {
+    final envKey = _getBuiltinKeyEnvName(provider);
+    final apiKey = dotenv.env[envKey];
+    return apiKey != null && apiKey.isNotEmpty;
+  }
+
   /// 获取默认模型配置列表
   ///
-  /// 返回: 内置的默认模型配置（2025年最新版本）
+  /// 返回: 内置的默认模型配置（仅 DeepSeek，其他服务商需用户自定义）
   static List<AIModelConfig> getBuiltinModels() {
     return [
-      // Claude 模型（2025最新）
-      AIModelConfig(
-        id: 'builtin-claude-sonnet-4-5',
-        provider: AIProvider.claude,
-        modelId: 'claude-sonnet-4-5-20250929',
-        displayName: 'Claude Sonnet 4.5 (2025)',
-        description: 'Claude最新旗舰模型，卓越推理和工具调用能力',
-        isBuiltin: true,
-        isDefault: true,
-        capabilities: const ModelCapabilities(
-          supportsImageInput: true,
-          supportsMCP: true,
-          maxTokens: 8192,
-          contextWindow: 200000,
-        ),
-      ),
-      AIModelConfig(
-        id: 'builtin-claude-sonnet-4',
-        provider: AIProvider.claude,
-        modelId: 'claude-sonnet-4-20250514',
-        displayName: 'Claude Sonnet 4 (2025)',
-        description: 'Claude第四代Sonnet模型',
-        isBuiltin: true,
-        capabilities: const ModelCapabilities(
-          supportsImageInput: true,
-          supportsMCP: true,
-          maxTokens: 8192,
-          contextWindow: 200000,
-        ),
-      ),
-
-      // OpenAI 模型（2025最新）
-      AIModelConfig(
-        id: 'builtin-gpt-5',
-        provider: AIProvider.openai,
-        modelId: 'gpt-5-2025-08-07',
-        displayName: 'GPT-5 (2025)',
-        description: 'OpenAI最新GPT-5模型，更强推理和多模态能力',
-        isBuiltin: true,
-        capabilities: const ModelCapabilities(
-          supportsImageInput: true,
-          supportsMCP: true,
-          maxTokens: 16384,
-          contextWindow: 256000,
-        ),
-      ),
-      AIModelConfig(
-        id: 'builtin-gpt-4o',
-        provider: AIProvider.openai,
-        modelId: 'gpt-4o',
-        displayName: 'GPT-4o',
-        description: 'GPT-4优化版，速度更快、成本更低',
-        isBuiltin: true,
-        capabilities: const ModelCapabilities(
-          supportsImageInput: true,
-          supportsMCP: true,
-          maxTokens: 4096,
-          contextWindow: 128000,
-        ),
-      ),
-
-      // DeepSeek 模型（2025最新）
+      // DeepSeek 模型（仅保留有内置 Key 的服务商）
       AIModelConfig(
         id: 'builtin-deepseek-chat',
         provider: AIProvider.deepseek,
         modelId: 'deepseek-chat',
-        displayName: 'DeepSeek Chat (2025)',
+        displayName: 'DeepSeek Chat',
         description: '国产大模型，性能优秀且价格实惠',
         isBuiltin: true,
+        isDefault: true, // 设为默认模型
         capabilities: const ModelCapabilities(
           supportsImageInput: false,
           supportsMCP: true,

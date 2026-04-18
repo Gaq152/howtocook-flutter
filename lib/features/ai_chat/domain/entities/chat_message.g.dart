@@ -17,6 +17,7 @@ _$ChatMessageImpl _$$ChatMessageImplFromJson(Map<String, dynamic> json) =>
       status: $enumDecodeNullable(_$MessageStatusEnumMap, json['status']) ??
           MessageStatus.sent,
       modelId: json['modelId'] as String?,
+      reasoningContent: json['reasoningContent'] as String?,
       recipeCards: (json['recipeCards'] as List<dynamic>?)
           ?.map((e) => RecipeCard.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -33,6 +34,7 @@ Map<String, dynamic> _$$ChatMessageImplToJson(_$ChatMessageImpl instance) =>
       'timestamp': instance.timestamp.toIso8601String(),
       'status': _$MessageStatusEnumMap[instance.status]!,
       'modelId': instance.modelId,
+      'reasoningContent': instance.reasoningContent,
       'recipeCards': instance.recipeCards,
       'createdRecipeIds': instance.createdRecipeIds,
     };

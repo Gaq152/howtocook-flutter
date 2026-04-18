@@ -559,6 +559,11 @@ mixin _$ModelCapabilities {
   bool get supportsFileInput => throw _privateConstructorUsedError; // 支持文件输入
   bool get supportsWebSearch => throw _privateConstructorUsedError; // 支持联网搜索
   bool get supportsMCP => throw _privateConstructorUsedError; // 支持 MCP 工具调用
+  bool get enableStreaming => throw _privateConstructorUsedError; // 启用流式输出
+  bool get enableThinking =>
+      throw _privateConstructorUsedError; // 启用思考链（Extended Thinking）
+  int get thinkingBudgetTokens =>
+      throw _privateConstructorUsedError; // 思考预算 token 数
   int get maxTokens => throw _privateConstructorUsedError; // 最大 token 数
   int get contextWindow => throw _privateConstructorUsedError;
 
@@ -579,6 +584,9 @@ abstract class $ModelCapabilitiesCopyWith<$Res> {
       bool supportsFileInput,
       bool supportsWebSearch,
       bool supportsMCP,
+      bool enableStreaming,
+      bool enableThinking,
+      int thinkingBudgetTokens,
       int maxTokens,
       int contextWindow});
 }
@@ -600,6 +608,9 @@ class _$ModelCapabilitiesCopyWithImpl<$Res, $Val extends ModelCapabilities>
     Object? supportsFileInput = null,
     Object? supportsWebSearch = null,
     Object? supportsMCP = null,
+    Object? enableStreaming = null,
+    Object? enableThinking = null,
+    Object? thinkingBudgetTokens = null,
     Object? maxTokens = null,
     Object? contextWindow = null,
   }) {
@@ -620,6 +631,18 @@ class _$ModelCapabilitiesCopyWithImpl<$Res, $Val extends ModelCapabilities>
           ? _value.supportsMCP
           : supportsMCP // ignore: cast_nullable_to_non_nullable
               as bool,
+      enableStreaming: null == enableStreaming
+          ? _value.enableStreaming
+          : enableStreaming // ignore: cast_nullable_to_non_nullable
+              as bool,
+      enableThinking: null == enableThinking
+          ? _value.enableThinking
+          : enableThinking // ignore: cast_nullable_to_non_nullable
+              as bool,
+      thinkingBudgetTokens: null == thinkingBudgetTokens
+          ? _value.thinkingBudgetTokens
+          : thinkingBudgetTokens // ignore: cast_nullable_to_non_nullable
+              as int,
       maxTokens: null == maxTokens
           ? _value.maxTokens
           : maxTokens // ignore: cast_nullable_to_non_nullable
@@ -645,6 +668,9 @@ abstract class _$$ModelCapabilitiesImplCopyWith<$Res>
       bool supportsFileInput,
       bool supportsWebSearch,
       bool supportsMCP,
+      bool enableStreaming,
+      bool enableThinking,
+      int thinkingBudgetTokens,
       int maxTokens,
       int contextWindow});
 }
@@ -664,6 +690,9 @@ class __$$ModelCapabilitiesImplCopyWithImpl<$Res>
     Object? supportsFileInput = null,
     Object? supportsWebSearch = null,
     Object? supportsMCP = null,
+    Object? enableStreaming = null,
+    Object? enableThinking = null,
+    Object? thinkingBudgetTokens = null,
     Object? maxTokens = null,
     Object? contextWindow = null,
   }) {
@@ -684,6 +713,18 @@ class __$$ModelCapabilitiesImplCopyWithImpl<$Res>
           ? _value.supportsMCP
           : supportsMCP // ignore: cast_nullable_to_non_nullable
               as bool,
+      enableStreaming: null == enableStreaming
+          ? _value.enableStreaming
+          : enableStreaming // ignore: cast_nullable_to_non_nullable
+              as bool,
+      enableThinking: null == enableThinking
+          ? _value.enableThinking
+          : enableThinking // ignore: cast_nullable_to_non_nullable
+              as bool,
+      thinkingBudgetTokens: null == thinkingBudgetTokens
+          ? _value.thinkingBudgetTokens
+          : thinkingBudgetTokens // ignore: cast_nullable_to_non_nullable
+              as int,
       maxTokens: null == maxTokens
           ? _value.maxTokens
           : maxTokens // ignore: cast_nullable_to_non_nullable
@@ -704,6 +745,9 @@ class _$ModelCapabilitiesImpl implements _ModelCapabilities {
       this.supportsFileInput = false,
       this.supportsWebSearch = false,
       this.supportsMCP = true,
+      this.enableStreaming = true,
+      this.enableThinking = false,
+      this.thinkingBudgetTokens = 10000,
       this.maxTokens = 4096,
       this.contextWindow = 128000});
 
@@ -728,6 +772,18 @@ class _$ModelCapabilitiesImpl implements _ModelCapabilities {
 // 支持 MCP 工具调用
   @override
   @JsonKey()
+  final bool enableStreaming;
+// 启用流式输出
+  @override
+  @JsonKey()
+  final bool enableThinking;
+// 启用思考链（Extended Thinking）
+  @override
+  @JsonKey()
+  final int thinkingBudgetTokens;
+// 思考预算 token 数
+  @override
+  @JsonKey()
   final int maxTokens;
 // 最大 token 数
   @override
@@ -736,7 +792,7 @@ class _$ModelCapabilitiesImpl implements _ModelCapabilities {
 
   @override
   String toString() {
-    return 'ModelCapabilities(supportsImageInput: $supportsImageInput, supportsFileInput: $supportsFileInput, supportsWebSearch: $supportsWebSearch, supportsMCP: $supportsMCP, maxTokens: $maxTokens, contextWindow: $contextWindow)';
+    return 'ModelCapabilities(supportsImageInput: $supportsImageInput, supportsFileInput: $supportsFileInput, supportsWebSearch: $supportsWebSearch, supportsMCP: $supportsMCP, enableStreaming: $enableStreaming, enableThinking: $enableThinking, thinkingBudgetTokens: $thinkingBudgetTokens, maxTokens: $maxTokens, contextWindow: $contextWindow)';
   }
 
   @override
@@ -752,6 +808,12 @@ class _$ModelCapabilitiesImpl implements _ModelCapabilities {
                 other.supportsWebSearch == supportsWebSearch) &&
             (identical(other.supportsMCP, supportsMCP) ||
                 other.supportsMCP == supportsMCP) &&
+            (identical(other.enableStreaming, enableStreaming) ||
+                other.enableStreaming == enableStreaming) &&
+            (identical(other.enableThinking, enableThinking) ||
+                other.enableThinking == enableThinking) &&
+            (identical(other.thinkingBudgetTokens, thinkingBudgetTokens) ||
+                other.thinkingBudgetTokens == thinkingBudgetTokens) &&
             (identical(other.maxTokens, maxTokens) ||
                 other.maxTokens == maxTokens) &&
             (identical(other.contextWindow, contextWindow) ||
@@ -766,6 +828,9 @@ class _$ModelCapabilitiesImpl implements _ModelCapabilities {
       supportsFileInput,
       supportsWebSearch,
       supportsMCP,
+      enableStreaming,
+      enableThinking,
+      thinkingBudgetTokens,
       maxTokens,
       contextWindow);
 
@@ -790,6 +855,9 @@ abstract class _ModelCapabilities implements ModelCapabilities {
       final bool supportsFileInput,
       final bool supportsWebSearch,
       final bool supportsMCP,
+      final bool enableStreaming,
+      final bool enableThinking,
+      final int thinkingBudgetTokens,
       final int maxTokens,
       final int contextWindow}) = _$ModelCapabilitiesImpl;
 
@@ -805,6 +873,12 @@ abstract class _ModelCapabilities implements ModelCapabilities {
   @override // 支持联网搜索
   bool get supportsMCP;
   @override // 支持 MCP 工具调用
+  bool get enableStreaming;
+  @override // 启用流式输出
+  bool get enableThinking;
+  @override // 启用思考链（Extended Thinking）
+  int get thinkingBudgetTokens;
+  @override // 思考预算 token 数
   int get maxTokens;
   @override // 最大 token 数
   int get contextWindow;

@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import '../../domain/entities/chat_message.dart';
 import '../../domain/services/ai_service.dart';
 
@@ -36,6 +37,7 @@ class DeepSeekAdapter implements AIService {
     required List<ChatMessage> messages,
     List<Map<String, dynamic>>? tools,
     int? maxTokens,
+    void Function(String reasoningContent)? onReasoningContent,
   }) async* {
     try {
       final requestData = _buildRequest(messages, tools, maxTokens, stream: true);
@@ -48,31 +50,65 @@ class DeepSeekAdapter implements AIService {
         ),
       );
 
-      final stream = response.data.stream;
-      await for (final chunk in stream) {
-        final lines = utf8.decode(chunk).split('\n');
-        for (final line in lines) {
-          if (line.startsWith('data: ')) {
-            final data = line.substring(6).trim();
-            if (data == '[DONE]') continue;
-            if (data.isEmpty) continue;
+      // Dio 流是 Stream<Uint8List>，先 cast 成 List<int> 再用 Utf8Decoder 绑定，避免类型不匹配且保持多字节字符完整解码
+      final stream = utf8.decoder.bind(response.data.stream.cast<List<int>>());
+      var buffer = '';
+      final reasoningBuffer = StringBuffer();
+      var chunkCounter = 0;
 
-            try {
-              final json = jsonDecode(data);
-              final choices = json['choices'] as List<dynamic>?;
-              if (choices != null && choices.isNotEmpty) {
-                final delta = choices[0]['delta'] as Map<String, dynamic>?;
-                if (delta != null) {
-                  final content = delta['content'] as String?;
-                  if (content != null) {
-                    yield content;
+      await for (final chunk in stream) {
+        chunkCounter++;
+        if (chunkCounter % 10 == 1) {
+          // 每10个chunk打印一次，避免日志过多
+          debugPrint('📥 DeepSeek stream chunk #$chunkCounter received');
+        }
+        buffer += chunk;
+        final lines = buffer.split('\n');
+        buffer = lines.removeLast(); // 保留不完整行
+
+        for (final rawLine in lines) {
+          final line = rawLine.trim();
+          if (!line.startsWith('data:')) continue;
+
+          final data = line.substring('data:'.length).trim();
+          if (data == '[DONE]') {
+            final reasoning = reasoningBuffer.toString();
+            if (reasoning.isNotEmpty) {
+              if (onReasoningContent != null) {
+                onReasoningContent(reasoning);
+              } else {
+                // 无回调时兜底输出思考块
+                yield '\n\n💭 思考过程:\n$reasoning';
+              }
+            }
+            continue;
+          }
+          if (data.isEmpty) continue;
+
+          try {
+            final json = jsonDecode(data);
+            final choices = json['choices'] as List<dynamic>?;
+            if (choices != null && choices.isNotEmpty) {
+              final delta = choices[0]['delta'] as Map<String, dynamic>?;
+              if (delta != null) {
+                final content = delta['content'] as String?;
+                if (content != null) {
+                  yield content;
+                }
+
+                final reasoningContent = delta['reasoning_content'] as String?;
+                if (reasoningContent != null) {
+                  reasoningBuffer.write(reasoningContent);
+                  // 实时回调流式思考内容（累积）
+                  if (onReasoningContent != null) {
+                    onReasoningContent(reasoningBuffer.toString());
                   }
                 }
               }
-            } catch (e) {
-              // 忽略解析错误，继续处理下一行
-              continue;
             }
+          } catch (_) {
+            // 忽略解析错误，继续后续行
+            continue;
           }
         }
       }
@@ -88,49 +124,43 @@ class DeepSeekAdapter implements AIService {
     required List<ChatMessage> messages,
     List<Map<String, dynamic>>? tools,
     int? maxTokens,
+    void Function(String textChunk)? onTextChunk,
+    void Function(String reasoningContent)? onReasoningContent,
   }) async {
-    // 重试配置
-    const maxRetries = 2;
-    var retryCount = 0;
+    try {
+      // 统一使用流式API然后累积所有响应（兼容更多中转服务）
+      final buffer = StringBuffer();
+      String? reasoningContent;
 
-    while (retryCount <= maxRetries) {
-      try {
-        final requestData = _buildRequest(messages, tools, maxTokens, stream: false);
-
-        final response = await _dio.post(
-          '/chat/completions',
-          data: requestData,
-        );
-
-        // 验证响应数据
-        if (response.data == null) {
-          throw Exception('Response data is null');
+      await for (final chunk in sendMessage(
+        messages: messages,
+        tools: tools,
+        maxTokens: maxTokens,
+        onReasoningContent: (content) {
+          reasoningContent = content;
+          // 同时回调给调用方
+          if (onReasoningContent != null) {
+            onReasoningContent(content);
+          }
+        },
+      )) {
+        buffer.write(chunk);
+        // 实时回调文本块
+        if (onTextChunk != null) {
+          onTextChunk(chunk);
         }
-
-        // 如果是字符串，尝试解析为JSON
-        final responseData = response.data is String
-            ? jsonDecode(response.data)
-            : response.data;
-
-        return _parseResponse(responseData);
-      } on DioException catch (e) {
-        retryCount++;
-        if (retryCount > maxRetries) {
-          throw _handleDioException(e);
-        }
-        // 等待后重试
-        await Future.delayed(Duration(milliseconds: 500 * retryCount));
-      } catch (e) {
-        retryCount++;
-        if (retryCount > maxRetries) {
-          throw Exception('DeepSeek API call failed: $e');
-        }
-        // 等待后重试
-        await Future.delayed(Duration(milliseconds: 500 * retryCount));
       }
-    }
 
-    throw Exception('DeepSeek API call failed after $maxRetries retries');
+      return ChatMessage(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        role: MessageRole.assistant,
+        content: [MessageContent.text(text: buffer.toString())],
+        timestamp: DateTime.now(),
+        reasoningContent: reasoningContent,
+      );
+    } catch (e) {
+      throw Exception('DeepSeek API call failed: $e');
+    }
   }
 
   @override
@@ -161,7 +191,7 @@ class DeepSeekAdapter implements AIService {
       'model_id': modelId,
       'supports_streaming': true,
       'supports_vision': false, // DeepSeek 当前不支持视觉输入
-      'supports_tools': true,
+      'supports_tools': !modelId.contains('reasoner'), // reasoner 不支持 Function Calling
     };
   }
 
@@ -182,7 +212,16 @@ class DeepSeekAdapter implements AIService {
       requestData['max_tokens'] = maxTokens;
     }
 
-    if (tools != null && tools.isNotEmpty) {
+    // deepseek-reasoner 不支持 Function Calling
+    if (modelId.contains('reasoner')) {
+      if (tools != null && tools.isNotEmpty) {
+        throw Exception('deepseek-reasoner 不支持 Function Calling，请使用 deepseek-chat');
+      }
+      // 过滤掉历史消息中的工具调用和结果
+      requestData['messages'] = (requestData['messages'] as List)
+          .where((msg) => msg['role'] != 'tool' && msg['tool_calls'] == null)
+          .toList();
+    } else if (tools != null && tools.isNotEmpty) {
       requestData['tools'] = tools.map(_convertTool).toList();
       requestData['tool_choice'] = 'auto';
     }
@@ -262,41 +301,6 @@ class DeepSeekAdapter implements AIService {
         'parameters': tool['input_schema'] ?? tool['parameters'],
       },
     };
-  }
-
-  /// 解析响应
-  ChatMessage _parseResponse(Map<String, dynamic> data) {
-    final choices = data['choices'] as List<dynamic>;
-    final message = choices[0]['message'] as Map<String, dynamic>;
-    final content = <MessageContent>[];
-
-    // 处理文本内容
-    final textContent = message['content'] as String?;
-    if (textContent != null && textContent.isNotEmpty) {
-      content.add(MessageContent.text(text: textContent));
-    }
-
-    // 处理工具调用
-    final toolCalls = message['tool_calls'] as List<dynamic>?;
-    if (toolCalls != null) {
-      for (final call in toolCalls) {
-        final function = call['function'] as Map<String, dynamic>;
-        content.add(
-          MessageContent.toolUse(
-            toolUseId: call['id'] as String,
-            name: function['name'] as String,
-            input: jsonDecode(function['arguments'] as String) as Map<String, dynamic>,
-          ),
-        );
-      }
-    }
-
-    return ChatMessage(
-      id: data['id'] as String,
-      role: MessageRole.assistant,
-      content: content,
-      timestamp: DateTime.now(),
-    );
   }
 
   /// 处理 Dio 异常

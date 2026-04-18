@@ -137,6 +137,11 @@ class HiveService {
     await getModifiedTipsBox().clear();
   }
 
+  /// 清空 AI 模型配置（用于修复序列化问题后清理旧数据）
+  static Future<void> clearAIModels() async {
+    await getAIModelsBox().clear();
+  }
+
   /// 删除所有 Boxes（彻底清除数据）
   static Future<void> deleteAll() async {
     await Hive.deleteBoxFromDisk(aiModelsBox);

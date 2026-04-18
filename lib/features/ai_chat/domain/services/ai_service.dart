@@ -15,6 +15,7 @@ abstract class AIService {
     required List<ChatMessage> messages,
     List<Map<String, dynamic>>? tools,
     int? maxTokens,
+    void Function(String reasoningContent)? onReasoningContent,
   });
 
   /// 发送消息（非流式响应）
@@ -22,12 +23,16 @@ abstract class AIService {
   /// [messages] 对话历史（包含当前消息）
   /// [tools] MCP 工具定义（可选）
   /// [maxTokens] 最大生成 token 数
+  /// [onTextChunk] 文本分块回调（可选，用于在等待完整响应时实时显示文本）
+  /// [onReasoningContent] 推理内容回调（可选，用于显示 AI 的思考过程）
   ///
   /// 返回: ChatMessage - 完整的 AI 响应消息
   Future<ChatMessage> sendMessageSync({
     required List<ChatMessage> messages,
     List<Map<String, dynamic>>? tools,
     int? maxTokens,
+    void Function(String textChunk)? onTextChunk,
+    void Function(String reasoningContent)? onReasoningContent,
   });
 
   /// 验证 API Key 是否有效

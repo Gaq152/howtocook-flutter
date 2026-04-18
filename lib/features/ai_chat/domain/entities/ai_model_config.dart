@@ -6,6 +6,9 @@ part 'ai_model_config.g.dart';
 
 /// AI 模型配置实体
 /// 支持用户在应用内动态添加和管理 AI 模型
+///
+/// 注意：Hive 序列化使用 ai_providers.dart 中的 _serializeModelConfig() 手动处理
+/// 以确保嵌套对象（如 capabilities）被正确转换为 Map
 @freezed
 class AIModelConfig with _$AIModelConfig {
   const factory AIModelConfig({
@@ -54,6 +57,9 @@ class ModelCapabilities with _$ModelCapabilities {
     @Default(false) bool supportsFileInput,      // 支持文件输入
     @Default(false) bool supportsWebSearch,      // 支持联网搜索
     @Default(true) bool supportsMCP,             // 支持 MCP 工具调用
+    @Default(true) bool enableStreaming,         // 启用流式输出
+    @Default(false) bool enableThinking,         // 启用思考链（Extended Thinking）
+    @Default(10000) int thinkingBudgetTokens,    // 思考预算 token 数
     @Default(4096) int maxTokens,                // 最大 token 数
     @Default(128000) int contextWindow,          // 上下文窗口大小
   }) = _ModelCapabilities;
