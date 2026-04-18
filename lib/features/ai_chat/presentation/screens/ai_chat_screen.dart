@@ -131,8 +131,8 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
 
 重要规则：
 1. **优先使用MCP工具查询数据**：当用户询问菜谱、食材、做法等问题时，务必先调用相应的MCP工具获取数据
-2. **完整展示工具结果**：获取到MCP工具返回的数据后，必须将这些数据完整地展示给用户，不要忽略或省略
-3. **基于工具结果回答**：在输出工具查询结果后，可以添加你的专业建议和补充说明
+2. **基于工具结果自然回答**：获取到工具数据后，用自然语言整理并呈现给用户，不要把原始JSON或工具返回的原文直接输出
+3. **补充专业建议**：在呈现菜谱内容后，可以添加烹饪技巧、注意事项等补充说明
 4. **搜索功能**：要搜索食谱时使用getAllRecipes工具获取所有菜谱，然后筛选匹配的结果
 5. **时令建议**：根据当前时间（${now.month}月，$timeOfDay）、季节和时间段给出合适的饮食建议
 
@@ -1039,30 +1039,32 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
         const maxToolCalls = 10;
         // 收集本次对话创建的食谱ID列表
         final createdRecipeIds = <String>[];
+        // 跨轮次累积文本（AI 先说话再调工具的场景）
+        final accumulatedText = StringBuffer();
 
         while (toolCallCount < maxToolCalls) {
           toolCallCount++;
           debugPrint('Tool call iteration $toolCallCount');
 
-          // 调用 AI（非流式，但支持文本流式显示）
           final streamingTextBuffer = StringBuffer();
 
           final response = await aiService.sendMessageSync(
             messages: history,
             tools: _mcpTools,
             onTextChunk: (chunk) {
-              // 实时显示流式文本（安全地调用 setState）
               streamingTextBuffer.write(chunk);
               if (mounted) {
-                // 使用 scheduleMicrotask 避免在 build 期间调用 setState
                 scheduleMicrotask(() {
                   if (mounted) {
                     setState(() {
                       final lastIndex = _messages.length - 1;
+                      final display = accumulatedText.isEmpty
+                          ? streamingTextBuffer.toString()
+                          : '${accumulatedText.toString()}\n\n${streamingTextBuffer.toString()}';
                       _messages[lastIndex] = ChatMessage(
                         id: tempAssistantMessage.id,
                         role: MessageRole.assistant,
-                        content: [MessageContent.text(text: streamingTextBuffer.toString())],
+                        content: [MessageContent.text(text: display)],
                         timestamp: tempAssistantMessage.timestamp,
                         modelId: currentModel.id,
                       );
@@ -1091,16 +1093,29 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
           final hasToolCalls = response.content.any((c) => c is ToolUseContent);
 
           if (!hasToolCalls) {
-            // 没有工具调用，直接显示文本响应
             debugPrint('📨 No tool calls, displaying final response');
+            // 如果有前置累积文本，把它拼到最终文本内容前面
+            List<MessageContent> finalContent = response.content;
+            if (accumulatedText.isNotEmpty) {
+              final responseText = response.content
+                  .whereType<TextContent>()
+                  .map((c) => c.text)
+                  .join();
+              final merged =
+                  '${accumulatedText.toString()}\n\n$responseText'.trim();
+              finalContent = [
+                MessageContent.text(text: merged),
+                ...response.content.where((c) => c is! TextContent),
+              ];
+            }
             setState(() {
               final lastIndex = _messages.length - 1;
               _messages[lastIndex] = ChatMessage(
                 id: tempAssistantMessage.id,
                 role: MessageRole.assistant,
-                content: response.content,
+                content: finalContent,
                 timestamp: tempAssistantMessage.timestamp,
-                modelId: currentModel.id, // 保存使用的模型ID
+                modelId: currentModel.id,
                 createdRecipeIds: createdRecipeIds.isNotEmpty ? createdRecipeIds : null,
               );
               _isLoading = false;
@@ -1110,7 +1125,25 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
 
           // 有工具调用，执行工具
           debugPrint('Found tool calls, executing...');
-          final toolResults = <MessageContent>[];
+          // 把本轮文本追加到跨轮累积区
+          final roundText = streamingTextBuffer.toString();
+          if (roundText.isNotEmpty) {
+            if (accumulatedText.isNotEmpty) accumulatedText.write('\n\n');
+            accumulatedText.write(roundText);
+          }
+          // 更新 UI 显示工具调用状态（保留前置文本）
+          setState(() {
+            final lastIndex = _messages.length - 1;
+            final statusText = accumulatedText.isEmpty
+                ? 'AI 正在调用工具查询数据...'
+                : '${accumulatedText.toString()}\n\nAI 正在调用工具查询数据...';
+            _messages[lastIndex] = ChatMessage(
+              id: tempAssistantMessage.id,
+              role: MessageRole.assistant,
+              content: [MessageContent.text(text: statusText)],
+              timestamp: tempAssistantMessage.timestamp,
+            );
+          });          final toolResults = <MessageContent>[];
 
           for (final content in response.content) {
             if (content is ToolUseContent) {
@@ -1165,20 +1198,10 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
 
           history = [
             ...history,
-            response, // AI 的 tool_calls
-            ...toolResultMessages, // 每个 tool result 一条消息
+            response,
+            ...toolResultMessages,
           ];
 
-          // 更新 UI 显示工具调用状态
-          setState(() {
-            final lastIndex = _messages.length - 1;
-            _messages[lastIndex] = ChatMessage(
-              id: tempAssistantMessage.id,
-              role: MessageRole.assistant,
-              content: [MessageContent.text(text: 'AI 正在调用工具查询数据...')],
-              timestamp: tempAssistantMessage.timestamp,
-            );
-          });
         }
 
         if (toolCallCount >= maxToolCalls) {
