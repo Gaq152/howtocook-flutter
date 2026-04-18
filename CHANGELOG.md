@@ -8,6 +8,21 @@
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-04-18
+
+### 新增
+- **模型管理页免责声明**：底部新增小字提示，说明自定义模型输出质量取决于服务商。
+
+### 变更
+- **「我的」页精简入口**：模型管理、数据同步、关于 三项从主页移除，统一收敛到「设置」页入口，减少重复。
+- **底部导航栏重构**：移除突出 FAB 设计，改为标准三项导航（菜谱 / AI / 我的），解决 FAB 遮挡输入框问题。
+- **AI 提示词优化**：工具调用规则改为"自然语言整理呈现"，避免模型直接输出原始 JSON。
+
+### 修复
+- **DeepSeek / OpenAI 工具调用**：`sendMessageSync` 改为直接解析 SSE 流，修复 tool_calls 被纯文本流丢弃导致 MCP 工具无法触发的问题。
+- **AI 多轮工具调用文本保留**：修复 AI 先输出文字再调用工具时，前置文本被"正在调用工具..."覆盖丢失的问题。
+- **菜谱工具 Chip 字体不可见**：显式指定 labelStyle 颜色，修复浅色背景下文字与背景色接近导致看不清的问题。
+
 ## [0.1.0] - 2026-04-18
 
 首个正式公开版本。
@@ -30,5 +45,6 @@
 ### 修复
 - 解决 AGP 8 下部分三方插件（如 `install_plugin`）缺失 `namespace` 导致的构建失败。
 
-[Unreleased]: https://github.com/Gaq152/howtocook-flutter/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Gaq152/howtocook-flutter/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/Gaq152/howtocook-flutter/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Gaq152/howtocook-flutter/releases/tag/v0.1.0
