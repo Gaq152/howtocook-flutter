@@ -7,7 +7,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:howtocook/core/services/image_download_manager.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 part 'data_sync_service.g.dart';
 part 'data_sync_service.freezed.dart';
@@ -43,9 +42,7 @@ class DataSyncService extends _$DataSyncService {
   late final String _manifestUrl;
   static const String _localDataDirName = 'recipe_data';
 
-  String get _baseUrl =>
-      dotenv.env['STATIC_RESOURCE_URL'] ??
-      'https://gaq152.github.io/HowToCook-assets';
+  String get _baseUrl => 'https://gaq152.github.io/HowToCook-assets';
 
   final Dio _dio = Dio();
 

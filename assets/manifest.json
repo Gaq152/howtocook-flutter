@@ -46,17 +46,17 @@
     }
   },
   "tipsCategories": {
-    "advanced": {
-      "name": "进阶知识",
-      "count": 4
+    "general": {
+      "name": "基础知识",
+      "count": 3
     },
     "learn": {
       "name": "基础技法",
       "count": 11
     },
-    "general": {
-      "name": "基础知识",
-      "count": 3
+    "advanced": {
+      "name": "进阶知识",
+      "count": 4
     }
   },
   "recipes": [
