@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../domain/entities/tip.dart';
+import '../../../../core/theme/app_colors.dart';
 
 /// 教程分享卡片
 ///
@@ -23,7 +24,7 @@ class TipShareCard extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Colors.orange.shade50, Colors.deepOrange.shade50],
+          colors: [AppColors.background, AppColors.primaryLight],
         ),
       ),
       child: Column(
@@ -56,11 +57,11 @@ class TipShareCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: AppColors.cardShadow,
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -74,14 +75,14 @@ class TipShareCard extends StatelessWidget {
             style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.orange.shade100,
+              color: AppColors.primaryLight,
               borderRadius: BorderRadius.circular(24),
             ),
             child: Text(
@@ -89,7 +90,7 @@ class TipShareCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: Colors.orange.shade800,
+                color: AppColors.primaryDark,
               ),
             ),
           ),
@@ -108,11 +109,11 @@ class TipShareCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: AppColors.cardShadow,
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -126,7 +127,7 @@ class TipShareCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 12),
@@ -135,7 +136,7 @@ class TipShareCard extends StatelessWidget {
               paragraphs[i],
               style: const TextStyle(
                 fontSize: 13,
-                color: Colors.black87,
+                color: AppColors.textPrimary,
                 height: 1.5,
               ),
             ),
@@ -150,11 +151,11 @@ class TipShareCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: AppColors.cardShadow,
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -168,7 +169,7 @@ class TipShareCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 12),
@@ -186,7 +187,7 @@ class TipShareCard extends StatelessWidget {
                     width: 28,
                     height: 28,
                     decoration: BoxDecoration(
-                      color: Colors.orange.shade300,
+                      color: AppColors.primary,
                       borderRadius: BorderRadius.circular(14),
                     ),
                     alignment: Alignment.center,
@@ -195,7 +196,7 @@ class TipShareCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: AppColors.surface,
                       ),
                     ),
                   ),
@@ -209,7 +210,7 @@ class TipShareCard extends StatelessWidget {
                           style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
-                            color: Colors.black87,
+                            color: AppColors.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -217,7 +218,7 @@ class TipShareCard extends StatelessWidget {
                           section.content,
                           style: const TextStyle(
                             fontSize: 13,
-                            color: Colors.black87,
+                            color: AppColors.textPrimary,
                             height: 1.5,
                           ),
                         ),
@@ -238,14 +239,14 @@ class TipShareCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(24),
           topRight: Radius.circular(24),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: AppColors.cardShadow,
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
@@ -256,16 +257,16 @@ class TipShareCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade300, width: 2),
+              border: Border.all(color: AppColors.textDisabled.withValues(alpha: 0.35), width: 2),
             ),
             child: QrImageView(
               data: qrData,
               version: QrVersions.auto,
               size: 200,
               errorCorrectionLevel: QrErrorCorrectLevel.M,
-              backgroundColor: Colors.white,
+              backgroundColor: AppColors.surface,
             ),
           ),
           const SizedBox(height: 12),
@@ -274,13 +275,13 @@ class TipShareCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: Colors.orange.shade900,
+              color: AppColors.primaryDark,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             '即可预览并保存教程内容',
-            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+            style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 12),
           Row(
@@ -288,14 +289,14 @@ class TipShareCard extends StatelessWidget {
             children: [
               Text(
                 '分享自 ',
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                style: TextStyle(fontSize: 11, color: AppColors.textDisabled),
               ),
               Text(
                 '智能菜谱助手',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
-                  color: Colors.orange.shade700,
+                  color: AppColors.primary,
                 ),
               ),
             ],

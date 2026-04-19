@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:html_unescape/html_unescape.dart';
 
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/linkable_text.dart';
 import '../../application/providers/tip_providers.dart';
@@ -28,31 +29,15 @@ class TipDetailScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('教程详情'),
         actions: [
-          if (tip != null) ...[
+          if (tip != null)
             IconButton(
               tooltip: tip.isFavorite ? '取消收藏' : '收藏',
               icon: Icon(
-                tip.isFavorite ? Icons.bookmark : Icons.bookmark_outline,
+                tip.isFavorite ? Icons.favorite : Icons.favorite_border,
+                color: tip.isFavorite ? const Color(0xFFFF6B6B) : null,
               ),
               onPressed: () => _toggleFavorite(context, ref, tip),
             ),
-            IconButton(
-              tooltip: '编辑',
-              icon: const Icon(Icons.edit_outlined),
-              onPressed: () => context.push('/tips/${tip.id}/edit'),
-            ),
-            IconButton(
-              tooltip: '分享',
-              icon: const Icon(Icons.share_outlined),
-              onPressed: () =>
-                  showTipShareSheet(context: context, ref: ref, tip: tip),
-            ),
-            IconButton(
-              tooltip: '删除',
-              icon: const Icon(Icons.delete_outline),
-              onPressed: () => _confirmDeleteTip(context, ref, tip),
-            ),
-          ],
         ],
       ),
       body: tipAsync.when(
@@ -60,10 +45,75 @@ class TipDetailScreen extends ConsumerWidget {
           if (data == null) {
             return _buildNotFound(context);
           }
-          return _TipDetailView(tip: data);
+          return Stack(
+            children: [
+              _TipDetailView(tip: data),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: _buildBottomActionBar(context, ref, data),
+              ),
+            ],
+          );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => _buildError(context, error),
+      ),
+    );
+  }
+
+  Widget _buildBottomActionBar(BuildContext context, WidgetRef ref, Tip tip) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        boxShadow: [
+          BoxShadow(
+            offset: const Offset(0, -4),
+            blurRadius: 16,
+            color: AppColors.textPrimary.withValues(alpha: 0.06),
+          ),
+        ],
+      ),
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 10,
+        bottom: MediaQuery.of(context).padding.bottom + 10,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _BottomButton(
+              icon: Icons.edit_outlined,
+              label: '编辑',
+              color: AppColors.textPrimary,
+              backgroundColor: AppColors.surfaceAlt,
+              onTap: () => context.push('/tips/${tip.id}/edit'),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _BottomButton(
+              icon: Icons.share_outlined,
+              label: '分享',
+              color: AppColors.surface,
+              backgroundColor: AppColors.primary,
+              onTap: () =>
+                  showTipShareSheet(context: context, ref: ref, tip: tip),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _BottomButton(
+              icon: Icons.delete_outline,
+              label: '删除',
+              color: AppColors.primary,
+              backgroundColor: AppColors.primary.withValues(alpha: 0.08),
+              onTap: () => _confirmDeleteTip(context, ref, tip),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -107,7 +157,7 @@ class TipDetailScreen extends ConsumerWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('【${tip.title}】为内置教程，无法删除'),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.warning,
         ),
       );
       return;
@@ -125,7 +175,7 @@ class TipDetailScreen extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
             child: const Text('删除'),
           ),
         ],
@@ -166,7 +216,7 @@ class TipDetailScreen extends ConsumerWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.info_outline, size: 64, color: Colors.grey),
+          const Icon(Icons.info_outline, size: 64, color: AppColors.textDisabled),
           const SizedBox(height: 16),
           Text('未找到教程', style: Theme.of(context).textTheme.titleLarge),
         ],
@@ -179,7 +229,7 @@ class TipDetailScreen extends ConsumerWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.error_outline, size: 64, color: Colors.redAccent),
+          const Icon(Icons.error_outline, size: 64, color: AppColors.error),
           const SizedBox(height: 16),
           Text(
             '加载失败: $error',
@@ -230,16 +280,6 @@ class _TipDetailView extends StatelessWidget {
                         label: tip.categoryName,
                         accentColor: colorScheme.primary,
                       ),
-                      _MetaChip(
-                        icon: Icons.tag_outlined,
-                        label: tip.category,
-                        accentColor: colorScheme.secondary,
-                      ),
-                      _MetaChip(
-                        icon: Icons.numbers_outlined,
-                        label: tip.id,
-                        accentColor: colorScheme.outline,
-                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -270,7 +310,7 @@ class _TipDetailView extends StatelessWidget {
                     20,
                     index == 0 ? 0 : 12,
                     20,
-                    index == tip.sections.length - 1 ? 24 : 0,
+                    index == tip.sections.length - 1 ? 80 : 0,
                   ),
                   child: Card(
                     elevation: 0,
@@ -371,6 +411,53 @@ class _MetaChip extends StatelessWidget {
       backgroundColor: background,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
+  }
+}
+
+class _BottomButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final Color backgroundColor;
+  final VoidCallback onTap;
+
+  const _BottomButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.backgroundColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: backgroundColor,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          height: 44,
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 18, color: color),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

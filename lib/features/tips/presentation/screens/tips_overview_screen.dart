@@ -10,8 +10,6 @@ import '../../application/providers/tip_providers.dart';
 import '../../domain/entities/tip.dart';
 import '../utils/tip_share_helpers.dart';
 
-enum _TipMenuAction { edit, share, delete }
-
 class TipsOverviewScreen extends ConsumerStatefulWidget {
   const TipsOverviewScreen({super.key});
 
@@ -43,14 +41,12 @@ class _TipsOverviewScreenState extends ConsumerState<TipsOverviewScreen> {
               }
             },
           ),
+          IconButton(
+            tooltip: '新建教程',
+            icon: const Icon(Icons.add),
+            onPressed: () => context.push('/tips/create'),
+          ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/tips/create'),
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        foregroundColor: Theme.of(context).colorScheme.primary,
-        shape: const CircleBorder(),
-        child: const Icon(Icons.add),
       ),
       body: Column(
         children: [
@@ -183,91 +179,70 @@ class _TipListTile extends ConsumerWidget {
         ),
         title: Text(tip.title, style: AppTextStyles.h4),
         subtitle: Text(
-          '${tip.categoryName} · ${tip.category}',
+          tip.categoryName,
           style: AppTextStyles.bodySmall.copyWith(
             color: AppColors.textSecondary,
           ),
         ),
-        trailing: _buildActions(context, ref),
+        trailing: IconButton(
+          icon: Icon(
+            tip.isFavorite ? Icons.favorite : Icons.favorite_border,
+            color: tip.isFavorite ? AppColors.error : AppColors.textSecondary,
+            size: 22,
+          ),
+          tooltip: tip.isFavorite ? '取消收藏' : '收藏',
+          onPressed: () => _toggleFavorite(context, ref),
+        ),
         onTap: onTap,
+        onLongPress: () => _showLongPressMenu(context, ref),
       ),
     );
   }
 
-  /// 构建操作按钮（收藏 + 菜单）
-  Widget _buildActions(BuildContext context, WidgetRef ref) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // 收藏按钮（书签图标）
-        _buildBookmarkButton(context, ref),
-        // 三点菜单
-        _buildMenuButton(context, ref),
-      ],
-    );
-  }
-
-  /// 构建收藏按钮（使用书签图标）
-  Widget _buildBookmarkButton(BuildContext context, WidgetRef ref) {
-    return IconButton(
-      icon: Icon(
-        tip.isFavorite ? Icons.bookmark : Icons.bookmark_outline,
-        color: tip.isFavorite ? AppColors.primary : AppColors.textSecondary,
-        size: 24,
+  void _showLongPressMenu(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                tip.title,
+                style: AppTextStyles.h5,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('编辑'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                context.push('/tips/${tip.id}/edit');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.share_outlined),
+              title: const Text('分享'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                showTipShareSheet(context: context, ref: ref, tip: tip);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.delete_outline, color: AppColors.error),
+              title: Text('删除', style: TextStyle(color: AppColors.error)),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _confirmDeleteTip(context, ref);
+              },
+            ),
+          ],
+        ),
       ),
-      tooltip: tip.isFavorite ? '取消收藏' : '收藏',
-      onPressed: () => _toggleFavorite(context, ref),
-    );
-  }
-
-  /// 构建三点菜单按钮
-  Widget _buildMenuButton(BuildContext context, WidgetRef ref) {
-    return PopupMenuButton<_TipMenuAction>(
-      onSelected: (action) {
-        switch (action) {
-          case _TipMenuAction.edit:
-            context.push('/tips/${tip.id}/edit');
-            break;
-          case _TipMenuAction.share:
-            showTipShareSheet(context: context, ref: ref, tip: tip);
-            break;
-          case _TipMenuAction.delete:
-            _confirmDeleteTip(context, ref);
-            break;
-        }
-      },
-      itemBuilder: (context) => [
-        const PopupMenuItem(
-          value: _TipMenuAction.edit,
-          child: Row(
-            children: [
-              Icon(Icons.edit_outlined, size: 20),
-              SizedBox(width: 12),
-              Text('编辑'),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: _TipMenuAction.share,
-          child: Row(
-            children: [
-              Icon(Icons.share_outlined, size: 20),
-              SizedBox(width: 12),
-              Text('分享'),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: _TipMenuAction.delete,
-          child: Row(
-            children: [
-              Icon(Icons.delete_outline, size: 20, color: Colors.red),
-              SizedBox(width: 12),
-              Text('删除', style: TextStyle(color: Colors.red)),
-            ],
-          ),
-        ),
-      ],
     );
   }
 
@@ -309,7 +284,7 @@ class _TipListTile extends ConsumerWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('【${tip.title}】为内置教程，无法删除'),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.warning,
         ),
       );
       return;
@@ -327,7 +302,7 @@ class _TipListTile extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
             child: const Text('删除'),
           ),
         ],
@@ -359,7 +334,7 @@ class _TipListTile extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('删除失败: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -376,7 +351,7 @@ class _EmptyTipsView extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.menu_book_outlined, size: 64, color: Colors.grey),
+          const Icon(Icons.menu_book_outlined, size: 64, color: AppColors.textDisabled),
           const SizedBox(height: 16),
           Text('暂无教程', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 8),

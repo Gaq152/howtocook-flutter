@@ -180,10 +180,10 @@ class _TipEditorScreenState extends ConsumerState<TipEditorScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text('教程分节', style: AppTextStyles.h4),
-                    TextButton.icon(
+                    IconButton(
                       onPressed: _addSection,
                       icon: const Icon(Icons.add),
-                      label: const Text('新增分节'),
+                      tooltip: '新增分节',
                     ),
                   ],
                 ),
@@ -455,7 +455,7 @@ class _TipEditorScreenState extends ConsumerState<TipEditorScreen> {
                         height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.white,
+                          color: AppColors.surface,
                         ),
                       )
                     : const Icon(Icons.auto_fix_high),
@@ -655,7 +655,7 @@ class _TipEditorScreenState extends ConsumerState<TipEditorScreen> {
           children: [
             Icon(
               Icons.warning_amber_rounded,
-              color: Colors.orange.shade700,
+              color: AppColors.warning,
               size: 28,
             ),
             const SizedBox(width: 12),
@@ -710,7 +710,7 @@ class _TipEditorScreenState extends ConsumerState<TipEditorScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, _DuplicateAction.overwrite),
-            style: FilledButton.styleFrom(backgroundColor: Colors.orange),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.warning),
             child: const Text('覆盖'),
           ),
         ],

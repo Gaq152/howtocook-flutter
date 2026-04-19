@@ -56,6 +56,12 @@ class TipRepositoryImpl implements TipRepository {
         }
       }
 
+      const categoryOrder = {'general': 0, 'learn': 1, 'advanced': 2};
+      tips.sort((a, b) {
+        final oa = categoryOrder[a.category] ?? 99;
+        final ob = categoryOrder[b.category] ?? 99;
+        return oa.compareTo(ob);
+      });
       return tips;
     } catch (e) {
       throw Exception('Failed to load tips: $e');
