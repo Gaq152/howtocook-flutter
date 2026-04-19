@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../domain/entities/recipe.dart';
+import '../../../../core/theme/app_colors.dart';
 
 /// 食谱分享卡片 Widget
 ///
@@ -29,8 +30,8 @@ class RecipeShareCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Colors.orange.shade50,
-            Colors.deepOrange.shade50,
+            AppColors.background,
+            AppColors.primaryLight,
           ],
         ),
       ),
@@ -79,11 +80,11 @@ class RecipeShareCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: AppColors.cardShadow,
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -98,7 +99,7 @@ class RecipeShareCard extends StatelessWidget {
             style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 8),
@@ -110,7 +111,7 @@ class RecipeShareCard extends StatelessWidget {
                 '🔥 难度: ',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.black54,
+                  color: AppColors.textSecondary,
                 ),
               ),
               Text(
@@ -129,14 +130,14 @@ class RecipeShareCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.orange.shade100,
+        color: AppColors.primaryLight,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         '📂 ${recipe.categoryName}',
         style: TextStyle(
           fontSize: 14,
-          color: Colors.orange.shade900,
+          color: AppColors.primaryDark,
           fontWeight: FontWeight.w500,
         ),
       ),
@@ -148,11 +149,11 @@ class RecipeShareCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: AppColors.cardShadow,
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -166,7 +167,7 @@ class RecipeShareCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 12),
@@ -177,7 +178,7 @@ class RecipeShareCard extends StatelessWidget {
                   '• ${ingredient.text}',
                   style: const TextStyle(
                     fontSize: 13,
-                    color: Colors.black87,
+                    color: AppColors.textPrimary,
                     height: 1.4,
                   ),
                 ),
@@ -192,11 +193,11 @@ class RecipeShareCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: AppColors.cardShadow,
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -210,7 +211,7 @@ class RecipeShareCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 12),
@@ -228,7 +229,7 @@ class RecipeShareCard extends StatelessWidget {
                     height: 24,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: Colors.orange.shade100,
+                      color: AppColors.primaryLight,
                       shape: BoxShape.circle,
                     ),
                     child: Text(
@@ -236,7 +237,7 @@ class RecipeShareCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: Colors.orange.shade900,
+                        color: AppColors.primaryDark,
                       ),
                     ),
                   ),
@@ -246,7 +247,7 @@ class RecipeShareCard extends StatelessWidget {
                       step.description,
                       style: const TextStyle(
                         fontSize: 13,
-                        color: Colors.black87,
+                        color: AppColors.textPrimary,
                         height: 1.4,
                       ),
                     ),
@@ -265,10 +266,10 @@ class RecipeShareCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.amber.shade50,
+        color: AppColors.butter.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.amber.shade200,
+          color: AppColors.butter.withValues(alpha: 0.4),
           width: 1,
         ),
       ),
@@ -280,7 +281,7 @@ class RecipeShareCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 8),
@@ -289,7 +290,7 @@ class RecipeShareCard extends StatelessWidget {
             recipe.tips!,
             style: const TextStyle(
               fontSize: 12,
-              color: Colors.black87,
+              color: AppColors.textPrimary,
               height: 1.4,
             ),
           ),
@@ -304,14 +305,14 @@ class RecipeShareCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20), // 20 → 16
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(24),
           topRight: Radius.circular(24),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: AppColors.cardShadow,
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
@@ -323,10 +324,10 @@ class RecipeShareCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: Colors.grey.shade300,
+                color: AppColors.textDisabled.withValues(alpha: 0.35),
                 width: 2,
               ),
             ),
@@ -335,7 +336,7 @@ class RecipeShareCard extends StatelessWidget {
               version: QrVersions.auto,
               size: 200, // 增大二维码尺寸从 120 → 200（图片中将是 400x400）
               errorCorrectionLevel: QrErrorCorrectLevel.M, // 保持中等纠错级别，平衡尺寸和容错
-              backgroundColor: Colors.white,
+              backgroundColor: AppColors.surface,
             ),
           ),
           const SizedBox(height: 12),
@@ -346,7 +347,7 @@ class RecipeShareCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: Colors.orange.shade900,
+              color: AppColors.primaryDark,
             ),
           ),
           const SizedBox(height: 4),
@@ -354,7 +355,7 @@ class RecipeShareCard extends StatelessWidget {
             '可添加/更新到我的食谱',
             style: TextStyle(
               fontSize: 11,
-              color: Colors.grey.shade600,
+              color: AppColors.textSecondary,
             ),
           ),
           const SizedBox(height: 12),
@@ -367,7 +368,7 @@ class RecipeShareCard extends StatelessWidget {
                 '分享自 ',
                 style: TextStyle(
                   fontSize: 11,
-                  color: Colors.grey.shade500,
+                  color: AppColors.textDisabled,
                 ),
               ),
               Text(
@@ -375,7 +376,7 @@ class RecipeShareCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
-                  color: Colors.orange.shade700,
+                  color: AppColors.primary,
                 ),
               ),
             ],

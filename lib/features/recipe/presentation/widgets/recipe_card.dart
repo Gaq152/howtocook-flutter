@@ -13,8 +13,6 @@ final recipeShareServiceProvider = Provider<RecipeShareService>((ref) {
   return RecipeShareService();
 });
 
-enum _RecipeMenuAction { edit, share, delete }
-
 /// 菜谱卡片组件
 ///
 /// 用于在列表中展示菜谱预览信息
@@ -29,11 +27,20 @@ class RecipeCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Card(
+      margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: AppColors.textPrimary.withValues(alpha: 0.08),
+          width: 1,
+        ),
+      ),
       child: InkWell(
         onTap: () {
           context.push('/recipe/${recipe.id}');
         },
+        onLongPress: () => _showLongPressMenu(context, ref),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -58,47 +65,26 @@ class RecipeCard extends ConsumerWidget {
                   ),
                   const SizedBox(height: 6),
 
-                  // 分类和难度
+                  // 难度和收藏
                   Row(
                     children: [
-                      // 分类标签 - 使用Expanded并限制宽度
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.secondary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            recipe.categoryName,
-                            style: AppTextStyles.badge.copyWith(
-                              color: AppColors.secondary,
-                              fontSize: 10,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-
-                      // 难度星星 - 限制最多3个
+                      // 难度星星
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: List.generate(
-                          recipe.difficulty.clamp(1, 3),
+                          recipe.difficulty.clamp(1, 5),
                           (index) => const Icon(
                             Icons.star,
-                            color: Colors.orange,
+                            color: AppColors.butter,
                             size: 10,
                           ),
                         ),
                       ),
 
-                      // 收藏图标和菜单
-                      _buildActions(context, ref),
+                      const Spacer(),
+
+                      // 收藏图标
+                      _buildFavoriteIcon(ref),
                     ],
                   ),
                 ],
@@ -110,79 +96,51 @@ class RecipeCard extends ConsumerWidget {
     );
   }
 
-  /// 构建操作按钮（收藏 + 菜单）
-  Widget _buildActions(BuildContext context, WidgetRef ref) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // 收藏图标
-        _buildFavoriteIcon(ref),
-        // 三点菜单（移除间距）
-        _buildMenuButton(context, ref),
-      ],
-    );
-  }
-
-  /// 构建三点菜单按钮
-  Widget _buildMenuButton(BuildContext context, WidgetRef ref) {
-    return PopupMenuButton<_RecipeMenuAction>(
-      icon: Icon(
-        Icons.more_vert,
-        color: AppColors.textSecondary,
-        size: 16,
+  /// 长按弹出操作菜单
+  void _showLongPressMenu(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                recipe.name,
+                style: AppTextStyles.h5,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('编辑'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                context.push('/recipe/${recipe.id}/edit');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.share_outlined),
+              title: const Text('分享'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _showShareOptions(context, ref);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.delete_outline, color: AppColors.error),
+              title: Text('删除', style: TextStyle(color: AppColors.error)),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _confirmDeleteRecipe(context, ref);
+              },
+            ),
+          ],
+        ),
       ),
-      padding: EdgeInsets.zero,
-      iconSize: 16,
-      tooltip: '更多操作',
-      constraints: const BoxConstraints(
-        minWidth: 28,
-        minHeight: 28,
-      ),
-      onSelected: (action) {
-        switch (action) {
-          case _RecipeMenuAction.edit:
-            context.push('/recipe/${recipe.id}/edit');
-            break;
-          case _RecipeMenuAction.share:
-            _showShareOptions(context, ref);
-            break;
-          case _RecipeMenuAction.delete:
-            _confirmDeleteRecipe(context, ref);
-            break;
-        }
-      },
-      itemBuilder: (context) => [
-        const PopupMenuItem(
-          value: _RecipeMenuAction.edit,
-          child: Row(
-            children: [
-              Icon(Icons.edit_outlined, size: 20),
-              SizedBox(width: 12),
-              Text('编辑'),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: _RecipeMenuAction.share,
-          child: Row(
-            children: [
-              Icon(Icons.share_outlined, size: 20),
-              SizedBox(width: 12),
-              Text('分享'),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: _RecipeMenuAction.delete,
-          child: Row(
-            children: [
-              Icon(Icons.delete_outline, size: 20, color: Colors.red),
-              SizedBox(width: 12),
-              Text('删除', style: TextStyle(color: Colors.red)),
-            ],
-          ),
-        ),
-      ],
     );
   }
 
@@ -358,7 +316,7 @@ class RecipeCard extends ConsumerWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.warning,
         ),
       );
       return;
@@ -376,7 +334,7 @@ class RecipeCard extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
             child: const Text('删除'),
           ),
         ],
@@ -408,7 +366,7 @@ class RecipeCard extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('删除失败: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }

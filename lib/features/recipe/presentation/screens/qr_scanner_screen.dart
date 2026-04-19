@@ -74,9 +74,9 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
       appBar: AppBar(
         title: const Text('扫描二维码'),
 
-        backgroundColor: Colors.black,
+        backgroundColor: AppColors.textPrimary,
 
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.surface,
 
         actions: [
           IconButton(
@@ -97,7 +97,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
         ],
       ),
 
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.textPrimary,
 
       body: Stack(
         children: [
@@ -125,7 +125,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
               textAlign: TextAlign.center,
 
               style: AppTextStyles.h3.copyWith(
-                color: Colors.white,
+                color: AppColors.surface,
 
                 shadows: [
                   const Shadow(
@@ -133,7 +133,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
 
                     blurRadius: 4,
 
-                    color: Colors.black,
+                    color: AppColors.textPrimary,
                   ),
                 ],
               ),
@@ -157,7 +157,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
                 label: const Text('从相册选择'),
 
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
+                  backgroundColor: AppColors.surface,
 
                   foregroundColor: AppColors.primary,
 
@@ -944,7 +944,7 @@ class _ScanMaskPainter extends CustomPainter {
     // 绘制半透明背景
 
     final Paint maskPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.5)
+      ..color = AppColors.textPrimary.withValues(alpha: 0.5)
       ..style = PaintingStyle.fill;
 
     final Path maskPath = Path()

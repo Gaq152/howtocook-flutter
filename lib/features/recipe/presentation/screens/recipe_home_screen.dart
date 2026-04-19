@@ -1,8 +1,8 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../application/providers/recipe_providers.dart';
-import '../../domain/entities/recipe.dart';
 import '../widgets/recipe_card.dart';
 import '../../../../core/theme/app_colors.dart';
 
@@ -32,86 +32,285 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
     super.dispose();
   }
 
-  /// 滚动到顶部
-  void _scrollToTop() {
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        0,
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeInOut,
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    // 根据选中的分类获取菜谱列表
     final recipesAsync = _selectedCategory == null
         ? ref.watch(allRecipesProvider)
         : ref.watch(recipesByCategoryProvider(_selectedCategory!));
 
     return Scaffold(
-      appBar: AppBar(
-        title: GestureDetector(
-          onDoubleTap: _scrollToTop,
-          child: Text(
-            '菜谱',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface,
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
-            ),
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.menu_book_outlined),
-            tooltip: '教程中心',
-            onPressed: () {
-              context.push('/tips');
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.qr_code_scanner),
-            tooltip: '扫一扫',
-            onPressed: () {
-              context.push('/qr-scanner');
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.search),
-            tooltip: '搜索',
-            onPressed: () {
-              context.push('/search');
-            },
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          _buildCategoryFilter(),
-          _buildFilterBar(),
-          Expanded(
-            child: recipesAsync.when(
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(allRecipesProvider);
+          await ref.read(allRecipesProvider.future);
+        },
+        child: CustomScrollView(
+          controller: _scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            _buildCollapsibleHeader(context),
+            SliverToBoxAdapter(child: _buildCategoryFilter()),
+            SliverToBoxAdapter(child: _buildFilterBar()),
+            ...recipesAsync.when(
               data: (recipes) {
-                final filteredRecipes = _selectedDifficulty == null
+                final filtered = _selectedDifficulty == null
                     ? recipes
                     : recipes
                         .where((r) => r.difficulty == _selectedDifficulty)
                         .toList();
-                return _buildRecipeList(context, filteredRecipes);
+                if (filtered.isEmpty) {
+                  return [
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: _buildEmptyState(context),
+                    ),
+                  ];
+                }
+                return [
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    sliver: SliverGrid.builder(
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: _getCrossAxisCount(context),
+                        childAspectRatio: 0.7,
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 8,
+                      ),
+                      itemCount: filtered.length,
+                      itemBuilder: (context, index) =>
+                          RecipeCard(recipe: filtered[index]),
+                    ),
+                  ),
+                ];
               },
-              loading: () => _buildLoadingState(),
-              error: (error, stack) => _buildErrorState(context, error),
+              loading: () => [
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              ],
+              error: (error, _) => [
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _buildErrorState(context, error),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/create-recipe'),
-        child: const Icon(Icons.add),
+          ],
+        ),
       ),
     );
+  }
+
+  /// 构建可折叠的顶部区域
+  Widget _buildCollapsibleHeader(BuildContext context) {
+    final now = DateTime.now();
+    final greeting = _getGreeting(now.hour);
+    final scaffoldBg = Theme.of(context).scaffoldBackgroundColor;
+
+    return SliverAppBar(
+      expandedHeight: 200,
+      toolbarHeight: 72,
+      pinned: true,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      backgroundColor: Colors.transparent,
+      flexibleSpace: LayoutBuilder(
+        builder: (context, constraints) {
+          final statusBarHeight = MediaQuery.of(context).padding.top;
+          final maxExtent = 200.0 + statusBarHeight;
+          final minExtent = 72.0 + statusBarHeight;
+          final t = ((constraints.maxHeight - minExtent) / (maxExtent - minExtent)).clamp(0.0, 1.0);
+
+          return ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 12 * (1 - t), sigmaY: 12 * (1 - t)),
+              child: Container(
+                color: scaffoldBg.withValues(alpha: 0.7 + 0.3 * t),
+                child: Padding(
+                  padding: EdgeInsets.only(top: statusBarHeight),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          height: 128 * t,
+                          child: ClipRect(
+                            child: OverflowBox(
+                              maxHeight: double.infinity,
+                              alignment: Alignment.bottomLeft,
+                              child: Opacity(
+                                opacity: t,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '$greeting · 今日 ${now.month}月${now.day}日',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        color: AppColors.textSecondary,
+                                        height: 1.5,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    const Text(
+                                      '今天\n想做点什么？',
+                                      style: TextStyle(
+                                        fontSize: 28,
+                                        fontWeight: FontWeight.w900,
+                                        height: 1.3,
+                                        color: AppColors.textPrimary,
+                                        letterSpacing: -0.5,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        _buildSearchRow(context),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// 构建搜索栏行（搜索框 + 教程按钮）
+  Widget _buildSearchRow(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Material(
+            color: AppColors.surfaceAlt,
+            borderRadius: BorderRadius.circular(24),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(24),
+              onTap: () => context.push('/search'),
+              child: SizedBox(
+                height: 48,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 16, right: 4),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.search,
+                          color: AppColors.textSecondary, size: 22),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Text(
+                          '搜索菜谱...',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CustomPaint(
+                            painter: _ScanIconPainter(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                        tooltip: '扫一扫',
+                        onPressed: () => context.push('/qr-scanner'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Material(
+          color: AppColors.primary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () => context.push('/tips'),
+            child: const SizedBox(
+              width: 48,
+              height: 48,
+              child: Icon(
+                Icons.menu_book_outlined,
+                color: AppColors.primary,
+                size: 22,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Material(
+          color: AppColors.primary,
+          borderRadius: BorderRadius.circular(16),
+          child: PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'recipe') {
+                context.push('/create-recipe');
+              } else if (value == 'tip') {
+                context.push('/tips/create');
+              }
+            },
+            offset: const Offset(0, 48),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'recipe',
+                child: Row(
+                  children: [
+                    Icon(Icons.restaurant_outlined, size: 20),
+                    SizedBox(width: 12),
+                    Text('新建菜谱'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'tip',
+                child: Row(
+                  children: [
+                    Icon(Icons.menu_book_outlined, size: 20),
+                    SizedBox(width: 12),
+                    Text('新建教程'),
+                  ],
+                ),
+              ),
+            ],
+            child: const SizedBox(
+              width: 48,
+              height: 48,
+              child: Icon(
+                Icons.add,
+                color: AppColors.surface,
+                size: 24,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 根据时间获取问候语
+  String _getGreeting(int hour) {
+    if (hour < 6) return '深夜好';
+    if (hour < 11) return '早上好';
+    if (hour < 14) return '中午好';
+    if (hour < 18) return '下午好';
+    return '晚上好';
   }
 
   /// 构建分类筛选栏
@@ -135,7 +334,7 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
             color: Theme.of(context).scaffoldBackgroundColor,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
+                color: AppColors.cardShadow,
                 offset: const Offset(0, 2),
                 blurRadius: 4,
               ),
@@ -199,28 +398,28 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
         color: Theme.of(context).scaffoldBackgroundColor,
         border: Border(
           bottom: BorderSide(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: AppColors.divider,
             width: 1,
           ),
         ),
       ),
       child: Row(
         children: [
-          const Text('难度', style: TextStyle(fontSize: 14, color: Colors.grey)),
+          const Text('难度', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
           const SizedBox(width: 12),
           // 小巧的下拉菜单
           Container(
             height: 32,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+              border: Border.all(color: AppColors.divider),
               borderRadius: BorderRadius.circular(16),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<int?>(
                 value: _selectedDifficulty,
                 isDense: true,
-                style: const TextStyle(fontSize: 13, color: Colors.black87),
+                style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
                 icon: const Icon(Icons.arrow_drop_down, size: 20),
                 items: [
                   const DropdownMenuItem<int?>(value: null, child: Text('全部')),
@@ -234,7 +433,7 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
                           difficulty,
                           (i) => const Icon(
                             Icons.star,
-                            color: Colors.orange,
+                            color: AppColors.butter,
                             size: 14,
                           ),
                         ),
@@ -250,50 +449,6 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  /// 构建菜谱列表
-  Widget _buildRecipeList(BuildContext context, List<Recipe> recipes) {
-    if (recipes.isEmpty) {
-      return _buildEmptyState(context);
-    }
-
-    return RefreshIndicator(
-      onRefresh: () async {
-        // 刷新菜谱列表
-        ref.invalidate(allRecipesProvider);
-        // 等待数据重新加载
-        await ref.read(allRecipesProvider.future);
-      },
-      child: GridView.builder(
-        controller: _scrollController,
-        padding: const EdgeInsets.all(16),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: _getCrossAxisCount(context),
-          childAspectRatio: 0.75, // 调整为0.75，卡片更短更紧凑
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-        ),
-        itemCount: recipes.length,
-        itemBuilder: (context, index) {
-          return RecipeCard(recipe: recipes[index]);
-        },
-      ),
-    );
-  }
-
-  /// 构建加载状态
-  Widget _buildLoadingState() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(),
-          SizedBox(height: 16),
-          Text('正在加载菜谱...'),
         ],
       ),
     );
@@ -372,4 +527,51 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
       return 2; // 小屏
     }
   }
+}
+
+class _ScanIconPainter extends CustomPainter {
+  final Color color;
+
+  _ScanIconPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.8
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final w = size.width;
+    final h = size.height;
+    final corner = w * 0.3;
+
+    // 四个角
+    // 左上
+    canvas.drawLine(Offset(0, corner), Offset.zero, paint);
+    canvas.drawLine(Offset.zero, Offset(corner, 0), paint);
+    // 右上
+    canvas.drawLine(Offset(w - corner, 0), Offset(w, 0), paint);
+    canvas.drawLine(Offset(w, 0), Offset(w, corner), paint);
+    // 左下
+    canvas.drawLine(Offset(0, h - corner), Offset(0, h), paint);
+    canvas.drawLine(Offset(0, h), Offset(corner, h), paint);
+    // 右下
+    canvas.drawLine(Offset(w, h - corner), Offset(w, h), paint);
+    canvas.drawLine(Offset(w, h), Offset(w - corner, h), paint);
+
+    // 中间扫描线
+    final linePaint = Paint()
+      ..color = color
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(
+      Offset(w * 0.15, h / 2),
+      Offset(w * 0.85, h / 2),
+      linePaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _ScanIconPainter old) => old.color != color;
 }

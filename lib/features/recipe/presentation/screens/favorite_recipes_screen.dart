@@ -76,12 +76,12 @@ class _RecipeTab extends StatelessWidget {
         await ref.read(favoriteRecipesProvider.future);
       },
       child: GridView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: _getCrossAxisCount(context),
           childAspectRatio: 0.58,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
         ),
         itemCount: recipes.length,
         itemBuilder: (context, index) {

@@ -99,7 +99,7 @@ class _RecipeSearchScreenState extends ConsumerState<RecipeSearchScreen> {
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
             ),
             child: const Text('清空'),
           ),
@@ -148,13 +148,13 @@ class _RecipeSearchScreenState extends ConsumerState<RecipeSearchScreen> {
                       margin: const EdgeInsets.all(8),
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: Colors.grey[300],
+                        color: AppColors.divider,
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
                         Icons.close,
                         size: 14,
-                        color: Colors.black54,
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   )
@@ -254,7 +254,7 @@ class _RecipeSearchScreenState extends ConsumerState<RecipeSearchScreen> {
                 icon: const Icon(Icons.delete_outline, size: 18),
                 label: const Text('清空'),
                 style: TextButton.styleFrom(
-                  foregroundColor: Colors.red,
+                  foregroundColor: AppColors.error,
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                 ),
               ),
@@ -321,12 +321,12 @@ class _RecipeSearchScreenState extends ConsumerState<RecipeSearchScreen> {
         // 结果网格
         Expanded(
           child: GridView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: _getCrossAxisCount(context),
               childAspectRatio: 0.58,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
             ),
             itemCount: recipes.length,
             itemBuilder: (context, index) {

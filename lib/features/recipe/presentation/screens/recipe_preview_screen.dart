@@ -50,7 +50,7 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
                 height: 24,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: Colors.white,
+                  color: AppColors.surface,
                 ),
               ),
             ),
@@ -172,13 +172,13 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
                       widget.recipe.difficulty.clamp(1, 5),
                       (index) => const Icon(
                         Icons.star,
-                        color: Colors.orange,
+                        color: AppColors.warning,
                         size: 16,
                       ),
                     ),
                   ),
-                  backgroundColor: Colors.orange.withValues(alpha: 0.1),
-                  side: BorderSide(color: Colors.orange.withValues(alpha: 0.3)),
+                  backgroundColor: AppColors.warning.withValues(alpha: 0.1),
+                  side: BorderSide(color: AppColors.warning.withValues(alpha: 0.3)),
                 ),
 
                 // 来源标记（根据食谱来源显示不同的徽章）
@@ -273,7 +273,7 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
                       child: Text(
                         '${index + 1}',
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: AppColors.surface,
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                         ),
@@ -383,17 +383,17 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
       case RecipeSource.userModified:
         icon = Icons.edit;
         label = '修改版';
-        color = Colors.purple;
+        color = AppColors.plum;
         break;
       case RecipeSource.userCreated:
         icon = Icons.person;
         label = '用户创建';
-        color = Colors.blue;
+        color = AppColors.primary;
         break;
       case RecipeSource.aiGenerated:
         icon = Icons.auto_awesome;
         label = 'AI 生成';
-        color = Colors.green;
+        color = AppColors.success;
         break;
       case RecipeSource.scanned:
         icon = Icons.qr_code_scanner;
@@ -425,10 +425,10 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: AppColors.textPrimary.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),
@@ -459,7 +459,7 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
                         height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.white,
+                          color: AppColors.surface,
                         ),
                       )
                     : const Icon(Icons.save),
@@ -470,7 +470,7 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
                         : '保存到我的食谱'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
+                  foregroundColor: AppColors.surface,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
               ),

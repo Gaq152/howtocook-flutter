@@ -10,6 +10,7 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import '../../domain/entities/recipe.dart';
 import '../../application/providers/recipe_providers.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/theme/app_colors.dart';
 
 /// 菜谱编辑页面
 ///
@@ -133,22 +134,21 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
       appBar: AppBar(
         title: const Text('编辑菜谱'),
         actions: [
-          // 重置按钮
-          TextButton.icon(
+          IconButton(
             onPressed: _isSaving ? null : _resetToOriginal,
-            icon: const Icon(Icons.restart_alt, size: 20),
-            label: const Text('重置'),
+            icon: const Icon(Icons.restart_alt),
+            tooltip: '重置',
           ),
-          // 保存按钮
-          TextButton(
+          IconButton(
             onPressed: _isSaving ? null : _saveRecipe,
-            child: _isSaving
+            icon: _isSaving
                 ? const SizedBox(
-                    width: 16,
-                    height: 16,
+                    width: 20,
+                    height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('保存'),
+                : const Icon(Icons.save),
+            tooltip: '保存',
           ),
         ],
       ),
@@ -224,8 +224,8 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
                               ? Icons.star
                               : Icons.star_border,
                           color: starValue <= _selectedDifficulty
-                              ? Colors.orange
-                              : Colors.grey,
+                              ? AppColors.warning
+                              : AppColors.textDisabled,
                           size: 36,
                         ),
                       ),
@@ -266,19 +266,16 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
                 Text('制作步骤', style: AppTextStyles.h3),
                 const Spacer(),
                 if (_stepDescriptions.isNotEmpty)
-                  TextButton.icon(
+                  IconButton(
                     onPressed: () => _confirmAndClearList(_stepDescriptions, '制作步骤'),
                     icon: const Icon(Icons.clear_all, size: 20),
-                    label: const Text('清空'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.red,
-                    ),
+                    color: AppColors.error,
+                    tooltip: '清空',
                   ),
-                const SizedBox(width: 8),
-                TextButton.icon(
+                IconButton(
                   onPressed: () => _addListItem(_stepDescriptions, '新步骤'),
                   icon: const Icon(Icons.add),
-                  label: const Text('添加'),
+                  tooltip: '添加步骤',
                 ),
               ],
             ),
@@ -287,7 +284,7 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
               const Padding(
                 padding: EdgeInsets.all(16),
                 child: Center(
-                  child: Text('暂无制作步骤', style: TextStyle(color: Colors.grey)),
+                  child: Text('暂无制作步骤', style: TextStyle(color: AppColors.textDisabled)),
                 ),
               )
             else
@@ -307,41 +304,56 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
                 },
                 itemBuilder: (context, index) {
                   final step = _stepDescriptions[index];
-                  return ListTile(
+                  return Stack(
                     key: ValueKey('step_$index'),
-                    leading: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // 拖拽手柄
-                        ReorderableDragStartListener(
-                          index: index,
-                          child: const Icon(
-                            Icons.drag_handle,
-                            color: Colors.grey,
-                          ),
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.fromLTRB(12, 12, 72, 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceAlt,
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        const SizedBox(width: 8),
-                        // 步骤编号
-                        CircleAvatar(
-                          radius: 16,
-                          child: Text('${index + 1}'),
+                        child: Row(
+                          children: [
+                            ReorderableDragStartListener(
+                              index: index,
+                              child: const Icon(Icons.drag_handle, color: AppColors.textDisabled, size: 20),
+                            ),
+                            const SizedBox(width: 8),
+                            CircleAvatar(
+                              radius: 14,
+                              backgroundColor: AppColors.primary,
+                              child: Text('${index + 1}', style: const TextStyle(fontSize: 12, color: AppColors.surface)),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(child: Text(step)),
+                          ],
                         ),
-                      ],
-                    ),
-                    title: Text(step),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit, size: 20),
-                          onPressed: () => _editListItem(_stepDescriptions, index, '编辑步骤'),
+                      ),
+                      Positioned(
+                        top: 0,
+                        right: 0,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit, size: 16),
+                              onPressed: () => _editListItem(_stepDescriptions, index, '编辑步骤'),
+                              padding: const EdgeInsets.all(6),
+                              constraints: const BoxConstraints(),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close, size: 16),
+                              color: AppColors.error,
+                              onPressed: () => _deleteListItem(_stepDescriptions, index),
+                              padding: const EdgeInsets.all(6),
+                              constraints: const BoxConstraints(),
+                            ),
+                          ],
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.delete, size: 20),
-                          onPressed: () => _deleteListItem(_stepDescriptions, index),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   );
                 },
               ),
@@ -412,18 +424,15 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
               children: [
                 Text('图片', style: AppTextStyles.h3),
                 const Spacer(),
-                // 添加URL按钮
-                TextButton.icon(
+                IconButton(
                   onPressed: () => _addImageUrl(),
                   icon: const Icon(Icons.link),
-                  label: const Text('URL'),
+                  tooltip: '添加URL',
                 ),
-                const SizedBox(width: 8),
-                // 选择本地图片按钮
-                TextButton.icon(
+                IconButton(
                   onPressed: () => _pickLocalImage(),
                   icon: const Icon(Icons.photo_library),
-                  label: const Text('本地'),
+                  tooltip: '选择本地图片',
                 ),
               ],
             ),
@@ -432,7 +441,7 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
               const Padding(
                 padding: EdgeInsets.all(16),
                 child: Center(
-                  child: Text('暂无图片', style: TextStyle(color: Colors.grey)),
+                  child: Text('暂无图片', style: TextStyle(color: AppColors.textDisabled)),
                 ),
               )
             else
@@ -546,19 +555,16 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
                 Text(title, style: AppTextStyles.h3),
                 const Spacer(),
                 if (items.isNotEmpty)
-                  TextButton.icon(
+                  IconButton(
                     onPressed: onClear,
                     icon: const Icon(Icons.clear_all, size: 20),
-                    label: const Text('清空'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.red,
-                    ),
+                    color: AppColors.error,
+                    tooltip: '清空',
                   ),
-                const SizedBox(width: 8),
-                TextButton.icon(
+                IconButton(
                   onPressed: onAdd,
                   icon: const Icon(Icons.add),
-                  label: const Text('添加'),
+                  tooltip: '添加',
                 ),
               ],
             ),
@@ -567,31 +573,45 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Center(
-                  child: Text('暂无$title', style: const TextStyle(color: Colors.grey)),
+                  child: Text('暂无$title', style: const TextStyle(color: AppColors.textDisabled)),
                 ),
               )
             else
               ...items.asMap().entries.map((entry) {
                 final index = entry.key;
                 final item = entry.value;
-                return ListTile(
-                  leading: numbered
-                      ? CircleAvatar(
-                          radius: 16,
-                          child: Text('${index + 1}'),
-                        )
-                      : const Icon(Icons.circle, size: 8),
-                  title: Text(item),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceAlt,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
                     children: [
+                      if (numbered)
+                        CircleAvatar(
+                          radius: 13,
+                          backgroundColor: AppColors.primary,
+                          child: Text('${index + 1}', style: const TextStyle(fontSize: 11, color: AppColors.surface)),
+                        )
+                      else
+                        const Icon(Icons.circle, size: 8, color: AppColors.textSecondary),
+                      const SizedBox(width: 10),
+                      Expanded(child: Text(item)),
                       IconButton(
-                        icon: const Icon(Icons.edit, size: 20),
+                        icon: const Icon(Icons.edit, size: 18),
                         onPressed: () => onEdit(index),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
                       ),
+                      const SizedBox(width: 8),
                       IconButton(
-                        icon: const Icon(Icons.delete, size: 20),
+                        icon: const Icon(Icons.close, size: 18),
+                        color: AppColors.error,
                         onPressed: () => onDelete(index),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
                       ),
                     ],
                   ),
@@ -972,7 +992,7 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
       builder: (context) => AlertDialog(
         title: Row(
           children: [
-            Icon(Icons.warning_rounded, color: Colors.orange.shade700, size: 28),
+            Icon(Icons.warning_rounded, color: AppColors.warning, size: 28),
             const SizedBox(width: 12),
             Text(
               '确认重置？',
@@ -999,7 +1019,7 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(
-              backgroundColor: Colors.orange,
+              backgroundColor: AppColors.warning,
             ),
             child: const Text('重置'),
           ),
@@ -1028,7 +1048,7 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
       builder: (context) => AlertDialog(
         title: Row(
           children: [
-            Icon(Icons.warning_rounded, color: Colors.orange.shade700, size: 28),
+            Icon(Icons.warning_rounded, color: AppColors.warning, size: 28),
             const SizedBox(width: 12),
             Text(
               '确认清空？',
@@ -1055,7 +1075,7 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
             ),
             child: const Text('清空'),
           ),
