@@ -6,7 +6,6 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../ai_chat/application/providers/ai_providers.dart';
 import '../../../ai_chat/domain/entities/ai_model_config.dart';
-import '../../../ai_chat/infrastructure/services/ai_service_factory.dart';
 import '../../../ai_chat/infrastructure/services/model_capability_database.dart';
 import '../../../ai_chat/infrastructure/services/model_validator.dart';
 
@@ -95,7 +94,7 @@ class _ModelManagementScreenState
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Text(
               '自定义模型的输出质量取决于所选服务商，可能不完全遵循应用内提示词规范，仅供参考。',
-              style: TextStyle(fontSize: 11, color: Colors.grey[500], height: 1.5),
+              style: TextStyle(fontSize: 11, color: AppColors.textDisabled, height: 1.5),
               textAlign: TextAlign.center,
             ),
           ),
@@ -375,7 +374,6 @@ class _ModelFormSheetState extends ConsumerState<ModelFormSheet> {
   late final TextEditingController _contextWindowController;
 
   late AIProvider _provider;
-  late bool _useBuiltinKey;
   late bool _supportsImageInput;
   late bool _supportsWebSearch;
   late bool _supportsFileInput;
@@ -401,13 +399,15 @@ class _ModelFormSheetState extends ConsumerState<ModelFormSheet> {
   void initState() {
     super.initState();
     final initial = widget.initialModel;
+    _provider = initial?.provider ?? AIProvider.deepseek; // 默认选择 DeepSeek
     _displayNameController =
         TextEditingController(text: initial?.displayName ?? '');
     _modelIdController = TextEditingController(text: initial?.modelId ?? '');
     _descriptionController =
         TextEditingController(text: initial?.description ?? '');
-    _apiUrlController =
-        TextEditingController(text: initial?.customApiUrl ?? '');
+    _apiUrlController = TextEditingController(
+      text: initial?.customApiUrl ?? _defaultApiUrl(_provider),
+    );
     _apiKeyController =
         TextEditingController(text: initial?.customApiKey ?? '');
     _maxTokensController = TextEditingController(
@@ -416,11 +416,6 @@ class _ModelFormSheetState extends ConsumerState<ModelFormSheet> {
     _contextWindowController = TextEditingController(
       text: '${initial?.capabilities.contextWindow ?? 128000}',
     );
-    _provider = initial?.provider ?? AIProvider.deepseek; // 默认选择 DeepSeek
-
-    // 如果服务商没有内置 Key，强制关闭"使用内置 Key"
-    final hasBuiltinKey = AIServiceFactory.hasBuiltinKey(_provider);
-    _useBuiltinKey = hasBuiltinKey && (initial?.useBuiltinKey ?? true);
 
     _supportsImageInput = initial?.capabilities.supportsImageInput ?? false;
     _supportsWebSearch = initial?.capabilities.supportsWebSearch ?? false;
@@ -504,10 +499,7 @@ class _ModelFormSheetState extends ConsumerState<ModelFormSheet> {
                   if (value == null) return;
                   setState(() {
                     _provider = value;
-                    // 切换服务商时，如果新服务商没有内置 Key，强制关闭"使用内置 Key"
-                    if (!AIServiceFactory.hasBuiltinKey(value)) {
-                      _useBuiltinKey = false;
-                    }
+                    _apiUrlController.text = _defaultApiUrl(value);
                   });
                   _invalidateValidation();
                   _handleModelIdentifierChanged(force: true);
@@ -574,56 +566,22 @@ class _ModelFormSheetState extends ConsumerState<ModelFormSheet> {
               TextFormField(
                 controller: _apiUrlController,
                 decoration:
-                    const InputDecoration(labelText: '自定义 API URL（可选）'),
+                    const InputDecoration(labelText: 'API URL'),
                 onChanged: (_) => _invalidateValidation(),
               ),
-              const SizedBox(height: 8),
-              Builder(
-                builder: (context) {
-                  final hasBuiltinKey = AIServiceFactory.hasBuiltinKey(_provider);
-                  return SwitchListTile.adaptive(
-                    value: _useBuiltinKey && hasBuiltinKey, // 无内置 Key 时强制显示为 false
-                    contentPadding: EdgeInsets.zero,
-                    onChanged: hasBuiltinKey
-                        ? (value) {
-                            setState(() => _useBuiltinKey = value);
-                            _invalidateValidation();
-                          }
-                        : null, // 无内置 Key 时禁用开关
-                    title: Text(
-                      '使用内置 API Key',
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: hasBuiltinKey ? null : AppColors.textDisabled,
-                      ),
-                    ),
-                    subtitle: Text(
-                      hasBuiltinKey
-                          ? (_useBuiltinKey ? '使用应用内置凭据调用接口' : '关闭后可输入自定义 API Key')
-                          : '该服务商暂无内置 Key，请使用自定义 API Key',
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: hasBuiltinKey ? AppColors.textSecondary : AppColors.error,
-                      ),
-                    ),
-                  );
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _apiKeyController,
+                decoration: const InputDecoration(labelText: 'API Key'),
+                obscureText: true,
+                onChanged: (_) => _invalidateValidation(),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return '请输入 API Key';
+                  }
+                  return null;
                 },
               ),
-              if (!_useBuiltinKey) ...[
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _apiKeyController,
-                  decoration: const InputDecoration(labelText: 'API Key'),
-                  obscureText: true,
-                  onChanged: (_) => _invalidateValidation(),
-                  validator: (value) {
-                    if (!_useBuiltinKey &&
-                        (value == null || value.trim().isEmpty)) {
-                      return '请输入 API Key';
-                    }
-                    return null;
-                  },
-                ),
-              ],
               const SizedBox(height: 16),
               // 验证配置按钮
               Row(
@@ -779,12 +737,12 @@ class _ModelFormSheetState extends ConsumerState<ModelFormSheet> {
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white),
+                                  strokeWidth: 2, color: AppColors.surface),
                             )
                           : Text(
                               widget.initialModel == null ? '添加' : '保存',
                               style: AppTextStyles.button
-                                  .copyWith(color: Colors.white),
+                                  .copyWith(color: AppColors.surface),
                             ),
                     ),
                   ),
@@ -838,10 +796,6 @@ class _ModelFormSheetState extends ConsumerState<ModelFormSheet> {
     final apiUrl = _apiUrlController.text.trim();
     final apiKey = _apiKeyController.text.trim();
 
-    // 如果服务商没有内置 Key，强制关闭"使用内置 Key"
-    final hasBuiltinKey = AIServiceFactory.hasBuiltinKey(_provider);
-    final actualUseBuiltinKey = hasBuiltinKey && _useBuiltinKey;
-
     // 解析数字字段
     final maxTokens = int.tryParse(_maxTokensController.text.trim());
     final contextWindow = int.tryParse(_contextWindowController.text.trim());
@@ -853,9 +807,9 @@ class _ModelFormSheetState extends ConsumerState<ModelFormSheet> {
       displayName: _displayNameController.text.trim(),
       description: description.isEmpty ? null : description,
       isEnabled: existing?.isEnabled ?? true,
-      useBuiltinKey: actualUseBuiltinKey,
+      useBuiltinKey: false,
       customApiUrl: apiUrl.isEmpty ? null : apiUrl,
-      customApiKey: actualUseBuiltinKey ? null : (apiKey.isEmpty ? null : apiKey),
+      customApiKey: apiKey.isEmpty ? null : apiKey,
       isDefault: existing?.isDefault ?? false,
       isBuiltin: false,
       capabilities: ModelCapabilities(
@@ -1079,5 +1033,17 @@ String _providerLabel(AIProvider provider) {
       return 'OpenAI';
     case AIProvider.deepseek:
       return 'DeepSeek';
+  }
+}
+
+/// 获取服务商默认 API URL
+String _defaultApiUrl(AIProvider provider) {
+  switch (provider) {
+    case AIProvider.claude:
+      return 'https://api.anthropic.com/v1';
+    case AIProvider.openai:
+      return 'https://api.openai.com/v1';
+    case AIProvider.deepseek:
+      return 'https://api.deepseek.com/v1';
   }
 }

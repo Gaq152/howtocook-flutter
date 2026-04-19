@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/services/update_service.dart';
+import '../../../../core/theme/app_colors.dart';
 
 /// 显示升级对话框并编排「下载 → 安装」流程。
 ///
@@ -94,7 +95,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
     return AlertDialog(
       title: Row(
         children: [
-          const Icon(Icons.system_update, color: Colors.blue),
+          const Icon(Icons.system_update, color: AppColors.primary),
           const SizedBox(width: 8),
           Text('发现新版本 ${info.versionName}'),
         ],
@@ -141,7 +142,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
             if (_error != null) ...[
               const SizedBox(height: 8),
               Text('下载失败：$_error',
-                  style: const TextStyle(color: Colors.redAccent)),
+                  style: const TextStyle(color: AppColors.error)),
             ],
           ],
         ),
@@ -168,5 +169,5 @@ class _UpdateDialogState extends State<_UpdateDialog> {
   }
 
   TextStyle? _dimStyle(BuildContext context) =>
-      Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[600]);
+      Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary);
 }

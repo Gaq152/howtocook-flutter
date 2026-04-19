@@ -5,6 +5,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/services/update_service.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../widgets/update_dialog.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -77,7 +78,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: const Text(
             'github.com/Gaq152/howtocook-flutter',
             style: TextStyle(
-              color: Colors.blue,
+              color: AppColors.primary,
               decoration: TextDecoration.underline,
             ),
           ),
