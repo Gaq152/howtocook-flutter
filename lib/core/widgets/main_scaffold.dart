@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-/// 主框架页面
-/// 包含底部导航栏和突出的 AI 聊天按钮
+import '../theme/app_colors.dart';
+
+/// 悬浮导航栏的总高度（胶囊 56 + 上边距 8 + 下边距 12 = 76），
+/// 子页面可通过此常量在底部留出空间。
+const kFloatingNavBarHeight = 76.0;
+
 class MainScaffold extends StatefulWidget {
   final Widget child;
 
@@ -18,7 +22,6 @@ class MainScaffold extends StatefulWidget {
 class _MainScaffoldState extends State<MainScaffold> {
   int _currentIndex = 0;
 
-  // 根据当前路由路径确定选中的导航索引
   int _calculateSelectedIndex(BuildContext context) {
     final String location = GoRouterState.of(context).uri.path;
 
@@ -50,33 +53,143 @@ class _MainScaffoldState extends State<MainScaffold> {
   @override
   Widget build(BuildContext context) {
     _currentIndex = _calculateSelectedIndex(context);
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
+      extendBody: true,
+      resizeToAvoidBottomInset: false,
       body: widget.child,
-      bottomNavigationBar: _buildBottomNavigationBar(),
+      bottomNavigationBar: Container(
+        color: Colors.transparent,
+        padding: EdgeInsets.only(
+          left: 40,
+          right: 40,
+          top: 8,
+          bottom: bottomPadding + 12,
+        ),
+        child: Container(
+          height: 56,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.textPrimary.withValues(alpha: 0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              _buildNavItem(
+                index: 0,
+                icon: Icons.restaurant_menu,
+                label: '菜谱',
+              ),
+              _buildAiNavItem(),
+              _buildNavItem(
+                index: 2,
+                icon: Icons.person_outline,
+                label: '我的',
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
-  Widget _buildBottomNavigationBar() {
-    return BottomNavigationBar(
-      currentIndex: _currentIndex,
-      onTap: _onItemTapped,
-      selectedItemColor: Theme.of(context).primaryColor,
-      unselectedItemColor: Colors.grey[600],
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.restaurant_menu),
-          label: '菜谱',
+  Widget _buildNavItem({
+    required int index,
+    required IconData icon,
+    required String label,
+  }) {
+    final isSelected = _currentIndex == index;
+
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _onItemTapped(index),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 22,
+              color: isSelected
+                  ? AppColors.primary
+                  : AppColors.textDisabled,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                color: isSelected
+                    ? AppColors.primary
+                    : AppColors.textDisabled,
+              ),
+            ),
+          ],
         ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.smart_toy),
-          label: 'AI',
+      ),
+    );
+  }
+
+  Widget _buildAiNavItem() {
+    final isSelected = _currentIndex == 1;
+
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _onItemTapped(1),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: isSelected
+                      ? [AppColors.primary, AppColors.plum]
+                      : [AppColors.textDisabled, AppColors.textDisabled],
+                ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: const Icon(
+                Icons.auto_awesome,
+                size: 18,
+                color: AppColors.surface,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '小厨',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                color: isSelected
+                    ? AppColors.primary
+                    : AppColors.textDisabled,
+              ),
+            ),
+          ],
         ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.person),
-          label: '我的',
-        ),
-      ],
+      ),
     );
   }
 }

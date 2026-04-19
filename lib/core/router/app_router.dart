@@ -21,6 +21,7 @@ import '../../features/tips/presentation/screens/tip_detail_screen.dart';
 import '../../features/tips/presentation/screens/tip_editor_screen.dart';
 import '../../features/tips/presentation/screens/tip_preview_screen.dart';
 import '../../features/tips/presentation/screens/tips_overview_screen.dart';
+import '../theme/app_colors.dart';
 import '../widgets/main_scaffold.dart';
 
 /// 路由配置 Provider
@@ -246,13 +247,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.grey),
+            const Icon(Icons.error_outline, size: 64, color: AppColors.textDisabled),
             const SizedBox(height: 16),
             Text(
               '404',
               style: Theme.of(
                 context,
-              ).textTheme.headlineLarge?.copyWith(color: Colors.grey),
+              ).textTheme.headlineLarge?.copyWith(color: AppColors.textDisabled),
             ),
             const SizedBox(height: 8),
             const Text('页面不存在'),
