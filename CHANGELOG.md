@@ -8,6 +8,22 @@
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-04-19
+
+### 变更
+- **全局主题重构**：色系从橙色系改为温暖治愈系奶油米色，主色调改为陶土色（#D06A4C），辅助色改为鼠尾草绿（#8CA471），新增李子色与黄油色装饰色。
+- **深色模式**：配色同步更新为暖棕色系，视觉更柔和。
+- **卡片与按钮**：圆角从 12/8 增大至 20/16，elevation 归零，改用带透明度主色调阴影，整体更扁平轻盈。
+- **底部导航栏**：重构样式适配新主题，去除多余阴影。
+- **菜谱模块**：首页、详情页、卡片、创建/编辑、搜索、分享卡片全面适配新主题，层次与可读性提升。
+- **AI 聊天**：标题改为「小厨」并左对齐，修复键盘弹出时布局挤压，空状态图标更新。
+- **教程模块**：列表页、详情页、编辑页、分享卡片全面适配新主题。
+- **用户中心**：页面布局大幅优化，个人信息与功能入口视觉重构。
+- **设置模块**：模型管理页、设置页、更新弹窗适配新色系。
+- **CI/CD**：release.yml 改为直接写入 .env，精简内置 API 配置，限流默认值改为 10。
+- **数据同步**：移除 dotenv 依赖，静态资源 base URL 硬编码。
+- **教程分类顺序**：manifest.json 中「基础知识」置于「进阶知识」之前。
+
 ## [0.1.1] - 2026-04-18
 
 ### 新增
@@ -45,6 +61,7 @@
 ### 修复
 - 解决 AGP 8 下部分三方插件（如 `install_plugin`）缺失 `namespace` 导致的构建失败。
 
-[Unreleased]: https://github.com/Gaq152/howtocook-flutter/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/Gaq152/howtocook-flutter/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Gaq152/howtocook-flutter/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/Gaq152/howtocook-flutter/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Gaq152/howtocook-flutter/releases/tag/v0.1.0
