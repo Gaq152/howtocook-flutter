@@ -308,19 +308,19 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
         break;
       case RecipeSource.userModified:
         label = '自创';
-        color = Colors.orange;
+        color = AppColors.butter;
         break;
       case RecipeSource.scanned:
         label = '扫码导入';
-        color = Colors.blue;
+        color = AppColors.plum;
         break;
       case RecipeSource.aiGenerated:
         label = 'AI 生成';
-        color = Colors.green;
+        color = AppColors.secondary;
         break;
       default:
         label = '系统';
-        color = Colors.grey;
+        color = AppColors.textDisabled;
     }
 
     return _buildSourceChip(label, color);
@@ -337,15 +337,15 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
         break;
       case TipSource.userModified:
         label = '自创';
-        color = Colors.orange;
+        color = AppColors.butter;
         break;
       case TipSource.scanned:
         label = '扫码导入';
-        color = Colors.blue;
+        color = AppColors.plum;
         break;
       case TipSource.bundled:
         label = '系统';
-        color = Colors.grey;
+        color = AppColors.textDisabled;
         break;
     }
 
@@ -384,17 +384,17 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 88, color: Colors.grey.shade300),
+            Icon(icon, size: 88, color: AppColors.textDisabled),
             const SizedBox(height: 16),
             Text(
               title,
-              style: AppTextStyles.h2.copyWith(color: Colors.grey.shade500),
+              style: AppTextStyles.h2.copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 8),
             Text(
               description,
               style: AppTextStyles.bodySmall.copyWith(
-                color: Colors.grey.shade500,
+                color: AppColors.textSecondary,
               ),
               textAlign: TextAlign.center,
             ),
@@ -415,7 +415,7 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.error_outline, size: 48, color: Colors.red),
+          const Icon(Icons.error_outline, size: 48, color: AppColors.error),
           const SizedBox(height: 16),
           Text('加载失败: $error'),
         ],
@@ -594,7 +594,7 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('【${recipe.name}】为内置菜谱，无法删除'),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.warning,
         ),
       );
       return;
@@ -612,7 +612,7 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
             child: const Text('删除'),
           ),
         ],
@@ -639,7 +639,7 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('删除失败: $e'), backgroundColor: Colors.red),
+        SnackBar(content: Text('删除失败: $e'), backgroundColor: AppColors.error),
       );
     } finally {
       if (mounted) {
@@ -653,7 +653,7 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('【${tip.title}】为内置教程，无法删除'),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.warning,
         ),
       );
       return;
@@ -671,7 +671,7 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
             child: const Text('删除'),
           ),
         ],
@@ -700,7 +700,7 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('删除失败: $e'), backgroundColor: Colors.red),
+        SnackBar(content: Text('删除失败: $e'), backgroundColor: AppColors.error),
       );
     } finally {
       if (mounted) {
