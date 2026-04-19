@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/main_scaffold.dart';
 import '../../../../core/storage/hive_service.dart';
 import '../../../sync/infrastructure/bundled_data_loader.dart';
 import '../../../recipe/domain/entities/recipe.dart';
@@ -304,15 +305,17 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('AI 助手'),
+            Text('小厨', style: TextStyle(color: AppColors.textPrimary)),
             const SizedBox(width: 8),
             _buildModelSelector(),
           ],
         ),
+        centerTitle: false,
         actions: [
           _buildWebSearchToggle(),
           IconButton(
@@ -322,26 +325,31 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: _messages.isEmpty
-                ? _buildEmptyState()
-                : _buildMessageList(),
-          ),
-          _buildInputArea(),
-        ],
+      body: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: Column(
+          children: [
+            Expanded(
+              child: _messages.isEmpty
+                  ? _buildEmptyState()
+                  : _buildMessageList(),
+            ),
+            _buildInputArea(),
+          ],
+        ),
       ),
       // MCP 调试悬浮按钮（仅 debug 模式）
       floatingActionButton: kDebugMode && _mcpCallHistory.isNotEmpty
           ? FloatingActionButton(
               onPressed: _showMCPDebugPanel,
               tooltip: 'MCP 调试面板',
-              backgroundColor: Colors.orange,
+              backgroundColor: AppColors.warning,
               child: Badge(
                 label: Text('${_mcpCallHistory.length}'),
-                backgroundColor: Colors.red,
-                textColor: Colors.white,
+                backgroundColor: AppColors.error,
+                textColor: AppColors.surface,
                 child: const Icon(Icons.bug_report),
               ),
             )
@@ -531,10 +539,12 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
 
   /// 构建空状态
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
           Container(
             width: 80,
             height: 80,
@@ -554,14 +564,14 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
               ],
             ),
             child: const Icon(
-              Icons.smart_toy,
-              color: Colors.white,
+              Icons.auto_awesome,
+              color: AppColors.surface,
               size: 40,
             ),
           ),
           const SizedBox(height: 24),
           Text(
-            'AI 智能助手',
+            '小厨',
             style: AppTextStyles.h3,
           ),
           const SizedBox(height: 8),
@@ -595,6 +605,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
             ],
           ),
         ],
+        ),
       ),
     );
   }
@@ -708,7 +719,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.grey[200],
+          color: AppColors.surfaceAlt,
           borderRadius: BorderRadius.circular(16).copyWith(
             topLeft: const Radius.circular(4),
           ),
@@ -739,13 +750,16 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
 
   /// 构建输入区域
   Widget _buildInputArea() {
+    final hasKeyboard = MediaQuery.of(context).viewInsets.bottom > 0;
+    final double extraBottom = hasKeyboard ? 8.0 : 16.0 + kFloatingNavBarHeight;
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.fromLTRB(16, 16, 16, extraBottom),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: AppColors.textPrimary.withValues(alpha: 0.05),
             offset: const Offset(0, -2),
             blurRadius: 8,
           ),
@@ -779,12 +793,12 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                           icon: Container(
                             padding: const EdgeInsets.all(4),
                             decoration: const BoxDecoration(
-                              color: Colors.black54,
+                              color: AppColors.textSecondary,
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(
                               Icons.close,
-                              color: Colors.white,
+                              color: AppColors.surface,
                               size: 16,
                             ),
                           ),
@@ -836,13 +850,13 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                       : const LinearGradient(
                           colors: [Color(0xFFFF6B35), Color(0xFFFF8C61)],
                         ),
-                  color: _isLoading ? Colors.grey[400] : null,
+                  color: _isLoading ? AppColors.textDisabled : null,
                   shape: BoxShape.circle,
                 ),
                 child: IconButton(
                   icon: Icon(
                     _isLoading ? Icons.stop : Icons.send,
-                    color: Colors.white,
+                    color: AppColors.surface,
                   ),
                   tooltip: _isLoading ? '终止' : '发送',
                   onPressed: _isLoading ? _stopStreaming : _sendMessage,
@@ -2053,7 +2067,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
         maxChildSize: 0.95,
         builder: (context, scrollController) => Container(
           decoration: const BoxDecoration(
-            color: Colors.white,
+            color: AppColors.surface,
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: Column(
@@ -2064,7 +2078,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(
-                      color: Colors.grey[300]!,
+                      color: AppColors.divider,
                       width: 1,
                     ),
                   ),
@@ -2107,7 +2121,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                         child: Text(
                           '暂无工具调用记录',
                           style: TextStyle(
-                            color: Colors.grey,
+                            color: AppColors.textDisabled,
                             fontSize: 16,
                           ),
                         ),
@@ -2138,7 +2152,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
       child: ExpansionTile(
         leading: Icon(
           hasError ? Icons.error : Icons.check_circle,
-          color: hasError ? AppColors.error : Colors.green,
+          color: hasError ? AppColors.error : AppColors.success,
         ),
         title: Text(
           call.toolName,
@@ -2150,7 +2164,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
         subtitle: Text(
           '${_formatCallTime(call.timestamp)} · ${call.duration.inMilliseconds}ms',
           style: const TextStyle(
-            color: Colors.grey,
+            color: AppColors.textDisabled,
             fontSize: 12,
           ),
         ),
@@ -2173,7 +2187,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.grey[100],
+                    color: AppColors.surfaceAlt,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: SelectableText(
@@ -2199,7 +2213,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: hasError ? Colors.red[50] : Colors.green[50],
+                    color: hasError ? AppColors.error.withValues(alpha: 0.1) : AppColors.success.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: SelectableText(
@@ -2207,7 +2221,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                     style: TextStyle(
                       fontFamily: 'monospace',
                       fontSize: 12,
-                      color: hasError ? Colors.red[900] : Colors.green[900],
+                      color: hasError ? AppColors.error : AppColors.success,
                     ),
                   ),
                 ),

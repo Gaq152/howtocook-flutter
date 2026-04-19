@@ -76,7 +76,7 @@ class RecipeCardWidget extends StatelessWidget {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.grey[200],
+                            color: AppColors.surfaceAlt,
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -99,8 +99,8 @@ class RecipeCardWidget extends StatelessWidget {
                                   : Icons.star_border,
                               size: 14,
                               color: index < recipe.difficulty
-                                  ? Colors.amber
-                                  : Colors.grey[400],
+                                  ? AppColors.butter
+                                  : AppColors.textDisabled,
                             ),
                           ),
                         ),

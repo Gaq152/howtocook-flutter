@@ -186,14 +186,14 @@ class _MessageBubbleState extends State<MessageBubble> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
-                      color: isUser ? AppColors.primary : Colors.grey[200],
+                      color: isUser ? AppColors.primary : AppColors.surfaceAlt,
                       borderRadius: BorderRadius.circular(16).copyWith(
                         topRight: isUser ? const Radius.circular(4) : null,
                         topLeft: isUser ? null : const Radius.circular(4),
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
+                          color: AppColors.textPrimary.withValues(alpha: 0.05),
                           offset: const Offset(0, 2),
                           blurRadius: 4,
                         ),
@@ -270,18 +270,29 @@ class _MessageBubbleState extends State<MessageBubble> {
 
   /// 构建头像
   Widget _buildAvatar(bool isUser) {
+    if (isUser) {
+      return Container(
+        width: 36,
+        height: 36,
+        decoration: const BoxDecoration(
+          color: AppColors.primary,
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(Icons.person, color: AppColors.surface, size: 20),
+      );
+    }
     return Container(
       width: 36,
       height: 36,
       decoration: BoxDecoration(
-        color: isUser ? AppColors.primary : Colors.grey[300],
         shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.primary, AppColors.plum],
+        ),
       ),
-      child: Icon(
-        isUser ? Icons.person : Icons.smart_toy,
-        color: isUser ? Colors.white : AppColors.textSecondary,
-        size: 20,
-      ),
+      child: const Icon(Icons.auto_awesome, color: AppColors.surface, size: 18),
     );
   }
 
@@ -366,54 +377,54 @@ class _MessageBubbleState extends State<MessageBubble> {
       data: text,
       styleSheet: MarkdownStyleSheet(
         p: TextStyle(
-          color: isUser ? Colors.white : AppColors.textPrimary,
+          color: isUser ? AppColors.surface : AppColors.textPrimary,
           fontSize: 15,
           height: 1.5,
         ),
         code: TextStyle(
           backgroundColor: isUser
-              ? Colors.white.withValues(alpha: 0.2)
-              : Colors.grey[300],
-          color: isUser ? Colors.white : AppColors.textPrimary,
+              ? AppColors.surface.withValues(alpha: 0.2)
+              : AppColors.surfaceAlt,
+          color: isUser ? AppColors.surface : AppColors.textPrimary,
           fontFamily: 'monospace',
         ),
         codeblockDecoration: BoxDecoration(
           color: isUser
-              ? Colors.white.withValues(alpha: 0.1)
-              : Colors.grey[300],
+              ? AppColors.surface.withValues(alpha: 0.1)
+              : AppColors.surfaceAlt,
           borderRadius: BorderRadius.circular(8),
         ),
         h1: TextStyle(
-          color: isUser ? Colors.white : AppColors.textPrimary,
+          color: isUser ? AppColors.surface : AppColors.textPrimary,
           fontSize: 20,
           fontWeight: FontWeight.bold,
         ),
         h2: TextStyle(
-          color: isUser ? Colors.white : AppColors.textPrimary,
+          color: isUser ? AppColors.surface : AppColors.textPrimary,
           fontSize: 18,
           fontWeight: FontWeight.bold,
         ),
         h3: TextStyle(
-          color: isUser ? Colors.white : AppColors.textPrimary,
+          color: isUser ? AppColors.surface : AppColors.textPrimary,
           fontSize: 16,
           fontWeight: FontWeight.bold,
         ),
         listBullet: TextStyle(
-          color: isUser ? Colors.white : AppColors.textPrimary,
+          color: isUser ? AppColors.surface : AppColors.textPrimary,
         ),
         tableBody: TextStyle(
-          color: isUser ? Colors.white : AppColors.textPrimary,
+          color: isUser ? AppColors.surface : AppColors.textPrimary,
         ),
         blockquote: TextStyle(
-          color: isUser ? Colors.white70 : AppColors.textSecondary,
+          color: isUser ? AppColors.surface.withValues(alpha: 0.7) : AppColors.textSecondary,
           fontStyle: FontStyle.italic,
         ),
         strong: TextStyle(
-          color: isUser ? Colors.white : AppColors.textPrimary,
+          color: isUser ? AppColors.surface : AppColors.textPrimary,
           fontWeight: FontWeight.bold,
         ),
         em: TextStyle(
-          color: isUser ? Colors.white : AppColors.textPrimary,
+          color: isUser ? AppColors.surface : AppColors.textPrimary,
           fontStyle: FontStyle.italic,
         ),
       ),
@@ -439,7 +450,7 @@ class _MessageBubbleState extends State<MessageBubble> {
             return Container(
               width: 200,
               height: 150,
-              color: Colors.grey[300],
+              color: AppColors.surfaceAlt,
               child: const Icon(Icons.broken_image, size: 48),
             );
           },
@@ -455,8 +466,8 @@ class _MessageBubbleState extends State<MessageBubble> {
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: isUser
-            ? Colors.white.withValues(alpha: 0.1)
-            : Colors.grey[300],
+            ? AppColors.surface.withValues(alpha: 0.1)
+            : AppColors.surfaceAlt,
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(
@@ -465,13 +476,13 @@ class _MessageBubbleState extends State<MessageBubble> {
           Icon(
             Icons.settings,
             size: 16,
-            color: isUser ? Colors.white70 : AppColors.textSecondary,
+            color: isUser ? AppColors.surface.withValues(alpha: 0.7) : AppColors.textSecondary,
           ),
           const SizedBox(width: 4),
           Text(
             '调用工具: $toolName',
             style: TextStyle(
-              color: isUser ? Colors.white70 : AppColors.textSecondary,
+              color: isUser ? AppColors.surface.withValues(alpha: 0.7) : AppColors.textSecondary,
               fontSize: 12,
             ),
           ),
@@ -487,14 +498,14 @@ class _MessageBubbleState extends State<MessageBubble> {
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: isUser
-            ? Colors.white.withValues(alpha: 0.1)
-            : Colors.grey[300],
+            ? AppColors.surface.withValues(alpha: 0.1)
+            : AppColors.surfaceAlt,
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         '工具结果: ${result.toString()}',
         style: TextStyle(
-          color: isUser ? Colors.white70 : AppColors.textSecondary,
+          color: isUser ? AppColors.surface.withValues(alpha: 0.7) : AppColors.textSecondary,
           fontSize: 12,
         ),
       ),
@@ -526,9 +537,9 @@ class _MessageBubbleState extends State<MessageBubble> {
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.orange[50],
+              color: AppColors.warning.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.orange.shade200),
+              border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -536,13 +547,13 @@ class _MessageBubbleState extends State<MessageBubble> {
                 // 标题行（可点击展开/收起）
                 Row(
                   children: [
-                    Icon(Icons.psychology, size: 16, color: Colors.orange[700]),
+                    Icon(Icons.psychology, size: 16, color: AppColors.warning),
                     const SizedBox(width: 4),
                     Text(
                       '💭 思考过程',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Colors.orange[700],
+                        color: AppColors.warning,
                         fontSize: 14,
                       ),
                     ),
@@ -550,7 +561,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                     Icon(
                       _isReasoningExpanded ? Icons.expand_less : Icons.expand_more,
                       size: 20,
-                      color: Colors.orange[700],
+                      color: AppColors.warning,
                     ),
                   ],
                 ),
@@ -562,7 +573,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                     reasoningText,
                     style: const TextStyle(
                       fontSize: 13,
-                      color: Colors.black87,
+                      color: AppColors.textPrimary,
                       height: 1.5,
                     ),
                   ),
@@ -575,7 +586,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                         : reasoningText,
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.orange[800],
+                      color: AppColors.warning,
                       height: 1.4,
                     ),
                     maxLines: 1,
