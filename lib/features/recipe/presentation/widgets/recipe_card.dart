@@ -6,6 +6,7 @@ import '../../application/providers/recipe_providers.dart';
 import '../../infrastructure/services/recipe_share_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/app_snack_bar.dart';
 import '../../../../core/widgets/cached_recipe_image.dart';
 
 /// Provider for RecipeShareService
@@ -251,14 +252,10 @@ class RecipeCard extends ConsumerWidget {
           break;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      AppSnackBar.show(context, message);
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('分享失败: $e')),
-        );
+        AppSnackBar.show(context, '分享失败: $e');
       }
     }
   }
@@ -284,14 +281,10 @@ class RecipeCard extends ConsumerWidget {
           break;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      AppSnackBar.show(context, message);
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('分享失败: $e')),
-        );
+        AppSnackBar.show(context, '分享失败: $e');
       }
     }
   }
@@ -313,11 +306,10 @@ class RecipeCard extends ConsumerWidget {
       final message = recipe.source == RecipeSource.bundled
           ? '【${recipe.name}】为内置菜谱，无法删除'
           : '【${recipe.name}】暂不支持删除';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: AppColors.warning,
-        ),
+      AppSnackBar.show(
+        context,
+        message,
+        backgroundColor: AppColors.warning,
       );
       return;
     }
@@ -358,16 +350,13 @@ class RecipeCard extends ConsumerWidget {
 
       if (!context.mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('已删除「${recipe.name}」')),
-      );
+      AppSnackBar.show(context, '已删除「${recipe.name}」');
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('删除失败: $e'),
-            backgroundColor: AppColors.error,
-          ),
+        AppSnackBar.show(
+          context,
+          '删除失败: $e',
+          backgroundColor: AppColors.error,
         );
       }
     }

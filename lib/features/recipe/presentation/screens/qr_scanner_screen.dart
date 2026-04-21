@@ -26,6 +26,8 @@ import '../../../tips/domain/entities/tip.dart';
 
 import '../../../../core/theme/app_colors.dart';
 
+import '../../../../core/widgets/app_snack_bar.dart';
+
 import '../../../../core/theme/app_text_styles.dart';
 
 /// 二维码扫描页面
@@ -308,14 +310,11 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
         debugPrint('ℹ️ WeChatQRCode 未找到二维码');
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('未在图片中找到二维码\n请确保图片清晰且二维码完整'),
-
-              backgroundColor: AppColors.warning,
-
-              duration: Duration(seconds: 3),
-            ),
+          AppSnackBar.show(
+            context,
+            '未在图片中找到二维码\n请确保图片清晰且二维码完整',
+            backgroundColor: AppColors.warning,
+            duration: const Duration(seconds: 3),
           );
         }
 
@@ -335,12 +334,10 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
       debugPrint('堆栈: $stackTrace');
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('扫描图片失败: $e'),
-
-            backgroundColor: AppColors.error,
-          ),
+        AppSnackBar.show(
+          context,
+          '扫描图片失败: $e',
+          backgroundColor: AppColors.error,
         );
       }
     } finally {
@@ -431,8 +428,10 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
       debugPrint('解析二维码失败: $e');
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('解析失败: $e'), backgroundColor: AppColors.error),
+        AppSnackBar.show(
+          context,
+          '解析失败: $e',
+          backgroundColor: AppColors.error,
         );
       }
 
@@ -456,12 +455,10 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
 
       if (tip == null) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('无法解析教程二维码'),
-
-              backgroundColor: AppColors.error,
-            ),
+          AppSnackBar.show(
+            context,
+            '无法解析教程二维码',
+            backgroundColor: AppColors.error,
           );
 
           setState(() => _isProcessing = false);
@@ -495,12 +492,10 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
       debugPrint('处理教程二维码失败: $e');
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('解析教程失败: $e'),
-
-            backgroundColor: AppColors.error,
-          ),
+        AppSnackBar.show(
+          context,
+          '解析教程失败: $e',
+          backgroundColor: AppColors.error,
         );
 
         setState(() => _isProcessing = false);

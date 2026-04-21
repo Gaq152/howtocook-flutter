@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:howtocook/core/services/data_sync_service.dart';
 import 'package:howtocook/core/services/image_download_manager.dart';
+import 'package:howtocook/core/widgets/app_snack_bar.dart';
 
 /// 数据同步控制组件
 class DataSyncWidget extends ConsumerStatefulWidget {
@@ -268,9 +269,7 @@ class _DataSyncWidgetState extends ConsumerState<DataSyncWidget> {
               ref.read(dataSyncServiceProvider.notifier).clearLocalData();
               ref.read(imageDownloadManagerProvider.notifier).clearCache();
               Navigator.of(context).pop();
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('缓存已清理')));
+              AppSnackBar.show(context, '缓存已清理');
             },
             child: const Text('确定'),
           ),

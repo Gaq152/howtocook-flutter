@@ -5,6 +5,7 @@ import 'package:html_unescape/html_unescape.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/app_snack_bar.dart';
 import '../../../../core/widgets/linkable_text.dart';
 import '../../application/providers/tip_providers.dart';
 import '../../domain/entities/tip.dart';
@@ -135,16 +136,20 @@ class TipDetailScreen extends ConsumerWidget {
       }
 
       final message = tip.isFavorite ? '已取消收藏' : '已收藏';
-      ScaffoldMessenger.of(
+      AppSnackBar.show(
         context,
-      ).showSnackBar(SnackBar(content: Text('$message「${tip.title}」')));
+        '$message「${tip.title}」',
+        bottomOffset: AppSnackBar.kDetailBottomOffset,
+      );
     } catch (e) {
       if (!context.mounted) {
         return;
       }
-      ScaffoldMessenger.of(
+      AppSnackBar.show(
         context,
-      ).showSnackBar(SnackBar(content: Text('操作失败: $e')));
+        '操作失败: $e',
+        bottomOffset: AppSnackBar.kDetailBottomOffset,
+      );
     }
   }
 
@@ -154,11 +159,11 @@ class TipDetailScreen extends ConsumerWidget {
     Tip tip,
   ) async {
     if (tip.source == TipSource.bundled) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('【${tip.title}】为内置教程，无法删除'),
-          backgroundColor: AppColors.warning,
-        ),
+      AppSnackBar.show(
+        context,
+        '【${tip.title}】为内置教程，无法删除',
+        backgroundColor: AppColors.warning,
+        bottomOffset: AppSnackBar.kDetailBottomOffset,
       );
       return;
     }
@@ -197,17 +202,21 @@ class TipDetailScreen extends ConsumerWidget {
         return;
       }
 
-      ScaffoldMessenger.of(
+      AppSnackBar.show(
         context,
-      ).showSnackBar(SnackBar(content: Text('已删除「${tip.title}」')));
+        '已删除「${tip.title}」',
+        bottomOffset: AppSnackBar.kDetailBottomOffset,
+      );
       Navigator.of(context).pop();
     } catch (e) {
       if (!context.mounted) {
         return;
       }
-      ScaffoldMessenger.of(
+      AppSnackBar.show(
         context,
-      ).showSnackBar(SnackBar(content: Text('删除失败: $e')));
+        '删除失败: $e',
+        bottomOffset: AppSnackBar.kDetailBottomOffset,
+      );
     }
   }
 

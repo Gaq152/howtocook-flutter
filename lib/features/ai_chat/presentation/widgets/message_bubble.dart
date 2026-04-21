@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/app_snack_bar.dart';
 import '../../../recipe/domain/entities/recipe.dart';
 import '../../domain/entities/chat_message.dart';
 import '../../infrastructure/services/recipe_recognizer.dart';
@@ -313,8 +314,11 @@ class _MessageBubbleState extends State<MessageBubble> {
                   widget.onCopy!();
                 } else {
                   Clipboard.setData(ClipboardData(text: textContent));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('已复制'), duration: Duration(seconds: 1)),
+                  AppSnackBar.show(
+                    context,
+                    '已复制',
+                    duration: const Duration(seconds: 1),
+                    bottomOffset: AppSnackBar.kChatBottomOffset,
                   );
                 }
               },

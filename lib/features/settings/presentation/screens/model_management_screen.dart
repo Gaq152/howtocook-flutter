@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/app_snack_bar.dart';
 import '../../../ai_chat/application/providers/ai_providers.dart';
 import '../../../ai_chat/domain/entities/ai_model_config.dart';
 import '../../../ai_chat/infrastructure/services/model_capability_database.dart';
@@ -302,9 +303,7 @@ class _ModelManagementScreenState
     );
 
     if (result == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(model == null ? '模型已添加' : '模型已更新')),
-      );
+      AppSnackBar.show(context, model == null ? '模型已添加' : '模型已更新');
     }
   }
 
@@ -335,15 +334,11 @@ class _ModelManagementScreenState
     try {
       await ref.read(availableModelsProvider.notifier).deleteUserModel(model.id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('已删除 ${model.displayName}')),
-        );
+        AppSnackBar.show(context, '已删除 ${model.displayName}');
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('删除失败：$error')),
-        );
+        AppSnackBar.show(context, '删除失败：$error');
       }
     } finally {
       if (mounted) {
@@ -777,9 +772,7 @@ class _ModelFormSheetState extends ConsumerState<ModelFormSheet> {
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('保存失败：$error')),
-        );
+        AppSnackBar.show(context, '保存失败：$error');
       }
     } finally {
       if (mounted) {
@@ -921,9 +914,7 @@ class _ModelFormSheetState extends ConsumerState<ModelFormSheet> {
     final (isQuickValid, quickMessage) = ModelValidator.quickValidate(config);
     if (!isQuickValid) {
       if (quickMessage != null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(quickMessage)),
-        );
+        AppSnackBar.show(context, quickMessage);
       }
       return;
     }

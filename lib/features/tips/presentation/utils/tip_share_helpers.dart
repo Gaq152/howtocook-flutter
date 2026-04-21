@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/app_snack_bar.dart';
 import '../../application/providers/tip_providers.dart';
 import '../../domain/entities/tip.dart';
 import '../../infrastructure/services/tip_share_service.dart';
@@ -95,7 +96,11 @@ Future<void> _handleShareImage({
   }
 
   if (imageBytes == null) {
-    messenger.showSnackBar(const SnackBar(content: Text('生成分享图片失败，请稍后重试')));
+    AppSnackBar.showWithMessenger(
+      messenger,
+      '生成分享图片失败，请稍后重试',
+      bottomOffset: AppSnackBar.kDetailBottomOffset,
+    );
     return;
   }
 
@@ -127,10 +132,18 @@ void _showShareResult(
 }) {
   switch (result) {
     case TipShareResult.success:
-      messenger.showSnackBar(SnackBar(content: Text(successMessage)));
+      AppSnackBar.showWithMessenger(
+        messenger,
+        successMessage,
+        bottomOffset: AppSnackBar.kDetailBottomOffset,
+      );
       break;
     case TipShareResult.failed:
-      messenger.showSnackBar(const SnackBar(content: Text('操作失败，请稍后重试')));
+      AppSnackBar.showWithMessenger(
+        messenger,
+        '操作失败，请稍后重试',
+        bottomOffset: AppSnackBar.kDetailBottomOffset,
+      );
       break;
     case TipShareResult.cancelled:
       break;

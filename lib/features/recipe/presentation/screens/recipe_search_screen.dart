@@ -5,6 +5,7 @@ import '../../domain/entities/recipe.dart';
 import '../../infrastructure/services/search_history_service.dart';
 import '../widgets/recipe_card.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/app_snack_bar.dart';
 
 /// 搜索关键词状态 Provider
 final searchQueryProvider = StateProvider<String>((ref) => '');
@@ -115,9 +116,7 @@ class _RecipeSearchScreenState extends ConsumerState<RecipeSearchScreen> {
       ref.invalidate(searchHistoryProvider);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已清空搜索历史')),
-        );
+        AppSnackBar.show(context, '已清空搜索历史');
       }
     }
   }

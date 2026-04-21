@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:howtocook/features/settings/domain/models/sync_item_state.dart';
 import 'package:howtocook/core/services/data_sync_service.dart';
 import 'package:howtocook/core/services/image_download_manager.dart';
+import 'package:howtocook/core/widgets/app_snack_bar.dart';
 
 /// 现代化数据同步控制组件
 class ModernDataSyncWidget extends ConsumerStatefulWidget {
@@ -999,9 +1000,7 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
               _calculateStorageSize();
 
               Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('缓存已清理')),
-              );
+              AppSnackBar.show(context, '缓存已清理');
             },
             child: const Text('确定'),
           ),

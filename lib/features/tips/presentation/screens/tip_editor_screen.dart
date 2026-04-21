@@ -12,6 +12,7 @@ import 'package:html_unescape/html_unescape.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/app_snack_bar.dart';
 import '../../../recipe/application/providers/recipe_providers.dart'
     show manifestProvider;
 import '../../application/providers/tip_providers.dart';
@@ -257,9 +258,7 @@ class _TipEditorScreenState extends ConsumerState<TipEditorScreen> {
 
     final selectedCategory = _selectedCategory;
     if (selectedCategory == null || selectedCategory.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请选择分类')));
+      AppSnackBar.show(context, '请选择分类');
       return;
     }
 
@@ -361,16 +360,12 @@ class _TipEditorScreenState extends ConsumerState<TipEditorScreen> {
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('教程已保存')));
+        AppSnackBar.show(context, '教程已保存');
         context.pop(tip);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('保存失败: $e')));
+        AppSnackBar.show(context, '保存失败: $e');
       }
     }
   }
@@ -477,9 +472,7 @@ class _TipEditorScreenState extends ConsumerState<TipEditorScreen> {
 
     final text = data?.text;
     if (text == null || text.trim().isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('剪贴板中没有可用的文本')));
+      AppSnackBar.show(context, '剪贴板中没有可用的文本');
       return;
     }
 
@@ -501,15 +494,11 @@ class _TipEditorScreenState extends ConsumerState<TipEditorScreen> {
         _parseInputController.clear();
       });
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('解析完成，已填充表单')));
+        AppSnackBar.show(context, '解析完成，已填充表单');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('解析失败: $e')));
+        AppSnackBar.show(context, '解析失败: $e');
       }
     } finally {
       if (mounted) {

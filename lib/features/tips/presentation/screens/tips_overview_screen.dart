@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/app_snack_bar.dart';
 import '../../../recipe/application/providers/recipe_providers.dart'
     show manifestProvider;
 import '../../application/providers/tip_providers.dart';
@@ -261,14 +262,10 @@ class _TipListTile extends ConsumerWidget {
       if (!context.mounted) return;
 
       final message = tip.isFavorite ? '已取消收藏' : '已收藏';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$message「${tip.title}」')),
-      );
+      AppSnackBar.show(context, '$message「${tip.title}」');
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('操作失败: $e')),
-        );
+        AppSnackBar.show(context, '操作失败: $e');
       }
     }
   }
@@ -281,11 +278,10 @@ class _TipListTile extends ConsumerWidget {
   /// 确认删除教程
   Future<void> _confirmDeleteTip(BuildContext context, WidgetRef ref) async {
     if (!_canDeleteTip(tip)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('【${tip.title}】为内置教程，无法删除'),
-          backgroundColor: AppColors.warning,
-        ),
+      AppSnackBar.show(
+        context,
+        '【${tip.title}】为内置教程，无法删除',
+        backgroundColor: AppColors.warning,
       );
       return;
     }
@@ -326,16 +322,13 @@ class _TipListTile extends ConsumerWidget {
 
       if (!context.mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('已删除「${tip.title}」')),
-      );
+      AppSnackBar.show(context, '已删除「${tip.title}」');
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('删除失败: $e'),
-            backgroundColor: AppColors.error,
-          ),
+        AppSnackBar.show(
+          context,
+          '删除失败: $e',
+          backgroundColor: AppColors.error,
         );
       }
     }

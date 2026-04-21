@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/app_snack_bar.dart';
 import '../../../../core/widgets/main_scaffold.dart';
 import '../../../../core/storage/hive_service.dart';
 import '../../../sync/infrastructure/bundled_data_loader.dart';
@@ -527,11 +528,11 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
         });
         _saveSetting('enable_web_search', _enableWebSearch);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_enableWebSearch ? '已开启联网搜索' : '已关闭联网搜索'),
-            duration: const Duration(seconds: 1),
-          ),
+        AppSnackBar.show(
+          context,
+          _enableWebSearch ? '已开启联网搜索' : '已关闭联网搜索',
+          duration: const Duration(seconds: 1),
+          bottomOffset: AppSnackBar.kChatBottomOffset,
         );
       },
     );
@@ -682,8 +683,10 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
               _messages.removeAt(index);
             });
             _saveChatHistory();
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('消息已删除')),
+            AppSnackBar.show(
+              context,
+              '消息已删除',
+              bottomOffset: AppSnackBar.kChatBottomOffset,
             );
           },
           onRetry: message.role == MessageRole.assistant
@@ -886,8 +889,10 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('选择图片失败: $e')),
+        AppSnackBar.show(
+          context,
+          '选择图片失败: $e',
+          bottomOffset: AppSnackBar.kChatBottomOffset,
         );
       }
     }
@@ -1468,8 +1473,10 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
       _saveChatHistory();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('发送失败: $e')),
+        AppSnackBar.show(
+          context,
+          '发送失败: $e',
+          bottomOffset: AppSnackBar.kChatBottomOffset,
         );
       }
     }
@@ -2041,8 +2048,10 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
               _saveChatHistory();
               Navigator.pop(context);
 
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('聊天记录已清空')),
+              AppSnackBar.show(
+                context,
+                '聊天记录已清空',
+                bottomOffset: AppSnackBar.kChatBottomOffset,
               );
             },
             child: Text(

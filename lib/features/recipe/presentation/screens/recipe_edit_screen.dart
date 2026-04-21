@@ -11,6 +11,7 @@ import '../../domain/entities/recipe.dart';
 import '../../application/providers/recipe_providers.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/app_snack_bar.dart';
 
 /// 菜谱编辑页面
 ///
@@ -107,9 +108,7 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('加载失败: $e')),
-        );
+        AppSnackBar.show(context, '加载失败: $e');
       }
     }
   }
@@ -811,11 +810,10 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
         Navigator.of(context).pop(); // 关闭加载对话框
 
         // 显示成功提示
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('图片添加成功 ($originalSizeKB KB → $compressedSizeKB KB)'),
-            duration: const Duration(seconds: 2),
-          ),
+        AppSnackBar.show(
+          context,
+          '图片添加成功 ($originalSizeKB KB → $compressedSizeKB KB)',
+          duration: const Duration(seconds: 2),
         );
       }
     } catch (e) {
@@ -824,9 +822,7 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
         if (Navigator.of(context).canPop()) {
           Navigator.of(context).pop(); // 关闭加载对话框
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('选择图片失败: $e')),
-        );
+        AppSnackBar.show(context, '选择图片失败: $e');
       }
     }
   }
@@ -893,16 +889,12 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
     }
 
     if (_ingredientTexts.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请至少添加一个食材')),
-      );
+      AppSnackBar.show(context, '请至少添加一个食材');
       return;
     }
 
     if (_stepDescriptions.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请至少添加一个制作步骤')),
-      );
+      AppSnackBar.show(context, '请至少添加一个制作步骤');
       return;
     }
 
@@ -941,16 +933,12 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
       ref.invalidate(allRecipesProvider);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('保存成功')),
-        );
+        AppSnackBar.show(context, '保存成功');
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('保存失败: $e')),
-        );
+        AppSnackBar.show(context, '保存失败: $e');
       }
     } finally {
       if (mounted) {
@@ -979,9 +967,7 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
     });
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('已重置到原始内容')),
-      );
+      AppSnackBar.show(context, '已重置到原始内容');
     }
   }
 
@@ -1034,9 +1020,7 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
     if (confirmed == true) {
       setState(() => list.clear());
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('已清空所有$listName')),
-        );
+        AppSnackBar.show(context, '已清空所有$listName');
       }
     }
   }

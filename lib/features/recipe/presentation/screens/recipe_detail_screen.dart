@@ -17,6 +17,7 @@ import '../../domain/entities/recipe.dart';
 import '../../infrastructure/services/recipe_share_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/app_snack_bar.dart';
 import '../../../../core/widgets/linkable_text.dart';
 import '../../../../core/widgets/cached_recipe_image.dart';
 
@@ -603,8 +604,11 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
       final message = recipe.source == RecipeSource.bundled
           ? '【${recipe.name}】为内置菜谱，无法删除'
           : '【${recipe.name}】暂不支持删除';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: AppColors.warning),
+      AppSnackBar.show(
+        context,
+        message,
+        backgroundColor: AppColors.warning,
+        bottomOffset: AppSnackBar.kDetailBottomOffset,
       );
       return;
     }
@@ -646,14 +650,19 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
         ..invalidate(recipeByIdProvider(recipe.id));
 
       if (!mounted) return;
-      ScaffoldMessenger.of(
+      AppSnackBar.show(
         context,
-      ).showSnackBar(SnackBar(content: Text('已删除「${recipe.name}」')));
+        '已删除「${recipe.name}」',
+        bottomOffset: AppSnackBar.kDetailBottomOffset,
+      );
       Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('删除失败: $e'), backgroundColor: AppColors.error),
+        AppSnackBar.show(
+          context,
+          '删除失败: $e',
+          backgroundColor: AppColors.error,
+          bottomOffset: AppSnackBar.kDetailBottomOffset,
         );
       }
     } finally {
@@ -993,17 +1002,20 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
       ref.invalidate(recipeByIdProvider(recipeId));
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('收藏状态已更新'),
-            duration: Duration(seconds: 1),
-          ),
+        AppSnackBar.show(
+          context,
+          '收藏状态已更新',
+          duration: const Duration(seconds: 1),
+          bottomOffset: AppSnackBar.kDetailBottomOffset,
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('操作失败: $e'), backgroundColor: AppColors.error),
+        AppSnackBar.show(
+          context,
+          '操作失败: $e',
+          backgroundColor: AppColors.error,
+          bottomOffset: AppSnackBar.kDetailBottomOffset,
         );
       }
     }
@@ -1061,17 +1073,20 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
 
       if (mounted) {
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('备注已保存'),
-            duration: Duration(seconds: 1),
-          ),
+        AppSnackBar.show(
+          context,
+          '备注已保存',
+          duration: const Duration(seconds: 1),
+          bottomOffset: AppSnackBar.kDetailBottomOffset,
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('保存失败: $e'), backgroundColor: AppColors.error),
+        AppSnackBar.show(
+          context,
+          '保存失败: $e',
+          backgroundColor: AppColors.error,
+          bottomOffset: AppSnackBar.kDetailBottomOffset,
         );
       }
     }
@@ -1188,12 +1203,12 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
 
     // 处理错误情况
     if (hasError || imageBytes == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('生成图片失败: ${errorMessage ?? "未知错误"}'),
-          backgroundColor: AppColors.error,
-          duration: const Duration(seconds: 3),
-        ),
+      AppSnackBar.show(
+        context,
+        '生成图片失败: ${errorMessage ?? "未知错误"}',
+        backgroundColor: AppColors.error,
+        duration: const Duration(seconds: 3),
+        bottomOffset: AppSnackBar.kDetailBottomOffset,
       );
       return;
     }
@@ -1222,18 +1237,21 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ 图片已保存到相册'),
-            backgroundColor: AppColors.success,
-            duration: Duration(seconds: 2),
-          ),
+        AppSnackBar.show(
+          context,
+          '✅ 图片已保存到相册',
+          backgroundColor: AppColors.success,
+          duration: const Duration(seconds: 2),
+          bottomOffset: AppSnackBar.kDetailBottomOffset,
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('保存失败: $e'), backgroundColor: AppColors.error),
+        AppSnackBar.show(
+          context,
+          '保存失败: $e',
+          backgroundColor: AppColors.error,
+          bottomOffset: AppSnackBar.kDetailBottomOffset,
         );
       }
     }
@@ -1258,8 +1276,11 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('分享失败: $e'), backgroundColor: AppColors.error),
+        AppSnackBar.show(
+          context,
+          '分享失败: $e',
+          backgroundColor: AppColors.error,
+          bottomOffset: AppSnackBar.kDetailBottomOffset,
         );
       }
     }
@@ -1276,20 +1297,20 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
 
       switch (result) {
         case RecipeShareResult.success:
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('✅ 已复制到剪贴板'),
-              duration: Duration(seconds: 2),
-              backgroundColor: AppColors.success,
-            ),
+          AppSnackBar.show(
+            context,
+            '✅ 已复制到剪贴板',
+            duration: const Duration(seconds: 2),
+            backgroundColor: AppColors.success,
+            bottomOffset: AppSnackBar.kDetailBottomOffset,
           );
           break;
         case RecipeShareResult.failed:
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('❌ 复制失败，请重试'),
-              backgroundColor: AppColors.error,
-            ),
+          AppSnackBar.show(
+            context,
+            '❌ 复制失败，请重试',
+            backgroundColor: AppColors.error,
+            bottomOffset: AppSnackBar.kDetailBottomOffset,
           );
           break;
         case RecipeShareResult.cancelled:
@@ -1297,8 +1318,11 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('分享失败: $e'), backgroundColor: AppColors.error),
+        AppSnackBar.show(
+          context,
+          '分享失败: $e',
+          backgroundColor: AppColors.error,
+          bottomOffset: AppSnackBar.kDetailBottomOffset,
         );
       }
     }
@@ -1309,24 +1333,24 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   Future<void> _shareAsImage(Recipe recipe, {bool saveOnly = false}) async {
     // 显示加载提示
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppColors.surface,
-                ),
+      AppSnackBar.showCustom(
+        context,
+        content: Row(
+          children: [
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.surface,
               ),
-              const SizedBox(width: 12),
-              Text(saveOnly ? '正在生成并保存图片...' : '正在生成图片...'),
-            ],
-          ),
-          duration: const Duration(seconds: 10), // 较长的持续时间
+            ),
+            const SizedBox(width: 12),
+            Text(saveOnly ? '正在生成并保存图片...' : '正在生成图片...'),
+          ],
         ),
+        duration: const Duration(seconds: 10), // 较长的持续时间
+        bottomOffset: AppSnackBar.kDetailBottomOffset,
       );
     }
 
@@ -1346,41 +1370,44 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
 
       switch (result) {
         case RecipeShareResult.success:
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(saveOnly ? '✅ 图片已保存到相册' : '✅ 分享成功'),
-              duration: const Duration(seconds: 2),
-              backgroundColor: AppColors.success,
-            ),
+          AppSnackBar.show(
+            context,
+            saveOnly ? '✅ 图片已保存到相册' : '✅ 分享成功',
+            duration: const Duration(seconds: 2),
+            backgroundColor: AppColors.success,
+            bottomOffset: AppSnackBar.kDetailBottomOffset,
           );
           break;
         case RecipeShareResult.failed:
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(saveOnly ? '❌ 保存失败，请检查相册权限' : '❌ 分享失败，请重试'),
-              backgroundColor: AppColors.error,
-              action: SnackBarAction(
-                label: '重试',
-                textColor: AppColors.surface,
-                onPressed: () => _shareAsImage(recipe, saveOnly: saveOnly),
-              ),
+          AppSnackBar.show(
+            context,
+            saveOnly ? '❌ 保存失败，请检查相册权限' : '❌ 分享失败，请重试',
+            backgroundColor: AppColors.error,
+            action: SnackBarAction(
+              label: '重试',
+              textColor: AppColors.surface,
+              onPressed: () => _shareAsImage(recipe, saveOnly: saveOnly),
             ),
+            bottomOffset: AppSnackBar.kDetailBottomOffset,
           );
           break;
         case RecipeShareResult.cancelled:
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('已取消分享'),
-              duration: Duration(seconds: 1),
-            ),
+          AppSnackBar.show(
+            context,
+            '已取消分享',
+            duration: const Duration(seconds: 1),
+            bottomOffset: AppSnackBar.kDetailBottomOffset,
           );
           break;
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('操作失败: $e'), backgroundColor: AppColors.error),
+        AppSnackBar.show(
+          context,
+          '操作失败: $e',
+          backgroundColor: AppColors.error,
+          bottomOffset: AppSnackBar.kDetailBottomOffset,
         );
       }
     }

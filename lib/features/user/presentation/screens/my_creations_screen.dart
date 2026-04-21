@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/app_snack_bar.dart';
 import '../../../recipe/application/providers/recipe_providers.dart';
 import '../../../recipe/domain/entities/recipe.dart';
 import '../../../recipe/infrastructure/services/recipe_share_service.dart';
@@ -480,9 +481,7 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
           break;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
+      AppSnackBar.show(context, message);
       return;
     }
 
@@ -502,9 +501,7 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
         break;
     }
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    AppSnackBar.show(context, message);
   }
 
   Future<void> _showTipShareOptions(BuildContext context, Tip tip) async {
@@ -551,9 +548,7 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
           break;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
+      AppSnackBar.show(context, message);
       return;
     }
 
@@ -573,9 +568,7 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
         break;
     }
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    AppSnackBar.show(context, message);
   }
 
   bool _canDeleteRecipe(Recipe recipe) {
@@ -591,11 +584,10 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
 
   Future<void> _confirmDeleteRecipe(Recipe recipe) async {
     if (!_canDeleteRecipe(recipe)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('【${recipe.name}】为内置菜谱，无法删除'),
-          backgroundColor: AppColors.warning,
-        ),
+      AppSnackBar.show(
+        context,
+        '【${recipe.name}】为内置菜谱，无法删除',
+        backgroundColor: AppColors.warning,
       );
       return;
     }
@@ -633,13 +625,13 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
       ref.invalidate(allRecipesProvider);
 
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('已删除「${recipe.name}」')));
+      AppSnackBar.show(context, '已删除「${recipe.name}」');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('删除失败: $e'), backgroundColor: AppColors.error),
+      AppSnackBar.show(
+        context,
+        '删除失败: $e',
+        backgroundColor: AppColors.error,
       );
     } finally {
       if (mounted) {
@@ -650,11 +642,10 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
 
   Future<void> _confirmDeleteTip(Tip tip) async {
     if (!_canDeleteTip(tip)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('【${tip.title}】为内置教程，无法删除'),
-          backgroundColor: AppColors.warning,
-        ),
+      AppSnackBar.show(
+        context,
+        '【${tip.title}】为内置教程，无法删除',
+        backgroundColor: AppColors.warning,
       );
       return;
     }
@@ -694,13 +685,13 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
         ..invalidate(tipsByCategoryProvider(tip.category));
 
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('已删除「${tip.title}」')));
+      AppSnackBar.show(context, '已删除「${tip.title}」');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('删除失败: $e'), backgroundColor: AppColors.error),
+      AppSnackBar.show(
+        context,
+        '删除失败: $e',
+        backgroundColor: AppColors.error,
       );
     } finally {
       if (mounted) {
