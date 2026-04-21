@@ -17,6 +17,7 @@ import '../../features/user/presentation/screens/user_screen.dart';
 import '../../features/settings/presentation/screens/data_sync_screen.dart';
 import '../../features/settings/presentation/screens/model_management_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
+import '../../features/settings/presentation/screens/about_screen.dart';
 import '../../features/tips/presentation/screens/tip_detail_screen.dart';
 import '../../features/tips/presentation/screens/tip_editor_screen.dart';
 import '../../features/tips/presentation/screens/tip_preview_screen.dart';
@@ -145,6 +146,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'settings',
         builder: (context, state) {
           return const SettingsScreen();
+        },
+      ),
+
+      // 关于
+      GoRoute(
+        path: '/about',
+        name: 'about',
+        builder: (context, state) {
+          return const AboutScreen();
         },
       ),
 

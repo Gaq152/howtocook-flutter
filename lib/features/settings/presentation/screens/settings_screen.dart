@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/services/update_service.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_snack_bar.dart';
 import '../widgets/update_dialog.dart';
 
@@ -54,85 +51,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
-  Future<void> _showChangelog() async {
-    setState(() => _checking = true);
-    try {
-      final service = ref.read(updateServiceProvider);
-      final result = await service.checkForUpdate(respectSkippedVersion: false);
-      if (!mounted) return;
-      final notes = result.info?.notes.trim() ?? '';
-      final versionName = result.info?.versionName ?? _pkg?.version ?? '--';
-      showDialog<void>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('更新日志 v$versionName'),
-          content: ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 400, maxWidth: 380),
-            child: notes.isEmpty
-                ? const Text('暂无更新日志')
-                : Scrollbar(
-                    child: SingleChildScrollView(
-                      child: MarkdownBody(
-                        data: notes,
-                        selectable: true,
-                        onTapLink: (text, href, title) {
-                          if (href == null) return;
-                          final uri = Uri.tryParse(href);
-                          if (uri != null) launchUrl(uri, mode: LaunchMode.externalApplication);
-                        },
-                      ),
-                    ),
-                  ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('关闭'),
-            ),
-          ],
-        ),
-      );
-    } catch (e) {
-      if (mounted) _showSnack('获取更新日志失败：$e');
-    } finally {
-      if (mounted) setState(() => _checking = false);
-    }
-  }
-
-  void _showSnack(String msg) {
-    AppSnackBar.show(context, msg);
-  }
-
-  Future<void> _openRepo() async {
-    final uri = Uri.parse('https://github.com/Gaq152/howtocook-flutter');
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      if (mounted) _showSnack('无法打开浏览器');
-    }
-  }
-
-  void _showAbout() {
-    showAboutDialog(
-      context: context,
-      applicationName: '智能菜谱助手',
-      applicationVersion: _pkg == null
-          ? '--'
-          : '${_pkg!.version} (build ${_pkg!.buildNumber})',
-      applicationLegalese: '基于 Flutter 构建',
-      children: [
-        const SizedBox(height: 12),
-        InkWell(
-          onTap: _openRepo,
-          child: const Text(
-            'github.com/Gaq152/howtocook-flutter',
-            style: TextStyle(
-              color: AppColors.primary,
-              decoration: TextDecoration.underline,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  void _showSnack(String msg) => AppSnackBar.show(context, msg);
 
   @override
   Widget build(BuildContext context) {
@@ -177,24 +96,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onTap: _checking ? null : _checkUpdate,
           ),
           ListTile(
-            leading: const Icon(Icons.history_outlined),
-            title: const Text('更新日志'),
-            subtitle: const Text('查看当前版本的更新内容'),
-            trailing: _checking
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.chevron_right),
-            onTap: _checking ? null : _showChangelog,
-          ),
-          ListTile(
             leading: const Icon(Icons.info_outline),
             title: const Text('关于'),
             subtitle: const Text('版本信息与开源仓库'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: _showAbout,
+            onTap: () => context.push('/about'),
           ),
         ],
       ),
