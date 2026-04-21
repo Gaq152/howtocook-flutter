@@ -16,6 +16,8 @@ class CachedRecipeImage extends ConsumerWidget {
   final BorderRadius? borderRadius;
   final Widget? placeholder;
   final Widget? errorWidget;
+  // 封面图降级时使用的 recipeId（去掉分类前缀后的短 ID）
+  final String? _fallbackRecipeId;
 
   const CachedRecipeImage.cover({
     super.key,
@@ -28,7 +30,8 @@ class CachedRecipeImage extends ConsumerWidget {
     this.placeholder,
     this.errorWidget,
   })  : recipeId = null,
-        imageIndex = null;
+        imageIndex = null,
+        _fallbackRecipeId = null;
 
   const CachedRecipeImage.detail({
     super.key,
@@ -41,7 +44,24 @@ class CachedRecipeImage extends ConsumerWidget {
     this.borderRadius,
     this.placeholder,
     this.errorWidget,
-  }) : recipeName = null;
+  }) : recipeName = null,
+       _fallbackRecipeId = null;
+
+  /// 封面图，带详情图降级（封面不存在时显示详情图第一张）。
+  const CachedRecipeImage.coverWithFallback({
+    super.key,
+    required this.category,
+    required this.recipeName,
+    required String fallbackRecipeId,
+    this.width,
+    this.height,
+    this.fit = BoxFit.cover,
+    this.borderRadius,
+    this.placeholder,
+    this.errorWidget,
+  })  : recipeId = null,
+        imageIndex = null,
+        _fallbackRecipeId = fallbackRecipeId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -50,111 +70,134 @@ class CachedRecipeImage extends ConsumerWidget {
     return FutureBuilder<String?>(
       future: _getCachePath(imageCacheService),
       builder: (context, snapshot) {
-        // 如果有缓存路径，使用缓存
         if (snapshot.hasData && snapshot.data != null) {
-          return _buildFileImage(context, snapshot.data!);
+          return _buildFileImage(context, snapshot.data!, imageCacheService);
         }
 
-        // 没有缓存，直接尝试从 assets 加载（不显示 loading）
         final assetPath = _getAssetPath();
         if (assetPath != null) {
-          return _buildAssetImage(context, assetPath);
+          return _buildAssetImage(context, assetPath, imageCacheService);
         }
 
-        // 都没有，显示错误占位图
-        return _buildError(context);
+        // 封面图降级：尝试详情图第一张
+        if (_fallbackRecipeId != null) {
+          return CachedRecipeImage.detail(
+            category: category,
+            recipeId: _fallbackRecipeId,
+            imageIndex: 0,
+            width: width,
+            height: height,
+            fit: fit,
+            borderRadius: borderRadius,
+            errorWidget: errorWidget ?? _buildDefaultPlaceholder(context),
+          );
+        }
+
+        return errorWidget ?? _buildDefaultPlaceholder(context);
       },
     );
   }
 
-  /// 获取缓存路径（仅检查缓存，不检查 assets）
   Future<String?> _getCachePath(ImageCacheService service) async {
     if (recipeName != null) {
-      // 封面图缓存
       return await service.getCoverImagePath(category, recipeName!);
     } else if (recipeId != null && imageIndex != null) {
-      // 详情图缓存
       return await service.getDetailImagePath(category, recipeId!, imageIndex!);
     }
     return null;
   }
 
-  /// 获取 asset 路径（同步，直接构建路径）
   String? _getAssetPath() {
     if (recipeName != null) {
-      // 封面图 asset 路径
       return 'assets/covers/$category/$recipeName.webp';
     } else if (recipeId != null && imageIndex != null) {
-      // 详情图 asset 路径
       return 'assets/images/$category/${recipeId}_$imageIndex.webp';
     }
     return null;
   }
 
-  /// 构建文件图片（缓存）
-  Widget _buildFileImage(BuildContext context, String filePath) {
+  Widget _buildFileImage(BuildContext context, String filePath, ImageCacheService service) {
     Widget image = Image.file(
       File(filePath),
       width: width,
       height: height,
       fit: fit,
       errorBuilder: (context, error, stackTrace) {
-        // 文件加载失败，尝试从 assets 加载
         final assetPath = _getAssetPath();
         if (assetPath != null) {
-          return _buildAssetImage(context, assetPath);
+          return _buildAssetImage(context, assetPath, service);
         }
-        return _buildError(context);
+        if (_fallbackRecipeId != null) {
+          return CachedRecipeImage.detail(
+            category: category,
+            recipeId: _fallbackRecipeId,
+            imageIndex: 0,
+            width: width,
+            height: height,
+            fit: fit,
+            borderRadius: borderRadius,
+            errorWidget: errorWidget ?? _buildDefaultPlaceholder(context),
+          );
+        }
+        return errorWidget ?? _buildDefaultPlaceholder(context);
       },
     );
 
     if (borderRadius != null) {
-      image = ClipRRect(
-        borderRadius: borderRadius!,
-        child: image,
-      );
+      image = ClipRRect(borderRadius: borderRadius!, child: image);
     }
-
     return image;
   }
 
-  /// 构建 asset 图片
-  Widget _buildAssetImage(BuildContext context, String assetPath) {
+  Widget _buildAssetImage(BuildContext context, String assetPath, ImageCacheService service) {
     Widget image = Image.asset(
       assetPath,
       width: width,
       height: height,
       fit: fit,
       errorBuilder: (context, error, stackTrace) {
-        return _buildError(context);
+        if (_fallbackRecipeId != null) {
+          return CachedRecipeImage.detail(
+            category: category,
+            recipeId: _fallbackRecipeId,
+            imageIndex: 0,
+            width: width,
+            height: height,
+            fit: fit,
+            borderRadius: borderRadius,
+            errorWidget: errorWidget ?? _buildDefaultPlaceholder(context),
+          );
+        }
+        return errorWidget ?? _buildDefaultPlaceholder(context);
       },
     );
 
     if (borderRadius != null) {
-      image = ClipRRect(
-        borderRadius: borderRadius!,
-        child: image,
-      );
+      image = ClipRRect(borderRadius: borderRadius!, child: image);
     }
-
     return image;
   }
 
-  Widget _buildError(BuildContext context) {
-    if (errorWidget != null) return errorWidget!;
-
+  Widget _buildDefaultPlaceholder(BuildContext context) {
     return Container(
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Theme.of(context).colorScheme.primaryContainer,
+            Theme.of(context).colorScheme.secondaryContainer,
+          ],
+        ),
         borderRadius: borderRadius,
       ),
       child: Center(
         child: Icon(
-          Icons.image_not_supported_outlined,
+          Icons.restaurant_menu,
           size: 48,
-          color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+          color: Theme.of(context).colorScheme.onPrimaryContainer.withValues(alpha: 0.5),
         ),
       ),
     );

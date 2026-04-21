@@ -63,7 +63,12 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     _totalImages = imageCount;
     _pageController = PageController(initialPage: 0);
 
-    // 启动自动滚动定时器（每3秒切换一次）
+    _startAutoScroll();
+  }
+
+  /// 启动自动滚动定时器（每 3 秒切换一次）。
+  void _startAutoScroll() {
+    if (_totalImages <= 1) return;
     _autoScrollTimer?.cancel();
     _autoScrollTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
       if (_pageController != null && _pageController!.hasClients) {
@@ -75,6 +80,27 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
         );
       }
     });
+  }
+
+  /// 暂停自动滚动（用户手势交互期间）。
+  void _stopAutoScroll() {
+    _autoScrollTimer?.cancel();
+    _autoScrollTimer = null;
+  }
+
+  /// 判断 [path] 是否为可直接加载的图片来源（用户上传 / 网络 / 资源）。
+  ///
+  /// 内置菜谱的 images 条目通常是相对名或索引串，不符合此判断，
+  /// 将走 [CachedRecipeImage.detail] 的 assets/缓存回落逻辑。
+  bool _isDirectImagePath(String path) {
+    if (path.isEmpty) return false;
+    if (path.startsWith('data:image/')) return true;
+    if (path.startsWith('http://') || path.startsWith('https://')) return true;
+    if (path.startsWith('assets/')) return true;
+    if (path.startsWith('/')) return true; // Unix 绝对路径
+    // Windows 绝对路径：C:\ 或 C:/
+    if (RegExp(r'^[A-Za-z]:[\\/]').hasMatch(path)) return true;
+    return false;
   }
 
   @override
@@ -367,17 +393,13 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
 
   /// 构建头部图片
   Widget _buildHeaderImage(Recipe recipe) {
-    // 提取 recipeId（去掉分类前缀）
-    // 例如: "meat_dish_003ec59b" -> "003ec59b"
     final recipeIdParts = recipe.id.split('_');
     final recipeId = recipeIdParts.length > 1
         ? recipeIdParts.sublist(1).join('_')
         : recipe.id;
 
-    // 获取图片数量
     final imageCount = recipe.images.length;
 
-    // 初始化轮播（如果有多张图片）
     if (imageCount > 1 && _pageController == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _initImageCarousel(imageCount);
@@ -386,64 +408,75 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
 
     // 单图或无图
     if (imageCount <= 1) {
-      return CachedRecipeImage.detail(
+      final singlePath = imageCount == 1 ? recipe.images.first : '';
+      if (_isDirectImagePath(singlePath)) {
+        return _buildImageWidget(singlePath);
+      }
+      // 内置/云端菜谱：封面图优先，降级到详情图第一张，再降级到占位图
+      return CachedRecipeImage.coverWithFallback(
         category: recipe.category,
-        recipeId: recipeId,
-        imageIndex: 0,
+        recipeName: recipe.name,
+        fallbackRecipeId: recipeId,
         width: double.infinity,
         height: double.infinity,
         fit: BoxFit.cover,
-        errorWidget: _buildImagePlaceholder(),
       );
     }
 
     // 多图轮播
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        PageView.builder(
-          controller: _pageController,
-          itemCount: imageCount,
-          onPageChanged: (index) {
-            setState(() {
-              _currentPage = index;
-            });
-          },
-          itemBuilder: (context, index) {
-            return CachedRecipeImage.detail(
-              category: recipe.category,
-              recipeId: recipeId,
-              imageIndex: index,
-              width: double.infinity,
-              height: double.infinity,
-              fit: BoxFit.cover,
-              errorWidget: _buildImagePlaceholder(),
-            );
-          },
-        ),
-        Positioned(
-          bottom: 40,
-          left: 0,
-          right: 0,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              imageCount,
-              (index) => Container(
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _currentPage == index
-                      ? AppColors.surface
-                      : AppColors.surface.withValues(alpha: 0.4),
+    return GestureDetector(
+      onPanDown: (_) => _stopAutoScroll(),
+      onPanEnd: (_) => _startAutoScroll(),
+      onPanCancel: _startAutoScroll,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          PageView.builder(
+            controller: _pageController,
+            itemCount: imageCount,
+            onPageChanged: (index) {
+              setState(() { _currentPage = index; });
+            },
+            itemBuilder: (context, index) {
+              final path = recipe.images[index];
+              if (_isDirectImagePath(path)) {
+                return _buildImageWidget(path);
+              }
+              return CachedRecipeImage.detail(
+                category: recipe.category,
+                recipeId: recipeId,
+                imageIndex: index,
+                width: double.infinity,
+                height: double.infinity,
+                fit: BoxFit.cover,
+                errorWidget: _buildImagePlaceholder(),
+              );
+            },
+          ),
+          Positioned(
+            bottom: 40,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                imageCount,
+                (index) => Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _currentPage == index
+                        ? AppColors.surface
+                        : AppColors.surface.withValues(alpha: 0.4),
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -491,7 +524,6 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
 
 
   /// 构建图片组件（支持本地、网络、资源、Base64图片）
-  // ignore: unused_element
   Widget _buildImageWidget(String imagePath) {
     // 规范化路径：在Web端将反斜杠转换为正斜杠
     final normalizedPath = kIsWeb ? imagePath.replaceAll('\\', '/') : imagePath;

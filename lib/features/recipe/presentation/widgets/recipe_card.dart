@@ -147,16 +147,16 @@ class RecipeCard extends ConsumerWidget {
 
   /// 构建图片区域 - 使用缓存图片加载
   Widget _buildImage() {
-    // 使用CachedRecipeImage.cover加载封面图
-    return CachedRecipeImage.cover(
+    final recipeIdParts = recipe.id.split('_');
+    final shortId = recipeIdParts.length > 1
+        ? recipeIdParts.sublist(1).join('_')
+        : recipe.id;
+    return CachedRecipeImage.coverWithFallback(
       category: recipe.category,
       recipeName: recipe.name,
+      fallbackRecipeId: shortId,
       width: double.infinity,
       fit: BoxFit.cover,
-      errorWidget: RecipePlaceholderImage(
-        icon: Icons.cloud_download_outlined,
-        text: '图片未下载\n请前往数据同步页面下载',
-      ),
     );
   }
 
