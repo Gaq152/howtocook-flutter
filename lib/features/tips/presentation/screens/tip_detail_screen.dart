@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:html_unescape/html_unescape.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/app_snack_bar.dart';
-import '../../../../core/widgets/linkable_text.dart';
 import '../../application/providers/tip_providers.dart';
 import '../../domain/entities/tip.dart';
 import '../utils/tip_share_helpers.dart';
@@ -300,9 +301,20 @@ class _TipDetailView extends StatelessWidget {
                       color: _tintedSurface(colorScheme, colorScheme.primary),
                       child: Padding(
                         padding: const EdgeInsets.all(16),
-                        child: LinkableTextRich(
-                          summaryText,
-                          style: bodyTextStyle,
+                    child: MarkdownBody(
+                          data: summaryText,
+                          styleSheet: MarkdownStyleSheet.fromTheme(
+                            Theme.of(context),
+                          ).copyWith(
+                            p: bodyTextStyle,
+                            code: bodyTextStyle.copyWith(
+                              fontFamily: 'monospace',
+                              backgroundColor: colorScheme.surfaceContainerHighest,
+                            ),
+                          ),
+                          onTapLink: (text, href, title) {
+                            if (href != null) launchUrl(Uri.parse(href), mode: LaunchMode.externalApplication);
+                          },
                         ),
                       ),
                     ),
@@ -341,9 +353,20 @@ class _TipDetailView extends StatelessWidget {
                             ),
                           if (section.title.isNotEmpty)
                             const SizedBox(height: 12),
-                          LinkableTextRich(
-                            _normalizeTipText(section.content),
-                            style: bodyTextStyle,
+                          MarkdownBody(
+                            data: _normalizeTipText(section.content),
+                            styleSheet: MarkdownStyleSheet.fromTheme(
+                              Theme.of(context),
+                            ).copyWith(
+                              p: bodyTextStyle,
+                              code: bodyTextStyle.copyWith(
+                                fontFamily: 'monospace',
+                                backgroundColor: colorScheme.surfaceContainerHighest,
+                              ),
+                            ),
+                            onTapLink: (text, href, title) {
+                              if (href != null) launchUrl(Uri.parse(href), mode: LaunchMode.externalApplication);
+                            },
                           ),
                         ],
                       ),
