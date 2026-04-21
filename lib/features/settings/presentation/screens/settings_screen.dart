@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -48,6 +49,51 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       }
     } catch (e) {
       if (mounted) _showSnack('检查更新失败：$e');
+    } finally {
+      if (mounted) setState(() => _checking = false);
+    }
+  }
+
+  Future<void> _showChangelog() async {
+    setState(() => _checking = true);
+    try {
+      final service = ref.read(updateServiceProvider);
+      final result = await service.checkForUpdate(respectSkippedVersion: false);
+      if (!mounted) return;
+      final notes = result.info?.notes.trim() ?? '';
+      final versionName = result.info?.versionName ?? _pkg?.version ?? '--';
+      showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('更新日志 v$versionName'),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 400, maxWidth: 380),
+            child: notes.isEmpty
+                ? const Text('暂无更新日志')
+                : Scrollbar(
+                    child: SingleChildScrollView(
+                      child: MarkdownBody(
+                        data: notes,
+                        selectable: true,
+                        onTapLink: (text, href, title) {
+                          if (href == null) return;
+                          final uri = Uri.tryParse(href);
+                          if (uri != null) launchUrl(uri, mode: LaunchMode.externalApplication);
+                        },
+                      ),
+                    ),
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('关闭'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (mounted) _showSnack('获取更新日志失败：$e');
     } finally {
       if (mounted) setState(() => _checking = false);
     }
@@ -129,6 +175,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   )
                 : const Icon(Icons.chevron_right),
             onTap: _checking ? null : _checkUpdate,
+          ),
+          ListTile(
+            leading: const Icon(Icons.history_outlined),
+            title: const Text('更新日志'),
+            subtitle: const Text('查看当前版本的更新内容'),
+            trailing: _checking
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.chevron_right),
+            onTap: _checking ? null : _showChangelog,
           ),
           ListTile(
             leading: const Icon(Icons.info_outline),
