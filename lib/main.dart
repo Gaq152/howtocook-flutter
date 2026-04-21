@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'core/services/update_download_service.dart';
 import 'core/services/update_service.dart';
 import 'core/storage/hive_service.dart';
 import 'core/storage/database_manager.dart';
@@ -44,7 +45,10 @@ Future<void> _initializeServices() async {
       debugPrint('ℹ️ Web 平台：跳过 Sqflite 初始化（使用 Hive 存储）');
     }
 
-    debugPrint('✅ 所有服务初始化成功');
+    // 初始化更新下载通知（仅 Android）
+  await UpdateDownloadNotifier.initNotifications();
+
+  debugPrint('✅ 所有服务初始化成功');
   } catch (e, stackTrace) {
     debugPrint('❌ 服务初始化失败: $e');
     debugPrint('Stack trace: $stackTrace');

@@ -1,103 +1,50 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../core/services/update_download_service.dart';
 import '../../../../core/services/update_service.dart';
 import '../../../../core/theme/app_colors.dart';
 
-/// 显示升级对话框并编排「下载 → 安装」流程。
-///
-/// - [currentVersionName] 当前版本名，用于对比显示
-/// - 返回值仅表示对话框是否 dismiss；后续安装由系统完成
+/// 显示更新对话框（复用 [UpdateDownloadNotifier] 状态）。
 Future<void> showUpdateDialog({
   required BuildContext context,
   required WidgetRef ref,
   required UpdateInfo info,
   required String currentVersionName,
 }) async {
+  final notifier = ref.read(updateDownloadNotifierProvider.notifier);
+  notifier.setUpdateInfo(info, currentVersionName);
   await showDialog<void>(
     context: context,
-    barrierDismissible: false,
-    builder: (_) => _UpdateDialog(
-      info: info,
-      currentVersionName: currentVersionName,
-      service: ref.read(updateServiceProvider),
-    ),
+    barrierDismissible: true,
+    builder: (_) => const _UpdateDialog(),
   );
 }
 
-class _UpdateDialog extends StatefulWidget {
-  const _UpdateDialog({
-    required this.info,
-    required this.currentVersionName,
-    required this.service,
-  });
-
-  final UpdateInfo info;
-  final String currentVersionName;
-  final UpdateService service;
+class _UpdateDialog extends ConsumerWidget {
+  const _UpdateDialog();
 
   @override
-  State<_UpdateDialog> createState() => _UpdateDialogState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(updateDownloadNotifierProvider);
+    final notifier = ref.read(updateDownloadNotifierProvider.notifier);
+    final info = state.info;
+    if (info == null) return const SizedBox.shrink();
 
-class _UpdateDialogState extends State<_UpdateDialog> {
-  double _progress = 0.0;
-  bool _downloading = false;
-  String? _error;
-  CancelToken? _cancelToken;
-
-  @override
-  void dispose() {
-    _cancelToken?.cancel('dialog disposed');
-    super.dispose();
-  }
-
-  Future<void> _startDownload() async {
-    setState(() {
-      _downloading = true;
-      _error = null;
-      _progress = 0.0;
-    });
-    _cancelToken = CancelToken();
-    try {
-      final path = await widget.service.downloadUpdate(
-        widget.info,
-        cancelToken: _cancelToken,
-        onProgress: (p) {
-          if (mounted) setState(() => _progress = p);
-        },
-      );
-      if (!mounted) return;
-      await widget.service.installApk(path);
-      if (mounted) Navigator.of(context).pop();
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _downloading = false;
-        _error = e.toString();
-      });
-    }
-  }
-
-  Future<void> _skipThisVersion() async {
-    await widget.service.skipVersion(widget.info.versionCode);
-    if (mounted) Navigator.of(context).pop();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final info = widget.info;
     final sizeMB = info.size > 0 ? (info.size / 1024 / 1024).toStringAsFixed(1) : '--';
+    final isDownloading = state.status == UpdateDownloadStatus.downloading;
+    final isPaused = state.status == UpdateDownloadStatus.paused;
+    final isDone = state.status == UpdateDownloadStatus.done;
+    final isError = state.status == UpdateDownloadStatus.error;
 
     return AlertDialog(
       title: Row(
         children: [
           const Icon(Icons.system_update, color: AppColors.primary),
           const SizedBox(width: 8),
-          Text('发现新版本 ${info.versionName}'),
+          Expanded(child: Text('发现新版本 ${info.versionName}')),
         ],
       ),
       content: ConstrainedBox(
@@ -106,14 +53,14 @@ class _UpdateDialogState extends State<_UpdateDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('当前版本：${widget.currentVersionName}', style: _dimStyle(context)),
+            Text('当前版本：${state.currentVersionName}', style: _dimStyle(context)),
             Text('安装包大小：约 $sizeMB MB', style: _dimStyle(context)),
             const SizedBox(height: 12),
             if (info.notes.trim().isNotEmpty) ...[
               const Text('更新内容', style: TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 4),
               ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 220),
+                constraints: const BoxConstraints(maxHeight: 200),
                 child: Scrollbar(
                   child: SingleChildScrollView(
                     child: MarkdownBody(
@@ -121,11 +68,9 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                       selectable: true,
                       shrinkWrap: true,
                       onTapLink: (text, href, title) {
-                        if (href == null || href.isEmpty) return;
+                        if (href == null) return;
                         final uri = Uri.tryParse(href);
-                        if (uri != null) {
-                          launchUrl(uri, mode: LaunchMode.externalApplication);
-                        }
+                        if (uri != null) launchUrl(uri, mode: LaunchMode.externalApplication);
                       },
                     ),
                   ),
@@ -133,38 +78,63 @@ class _UpdateDialogState extends State<_UpdateDialog> {
               ),
               const SizedBox(height: 12),
             ],
-            if (_downloading) ...[
-              LinearProgressIndicator(value: _progress),
+            if (isDownloading || isPaused) ...[
+              LinearProgressIndicator(value: state.progress),
               const SizedBox(height: 6),
-              Text('下载中 ${(_progress * 100).toStringAsFixed(0)}%',
-                  style: _dimStyle(context)),
+              Text(
+                isPaused
+                    ? '已暂停 ${(state.progress * 100).toStringAsFixed(0)}%'
+                    : '下载中 ${(state.progress * 100).toStringAsFixed(0)}%',
+                style: _dimStyle(context),
+              ),
             ],
-            if (_error != null) ...[
+            if (isDone)
+              Text('下载完成，正在安装…', style: _dimStyle(context)),
+            if (isError) ...[
               const SizedBox(height: 8),
-              Text('下载失败：$_error',
+              Text('下载失败：${state.error}',
                   style: const TextStyle(color: AppColors.error)),
             ],
           ],
         ),
       ),
-      actions: _downloading
-          ? [
-              TextButton(
-                onPressed: () {
-                  _cancelToken?.cancel('用户取消');
-                  setState(() => _downloading = false);
-                },
-                child: const Text('取消'),
-              ),
-            ]
-          : [
-              TextButton(onPressed: _skipThisVersion, child: const Text('跳过本版')),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('稍后'),
-              ),
-              FilledButton(onPressed: _startDownload, child: const Text('立即更新')),
-            ],
+      actions: [
+        if (!isDownloading && !isPaused && !isDone)
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('取消'),
+          ),
+        if (isDownloading)
+          TextButton(
+            onPressed: notifier.pause,
+            child: const Text('暂停'),
+          ),
+        if (isPaused)
+          TextButton(
+            onPressed: notifier.cancel,
+            child: const Text('取消'),
+          ),
+        if (isDownloading || isPaused)
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('后台下载'),
+          ),
+        if (!isDownloading && !isDone)
+          FilledButton(
+            onPressed: isPaused ? notifier.resume : notifier.startDownload,
+            child: Text(isPaused ? '继续' : '立即更新'),
+          ),
+        if (isDone)
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('关闭'),
+          ),
+        if (isError)
+          FilledButton(
+            onPressed: notifier.startDownload,
+            child: const Text('重试'),
+          ),
+      ],
     );
   }
 

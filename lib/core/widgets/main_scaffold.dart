@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../theme/app_colors.dart';
+import 'update_banner.dart';
 
 /// 悬浮导航栏的总高度（胶囊 56 + 上边距 8 + 下边距 12 = 76），
 /// 子页面可通过此常量在底部留出空间。
 const kFloatingNavBarHeight = 76.0;
 
-class MainScaffold extends StatefulWidget {
+class MainScaffold extends ConsumerStatefulWidget {
   final Widget child;
 
   const MainScaffold({
@@ -16,10 +18,10 @@ class MainScaffold extends StatefulWidget {
   });
 
   @override
-  State<MainScaffold> createState() => _MainScaffoldState();
+  ConsumerState<MainScaffold> createState() => _MainScaffoldState();
 }
 
-class _MainScaffoldState extends State<MainScaffold> {
+class _MainScaffoldState extends ConsumerState<MainScaffold> {
   int _currentIndex = 0;
 
   int _calculateSelectedIndex(BuildContext context) {
@@ -58,7 +60,12 @@ class _MainScaffoldState extends State<MainScaffold> {
     return Scaffold(
       extendBody: true,
       resizeToAvoidBottomInset: false,
-      body: widget.child,
+      body: Column(
+        children: [
+          const UpdateBanner(),
+          Expanded(child: widget.child),
+        ],
+      ),
       bottomNavigationBar: Container(
         color: Colors.transparent,
         padding: EdgeInsets.only(

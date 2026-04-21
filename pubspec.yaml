@@ -48,6 +48,7 @@ dependencies:
   # 应用更新
   package_info_plus: ^8.0.2
   install_plugin: ^2.1.0
+  flutter_local_notifications: ^18.0.1
 
   # UI 组件
   flutter_markdown: ^0.7.4+1
