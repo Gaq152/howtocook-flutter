@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../recipe/application/providers/recipe_providers.dart';
 import '../../../recipe/domain/entities/recipe.dart';
+import '../../../tips/application/providers/tip_providers.dart';
+import '../../../tips/domain/entities/tip.dart';
 
 class UserScreen extends ConsumerWidget {
   const UserScreen({super.key});
@@ -13,17 +15,24 @@ class UserScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final favoriteIdsAsync = ref.watch(favoriteIdsProvider);
     final allRecipesAsync = ref.watch(allRecipesProvider);
+    final favoriteTipIdsAsync = ref.watch(favoriteTipIdsProvider);
+    final allTipsAsync = ref.watch(allTipsProvider);
 
-    final favoriteCount = favoriteIdsAsync.valueOrNull?.length ?? 0;
+    final recipeFavoriteCount = favoriteIdsAsync.valueOrNull?.length ?? 0;
+    final tipFavoriteCount = favoriteTipIdsAsync.valueOrNull?.length ?? 0;
+    final favoriteCount = recipeFavoriteCount + tipFavoriteCount;
+
     final allRecipes = allRecipesAsync.valueOrNull ?? [];
     final totalCount = allRecipes.length;
-    final creationCount = allRecipes
-        .where((r) =>
-            r.source == RecipeSource.userCreated ||
-            r.source == RecipeSource.userModified ||
-            r.source == RecipeSource.aiGenerated ||
-            r.source == RecipeSource.scanned)
-        .length;
+
+    final recipeCreationCount = allRecipes.where((r) =>
+        r.source == RecipeSource.userCreated ||
+        r.source == RecipeSource.userModified ||
+        r.source == RecipeSource.aiGenerated ||
+        r.source == RecipeSource.scanned).length;
+    final tipCreationCount = (allTipsAsync.valueOrNull ?? [])
+        .where((t) => t.source == TipSource.userCreated).length;
+    final creationCount = recipeCreationCount + tipCreationCount;
 
     return Scaffold(
       body: SafeArea(
