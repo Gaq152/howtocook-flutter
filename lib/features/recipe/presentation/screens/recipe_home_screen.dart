@@ -274,7 +274,7 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
                   children: [
                     Icon(Icons.restaurant_outlined, size: 20),
                     SizedBox(width: 12),
-                    Text('新建菜谱'),
+                    Text('创作菜谱'),
                   ],
                 ),
               ),
@@ -284,7 +284,7 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
                   children: [
                     Icon(Icons.menu_book_outlined, size: 20),
                     SizedBox(width: 12),
-                    Text('新建教程'),
+                    Text('创作教程'),
                   ],
                 ),
               ),

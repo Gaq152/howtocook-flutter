@@ -94,7 +94,7 @@ class _TipEditorScreenState extends ConsumerState<TipEditorScreen> {
       _initialized = true;
     }
 
-    final titleText = widget.isEditing ? '编辑教程' : '新增教程';
+    final titleText = widget.isEditing ? '编辑教程' : '创作教程';
 
     return Scaffold(
       appBar: AppBar(

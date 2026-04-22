@@ -34,7 +34,7 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('我的自创'),
+          title: const Text('我的创作'),
           bottom: const TabBar(
             tabs: [
               Tab(text: '我的菜谱'),
@@ -67,8 +67,8 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
         context: context,
         icon: Icons.restaurant_menu,
         title: '还没有自创菜谱',
-        description: '创建菜谱后会显示在这里',
-        actionLabel: '创建菜谱',
+        description: '创作菜谱后会显示在这里',
+        actionLabel: '创作菜谱',
         onCreate: () => context.push('/create-recipe'),
       );
     }
@@ -90,8 +90,8 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
         context: context,
         icon: Icons.menu_book_outlined,
         title: '还没有自创教程',
-        description: '新增教程后会显示在这里',
-        actionLabel: '新增教程',
+        description: '创作教程后会显示在这里',
+        actionLabel: '创作教程',
         onCreate: () => context.push('/tips/create'),
       );
     }
@@ -115,7 +115,7 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '快速创建菜谱',
+              '快速创作菜谱',
               style: AppTextStyles.h4.copyWith(
                 color: Theme.of(context).colorScheme.primary,
               ),
@@ -124,7 +124,7 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
             FilledButton.icon(
               onPressed: () => context.push('/create-recipe'),
               icon: const Icon(Icons.add),
-              label: const Text('创建菜谱'),
+              label: const Text('创作菜谱'),
             ),
           ],
         ),
@@ -150,7 +150,7 @@ class _MyCreationsScreenState extends ConsumerState<MyCreationsScreen> {
             FilledButton.icon(
               onPressed: () => context.push('/tips/create'),
               icon: const Icon(Icons.menu_book_outlined),
-              label: const Text('新增教程'),
+              label: const Text('创作教程'),
             ),
           ],
         ),

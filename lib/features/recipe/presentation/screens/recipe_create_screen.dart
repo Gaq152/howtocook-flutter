@@ -76,7 +76,7 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('创建菜谱'),
+        title: const Text('创作菜谱'),
         actions: [
           TextButton(
             onPressed: _isSaving ? null : _saveRecipe,
