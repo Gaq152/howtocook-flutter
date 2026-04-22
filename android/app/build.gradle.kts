@@ -69,11 +69,6 @@ android {
                 signingConfigs.getByName("debug")
             }
 
-            // Release 版本：只支持手机 ARM 架构，减少体积
-            ndk {
-                abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
-            }
-
             // 启用代码压缩和资源优化
             isMinifyEnabled = true
             isShrinkResources = true
