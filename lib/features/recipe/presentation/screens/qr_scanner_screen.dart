@@ -1,23 +1,15 @@
 import 'dart:convert';
-
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:mobile_scanner/mobile_scanner.dart' as mobile;
-
 import 'package:image_picker/image_picker.dart';
-
 import 'package:archive/archive.dart';
-
 import 'package:go_router/go_router.dart';
-
 import 'package:path_provider/path_provider.dart';
 
 import '../../domain/entities/recipe.dart';
-
 import '../../infrastructure/services/wechat_qr_scanner.dart';
 
 import '../../../tips/application/providers/tip_providers.dart';
@@ -49,24 +41,26 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
   final mobile.MobileScannerController _controller =
       mobile.MobileScannerController(
         detectionSpeed: mobile.DetectionSpeed.normal,
-
         facing: mobile.CameraFacing.back,
-
         returnImage: true,
       );
 
   final WeChatQRScanner _wechatScanner = WeChatQRScanner();
+  bool _isProcessing = false;
+  bool _isWechatDecoding = false;
+  DateTime? _lastWechatAttempt;
 
-  bool _isProcessing = false; // 防止重复处理
-
-  bool _isDecodingFrame = false; // 控制兜底识别并发
+  @override
+  void initState() {
+    super.initState();
+    // 提前初始化 WeChatQRCode 模型，避免首次触发时延迟
+    _wechatScanner.initialize().catchError((_) {});
+  }
 
   @override
   void dispose() {
     _controller.dispose();
-
     _wechatScanner.dispose();
-
     super.dispose();
   }
 
@@ -189,95 +183,50 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
     );
   }
 
-  /// 处理条码检测（相机实时扫描 - 使用 WeChatQRCode 兜底）
-
+  /// 处理条码检测：MLKit 定位到二维码但解不出内容时，交给 WeChatQRCode 解码
   Future<void> _onBarcodeDetect(mobile.BarcodeCapture capture) async {
-    if (_isProcessing || _isDecodingFrame) {
-      return;
-    }
+    if (_isProcessing) return;
 
-    // 先尝试使用 mobile_scanner 自带的识别结果
-
+    // MLKit 成功解码，直接用
     for (final barcode in capture.barcodes) {
       final rawValue = barcode.rawValue ?? barcode.displayValue;
-
       if (rawValue != null && rawValue.isNotEmpty) {
-        debugPrint('📦 MobileScanner 识别二维码，长度: ${rawValue.length}');
-
         _processQRCode(rawValue);
-
         return;
       }
     }
 
-    // 如未识别到结果，则降级使用 WeChatQRCode 兜底扫描
-
+    // MLKit 定位到二维码但解不出内容（高密度码）→ WeChatQRCode 兜底
+    // 降频：每 800ms 最多触发一次
+    if (_isWechatDecoding) return;
+    final now = DateTime.now();
+    if (_lastWechatAttempt != null &&
+        now.difference(_lastWechatAttempt!).inMilliseconds < 800) return;
     final image = capture.image;
+    if (image == null || capture.barcodes.isEmpty) return;
 
-    if (image == null) {
-      debugPrint('⚠️ MobileScanner 未返回二维码且无图像可供兜底识别');
-
-      return;
-    }
-
-    _isDecodingFrame = true;
-
+    _isWechatDecoding = true;
+    _lastWechatAttempt = now;
     File? tempFile;
-
     try {
-      debugPrint('📸 准备使用 WeChatQRCode 兜底识别...');
-
       final tempDir = await getTemporaryDirectory();
-
-      final tempPath =
-          '${tempDir.path}/camera_frame_${DateTime.now().millisecondsSinceEpoch}.jpg';
-
+      final tempPath = '${tempDir.path}/qr_frame_${now.millisecondsSinceEpoch}.jpg';
       tempFile = File(tempPath);
-
       await tempFile.writeAsBytes(image);
-
-      debugPrint('💾 相机帧已保存: $tempPath (${image.length} 字节)');
-
-      await _wechatScanner.initialize();
-
       final results = await _wechatScanner.detectAndDecode(tempPath);
-
-      if (results.isNotEmpty) {
-        final code = results.first;
-
-        debugPrint('🧠 WeChatQRCode 兜底识别成功，长度 ${code.length} 字符');
-
-        _processQRCode(code);
-      } else {
-        debugPrint('ℹ️ WeChatQRCode 兜底识别未找到二维码，等待下一帧');
-      }
-    } catch (e, stackTrace) {
-      debugPrint('❌ 实时兜底识别失败: $e');
-
-      debugPrint('堆栈: $stackTrace');
+      if (results.isNotEmpty) _processQRCode(results.first);
+    } catch (_) {
     } finally {
-      _isDecodingFrame = false;
-
-      if (tempFile != null) {
-        try {
-          await tempFile.delete();
-        } catch (e) {
-          debugPrint('清理临时文件失败: $e');
-        }
-      }
+      _isWechatDecoding = false;
+      try { await tempFile?.delete(); } catch (_) {}
     }
   }
 
   /// 从相册选择图片扫描（使用 WeChatQRCode 强力扫描）
 
   Future<void> _pickImageFromGallery() async {
-    if (_isProcessing || _isDecodingFrame) {
-      debugPrint('⚠️ 忙于处理当前扫码结果，忽略相册扫描请求');
-
-      return;
-    }
-
-    _isDecodingFrame = true;
+    if (_isProcessing) return;
+    _isProcessing = true;
 
     try {
       debugPrint('🔍 开始从相册选择图片...');
@@ -341,7 +290,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
         );
       }
     } finally {
-      _isDecodingFrame = false;
+      _isProcessing = false;
     }
   }
 
