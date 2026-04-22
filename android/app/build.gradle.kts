@@ -54,10 +54,6 @@ android {
 
     buildTypes {
         debug {
-            // Debug 版本：支持所有架构（包括模拟器）
-            ndk {
-                abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86"))
-            }
         }
 
         release {
