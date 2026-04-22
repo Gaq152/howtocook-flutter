@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -19,7 +20,11 @@ class UpdateInfo {
   final String versionName;
   final int versionCode;
   final String downloadUrl;
+  final String downloadUrlArm64;
+  final String downloadUrlArm32;
   final String sha256;
+  final String sha256Arm64;
+  final String sha256Arm32;
   final int size;
   final String notes;
   final String publishedAt;
@@ -28,7 +33,11 @@ class UpdateInfo {
     required this.versionName,
     required this.versionCode,
     required this.downloadUrl,
+    this.downloadUrlArm64 = '',
+    this.downloadUrlArm32 = '',
     required this.sha256,
+    this.sha256Arm64 = '',
+    this.sha256Arm32 = '',
     required this.size,
     required this.notes,
     required this.publishedAt,
@@ -38,11 +47,31 @@ class UpdateInfo {
         versionName: (json['versionName'] as String?)?.trim() ?? '',
         versionCode: (json['versionCode'] as num?)?.toInt() ?? 0,
         downloadUrl: (json['downloadUrl'] as String?)?.trim() ?? '',
+        downloadUrlArm64: (json['downloadUrlArm64'] as String?)?.trim() ?? '',
+        downloadUrlArm32: (json['downloadUrlArm32'] as String?)?.trim() ?? '',
         sha256: ((json['sha256'] as String?) ?? '').trim().toLowerCase(),
+        sha256Arm64: ((json['sha256Arm64'] as String?) ?? '').trim().toLowerCase(),
+        sha256Arm32: ((json['sha256Arm32'] as String?) ?? '').trim().toLowerCase(),
         size: (json['size'] as num?)?.toInt() ?? 0,
         notes: (json['notes'] as String?) ?? '',
         publishedAt: (json['publishedAt'] as String?) ?? '',
       );
+
+  /// 根据设备 ABI 返回最合适的下载 URL 和 SHA256
+  Future<({String url, String sha256})> resolveForDevice() async {
+    if (!Platform.isAndroid) return (url: downloadUrl, sha256: sha256);
+    try {
+      final info = await DeviceInfoPlugin().androidInfo;
+      final abis = info.supportedAbis;
+      if (abis.contains('arm64-v8a') && downloadUrlArm64.isNotEmpty) {
+        return (url: downloadUrlArm64, sha256: sha256Arm64.isNotEmpty ? sha256Arm64 : sha256);
+      }
+      if (abis.any((a) => a.startsWith('armeabi')) && downloadUrlArm32.isNotEmpty) {
+        return (url: downloadUrlArm32, sha256: sha256Arm32.isNotEmpty ? sha256Arm32 : sha256);
+      }
+    } catch (_) {}
+    return (url: downloadUrl, sha256: sha256);
+  }
 }
 
 /// 更新检查结果，UI 层根据 [hasUpdate] 决定是否提示。
@@ -129,7 +158,8 @@ class UpdateService {
     if (info.downloadUrl.isEmpty || info.sha256.isEmpty) {
       throw ArgumentError('manifest 缺少 downloadUrl 或 sha256');
     }
-    final candidates = GithubMirrorResolver.candidates(info.downloadUrl);
+    final resolved = await info.resolveForDevice();
+    final candidates = GithubMirrorResolver.candidates(resolved.url);
     final saveDir = await _prepareDownloadDir();
     final savePath =
         p.join(saveDir.path, 'howtocook-${info.versionName}-${info.versionCode}.apk');
@@ -138,7 +168,7 @@ class UpdateService {
     final cached = File(savePath);
     if (await cached.exists()) {
       final localSha = await _sha256OfFile(cached);
-      if (localSha == info.sha256) {
+      if (localSha == resolved.sha256) {
         debugPrint('✅ 命中本地缓存 APK，跳过下载：$savePath');
         onProgress?.call(1.0);
         return savePath;
@@ -165,8 +195,8 @@ class UpdateService {
           ),
         );
         final sha = await _sha256OfFile(File(savePath));
-        if (sha != info.sha256) {
-          debugPrint('❌ SHA256 校验失败 expected=${info.sha256} actual=$sha');
+        if (sha != resolved.sha256) {
+          debugPrint('❌ SHA256 校验失败 expected=${resolved.sha256} actual=$sha');
           await File(savePath).delete();
           lastError = Exception('SHA256 校验失败');
           continue;
