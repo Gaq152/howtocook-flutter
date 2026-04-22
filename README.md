@@ -8,9 +8,6 @@
   <a href="https://github.com/Gaq152/howtocook-flutter/releases/latest">
     <img alt="Latest Release" src="https://img.shields.io/github/v/release/Gaq152/howtocook-flutter?include_prereleases&sort=semver&color=brightgreen">
   </a>
-  <a href="https://github.com/Gaq152/howtocook-flutter/actions/workflows/release.yml">
-    <img alt="Release Build" src="https://img.shields.io/github/v/release/Gaq152/howtocook-flutter">
-  </a>
 </p>
 
 > 基于 Flutter + Riverpod 的跨平台智能菜谱与 AI 助手。把本地菜谱库、云端增量同步、大模型对话和教程体系做在一个 App 里。
