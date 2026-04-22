@@ -133,15 +133,14 @@ jobs:
           APK_ARM32=$(ls build/app/outputs/apk/release/*armeabi-v7a*.apk 2>/dev/null | head -1)
           test -f "$APK_ARM64" || { echo "::error::arm64 APK not found"; exit 1; }
           test -f "$APK_ARM32" || { echo "::error::arm32 APK not found"; exit 1; }
-          # 统一重命名为固定文件名供 Release 上传
-          cp "$APK_ARM64" build/app/outputs/apk/release/howtocook-arm64.apk
-          cp "$APK_ARM32" build/app/outputs/apk/release/howtocook-armeabi-v7a.apk
-          SHA_ARM64=$(sha256sum build/app/outputs/apk/release/howtocook-arm64.apk | cut -d' ' -f1)
-          SHA_ARM32=$(sha256sum build/app/outputs/apk/release/howtocook-armeabi-v7a.apk | cut -d' ' -f1)
-          SIZE_ARM64=$(stat -c%s build/app/outputs/apk/release/howtocook-arm64.apk)
+          SHA_ARM64=$(sha256sum "$APK_ARM64" | cut -d' ' -f1)
+          SHA_ARM32=$(sha256sum "$APK_ARM32" | cut -d' ' -f1)
+          SIZE_ARM64=$(stat -c%s "$APK_ARM64")
+          FNAME_ARM64=$(basename "$APK_ARM64")
+          FNAME_ARM32=$(basename "$APK_ARM32")
           VCODE=$(grep '^version:' pubspec.yaml | awk '{print $2}' | awk -F'+' '{print ($2==""?1:$2)}')
           VNAME_STRIPPED="${VNAME#v}"
-          export SHA_ARM64 SHA_ARM32 SIZE_ARM64 VCODE VNAME_STRIPPED OWNER_REPO
+          export SHA_ARM64 SHA_ARM32 SIZE_ARM64 FNAME_ARM64 FNAME_ARM32 VCODE VNAME_STRIPPED OWNER_REPO
           python3 - <<'PY' > manifest.json
           import json, os, pathlib
           notes = pathlib.Path("release_notes.md").read_text(encoding="utf-8").strip()
@@ -150,9 +149,9 @@ jobs:
           data = {
               "versionName": os.environ["VNAME_STRIPPED"],
               "versionCode": int(os.environ["VCODE"]),
-              "downloadUrl": f"{base}/howtocook-arm64.apk",
-              "downloadUrlArm64": f"{base}/howtocook-arm64.apk",
-              "downloadUrlArm32": f"{base}/howtocook-armeabi-v7a.apk",
+              "downloadUrl": f"{base}/{os.environ['FNAME_ARM64']}",
+              "downloadUrlArm64": f"{base}/{os.environ['FNAME_ARM64']}",
+              "downloadUrlArm32": f"{base}/{os.environ['FNAME_ARM32']}",
               "sha256": os.environ["SHA_ARM64"],
               "sha256Arm64": os.environ["SHA_ARM64"],
               "sha256Arm32": os.environ["SHA_ARM32"],
@@ -174,6 +173,6 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            build/app/outputs/apk/release/howtocook-arm64.apk
-            build/app/outputs/apk/release/howtocook-armeabi-v7a.apk
+            build/app/outputs/apk/release/*arm64-v8a*.apk
+            build/app/outputs/apk/release/*armeabi-v7a*.apk
             manifest.json
