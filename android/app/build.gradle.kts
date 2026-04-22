@@ -80,10 +80,13 @@ android {
         val variant = this
         variant.outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            output.outputFileName = if (variant.buildType.name == "release") {
-                "howtocook.apk"
+            if (variant.buildType.name == "release") {
+                val abi = output.filters.find {
+                    it.filterType == com.android.build.api.variant.FilterConfiguration.FilterType.ABI.name
+                }?.identifier
+                output.outputFileName = if (abi != null) "howtocook-$abi.apk" else "howtocook.apk"
             } else {
-                "howtocook_debug.apk"
+                output.outputFileName = "howtocook_debug.apk"
             }
         }
     }

@@ -129,16 +129,16 @@ jobs:
           OWNER_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          APK_ARM64="build/app/outputs/apk/release/howtocook-arm64.apk"
-          APK_ARM32="build/app/outputs/apk/release/howtocook-armeabi-v7a.apk"
-          # split-per-abi 生成的文件名
-          SRC_ARM64=$(ls build/app/outputs/apk/release/*arm64*.apk 2>/dev/null | head -1)
-          SRC_ARM32=$(ls build/app/outputs/apk/release/*armeabi-v7a*.apk 2>/dev/null | head -1)
-          cp "$SRC_ARM64" "$APK_ARM64"
-          cp "$SRC_ARM32" "$APK_ARM32"
-          SHA_ARM64=$(sha256sum "$APK_ARM64" | cut -d' ' -f1)
-          SHA_ARM32=$(sha256sum "$APK_ARM32" | cut -d' ' -f1)
-          SIZE_ARM64=$(stat -c%s "$APK_ARM64")
+          APK_ARM64=$(ls build/app/outputs/apk/release/*arm64-v8a*.apk 2>/dev/null | head -1)
+          APK_ARM32=$(ls build/app/outputs/apk/release/*armeabi-v7a*.apk 2>/dev/null | head -1)
+          test -f "$APK_ARM64" || { echo "::error::arm64 APK not found"; exit 1; }
+          test -f "$APK_ARM32" || { echo "::error::arm32 APK not found"; exit 1; }
+          # 统一重命名为固定文件名供 Release 上传
+          cp "$APK_ARM64" build/app/outputs/apk/release/howtocook-arm64.apk
+          cp "$APK_ARM32" build/app/outputs/apk/release/howtocook-armeabi-v7a.apk
+          SHA_ARM64=$(sha256sum build/app/outputs/apk/release/howtocook-arm64.apk | cut -d' ' -f1)
+          SHA_ARM32=$(sha256sum build/app/outputs/apk/release/howtocook-armeabi-v7a.apk | cut -d' ' -f1)
+          SIZE_ARM64=$(stat -c%s build/app/outputs/apk/release/howtocook-arm64.apk)
           VCODE=$(grep '^version:' pubspec.yaml | awk '{print $2}' | awk -F'+' '{print ($2==""?1:$2)}')
           VNAME_STRIPPED="${VNAME#v}"
           export SHA_ARM64 SHA_ARM32 SIZE_ARM64 VCODE VNAME_STRIPPED OWNER_REPO
