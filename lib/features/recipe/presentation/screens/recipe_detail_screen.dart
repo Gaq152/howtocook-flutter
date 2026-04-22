@@ -412,14 +412,15 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
       if (_isDirectImagePath(singlePath)) {
         return _buildImageWidget(singlePath);
       }
-      // 内置/云端菜谱：封面图优先，降级到详情图第一张，再降级到占位图
-      return CachedRecipeImage.coverWithFallback(
+      // 内置/云端菜谱：详情图第一张，不存在则占位图
+      return CachedRecipeImage.detail(
         category: recipe.category,
-        recipeName: recipe.name,
-        fallbackRecipeId: recipeId,
+        recipeId: recipeId,
+        imageIndex: 0,
         width: double.infinity,
         height: double.infinity,
         fit: BoxFit.cover,
+        errorWidget: _buildImagePlaceholder(),
       );
     }
 

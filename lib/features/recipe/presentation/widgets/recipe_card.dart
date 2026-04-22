@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -151,6 +152,13 @@ class RecipeCard extends ConsumerWidget {
     final shortId = recipeIdParts.length > 1
         ? recipeIdParts.sublist(1).join('_')
         : recipe.id;
+
+    // 用户上传的图片（本地路径/base64/网络）优先作为封面
+    final firstImage = recipe.images.isNotEmpty ? recipe.images.first : '';
+    if (_isDirectImagePath(firstImage)) {
+      return _buildDirectImage(firstImage);
+    }
+
     return CachedRecipeImage.coverWithFallback(
       category: recipe.category,
       recipeName: recipe.name,
@@ -159,6 +167,38 @@ class RecipeCard extends ConsumerWidget {
       fit: BoxFit.cover,
     );
   }
+
+  bool _isDirectImagePath(String path) {
+    if (path.isEmpty) return false;
+    if (path.startsWith('data:image/')) return true;
+    if (path.startsWith('http://') || path.startsWith('https://')) return true;
+    if (path.startsWith('/')) return true;
+    if (RegExp(r'^[A-Za-z]:[\\/]').hasMatch(path)) return true;
+    return false;
+  }
+
+  Widget _buildDirectImage(String path) {
+    Widget image;
+    if (path.startsWith('data:image/')) {
+      final bytes = Uri.parse(path).data!.contentAsBytes();
+      image = Image.memory(bytes, width: double.infinity, fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _placeholder());
+    } else if (path.startsWith('http://') || path.startsWith('https://')) {
+      image = Image.network(path, width: double.infinity, fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _placeholder());
+    } else {
+      image = Image.file(File(path), width: double.infinity, fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _placeholder());
+    }
+    return image;
+  }
+
+  Widget _placeholder() => Container(
+        color: AppColors.surfaceAlt,
+        child: const Center(
+          child: Icon(Icons.restaurant_menu, color: AppColors.textDisabled),
+        ),
+      );
 
   /// 构建收藏图标
   Widget _buildFavoriteIcon(WidgetRef ref) {
