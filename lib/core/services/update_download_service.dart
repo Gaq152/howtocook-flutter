@@ -58,17 +58,30 @@ class UpdateDownloadNotifier extends _$UpdateDownloadNotifier {
   static final _notifications = FlutterLocalNotificationsPlugin();
   static bool _notifInitialized = false;
 
+  // 全局单例引用，用于通知 action 回调
+  static UpdateDownloadNotifier? _instance;
+
   CancelToken? _cancelToken;
   bool _paused = false;
 
   @override
-  UpdateDownloadState build() => const UpdateDownloadState();
+  UpdateDownloadState build() {
+    _instance = this;
+    return const UpdateDownloadState();
+  }
 
   /// 初始化通知（仅 Android，调用一次）
   static Future<void> initNotifications() async {
-    if (_notifInitialized || kIsWeb) return;
+    if (_notifInitialized || kIsWeb || !Platform.isAndroid) return;
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-    await _notifications.initialize(const InitializationSettings(android: android));
+    await _notifications.initialize(
+      const InitializationSettings(android: android),
+      onDidReceiveNotificationResponse: _onNotificationAction,
+    );
+    // 申请 Android 13+ 通知权限
+    await _notifications
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.requestNotificationsPermission();
     const channel = AndroidNotificationChannel(
       _kNotifChannelId,
       '应用更新',
@@ -80,6 +93,20 @@ class UpdateDownloadNotifier extends _$UpdateDownloadNotifier {
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(channel);
     _notifInitialized = true;
+  }
+
+  static void _onNotificationAction(NotificationResponse response) {
+    final action = response.actionId;
+    final notifier = _instance;
+    if (notifier == null) return;
+    switch (action) {
+      case 'pause':
+        notifier.pause();
+      case 'resume':
+        notifier.resume();
+      case 'cancel':
+        notifier.cancel();
+    }
   }
 
   void setUpdateInfo(UpdateInfo info, String currentVersionName) {
@@ -115,12 +142,16 @@ class UpdateDownloadNotifier extends _$UpdateDownloadNotifier {
         apkPath: path,
       );
       _showDoneNotification();
-      // 自动触发安装
-      await service.installApk(path);
+      try {
+        await service.installApk(path);
+      } catch (e) {
+        state = state.copyWith(
+          status: UpdateDownloadStatus.error,
+          error: '安装失败：$e',
+        );
+      }
     } on DioException catch (e) {
-      if (e.type == DioExceptionType.cancel) {
-        // 暂停或取消，状态已在 pause/cancel 中设置
-      } else {
+      if (e.type != DioExceptionType.cancel) {
         await _cancelNotification();
         state = state.copyWith(
           status: UpdateDownloadStatus.error,

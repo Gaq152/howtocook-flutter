@@ -213,8 +213,10 @@ class UpdateService {
     throw lastError ?? Exception('所有下载源均失败');
   }
 
-  /// 调起系统安装器安装 APK。需要 REQUEST_INSTALL_PACKAGES 权限。
+  /// 调起系统安装器安装 APK。
   Future<void> installApk(String apkPath) async {
+    final file = File(apkPath);
+    if (!await file.exists()) throw Exception('APK 文件不存在：$apkPath');
     await InstallPlugin.installApk(apkPath, appId: 'com.anlife.howtocook');
   }
 

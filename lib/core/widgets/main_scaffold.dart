@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../theme/app_colors.dart';
-import 'update_banner.dart';
 
 /// 悬浮导航栏的总高度（胶囊 56 + 上边距 8 + 下边距 12 = 76），
 /// 子页面可通过此常量在底部留出空间。
@@ -60,12 +59,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
     return Scaffold(
       extendBody: true,
       resizeToAvoidBottomInset: false,
-      body: Column(
-        children: [
-          const UpdateBanner(),
-          Expanded(child: widget.child),
-        ],
-      ),
+      body: widget.child,
       bottomNavigationBar: Container(
         color: Colors.transparent,
         padding: EdgeInsets.only(

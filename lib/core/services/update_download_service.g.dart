@@ -7,7 +7,7 @@ part of 'update_download_service.dart';
 // **************************************************************************
 
 String _$updateDownloadNotifierHash() =>
-    r'6f4e0bacd12451dea68367ffa103a9e734b3c97e';
+    r'64e47cb179ca4fdee39ae2ae41dc7557d507254c';
 
 /// See also [UpdateDownloadNotifier].
 @ProviderFor(UpdateDownloadNotifier)
