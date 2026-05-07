@@ -801,16 +801,41 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
           ],
         ),
         const SizedBox(height: 16),
-        ...recipe.steps.asMap().entries.map((entry) {
-          final index = entry.key;
-          final step = entry.value;
-          return _StepCard(
-            stepNumber: index + 1,
-            description: step.description,
-          );
-        }),
+        ..._buildStepWidgets(recipe.steps),
       ],
     );
+  }
+
+  List<Widget> _buildStepWidgets(List<CookingStep> steps) {
+    final widgets = <Widget>[];
+    int stepNumber = 0;
+    for (final step in steps) {
+      final desc = step.description;
+      final headingMatch = RegExp(r'^#{1,4}\s+(.+)$').firstMatch(desc);
+      if (headingMatch != null) {
+        widgets.add(Padding(
+          padding: EdgeInsets.only(
+            top: widgets.isEmpty ? 0 : 12,
+            bottom: 4,
+          ),
+          child: Text(
+            headingMatch.group(1)!,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppColors.primary,
+            ),
+          ),
+        ));
+      } else {
+        stepNumber++;
+        widgets.add(_StepCard(
+          stepNumber: stepNumber,
+          description: desc,
+        ));
+      }
+    }
+    return widgets;
   }
 
   /// 构建小贴士

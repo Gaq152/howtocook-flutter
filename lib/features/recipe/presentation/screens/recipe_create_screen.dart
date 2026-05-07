@@ -46,18 +46,6 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
   List<String> _warnings = [];
   final List<String> _images = [];
 
-  // 可用的分类列表
-  final List<Map<String, String>> _categories = [
-    {'value': 'meat_dish', 'label': '肉类'},
-    {'value': 'vegetable_dish', 'label': '素菜'},
-    {'value': 'aquatic', 'label': '水产'},
-    {'value': 'breakfast', 'label': '早餐'},
-    {'value': 'staple', 'label': '主食'},
-    {'value': 'soup', 'label': '汤羹'},
-    {'value': 'dessert', 'label': '甜品'},
-    {'value': 'drink', 'label': '饮品'},
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -236,23 +224,27 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
             const SizedBox(height: 16),
 
             // 分类选择
-            DropdownButtonFormField<String>(
-              initialValue: _selectedCategory,
-              decoration: const InputDecoration(
-                labelText: '分类',
-                border: OutlineInputBorder(),
+            ref.watch(categoryNameMapProvider).when(
+              data: (categoryMap) => DropdownButtonFormField<String>(
+                initialValue: _selectedCategory,
+                decoration: const InputDecoration(
+                  labelText: '分类',
+                  border: OutlineInputBorder(),
+                ),
+                items: categoryMap.entries.map((entry) {
+                  return DropdownMenuItem(
+                    value: entry.key,
+                    child: Text(entry.value),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => _selectedCategory = value);
+                  }
+                },
               ),
-              items: _categories.map((category) {
-                return DropdownMenuItem(
-                  value: category['value'],
-                  child: Text(category['label']!),
-                );
-              }).toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() => _selectedCategory = value);
-                }
-              },
+              loading: () => const LinearProgressIndicator(),
+              error: (_, __) => const Text('分类加载失败'),
             ),
             const SizedBox(height: 16),
 
@@ -1771,8 +1763,8 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
       }).toList();
 
       // 获取分类名称
-      final categoryName = _categories
-          .firstWhere((c) => c['value'] == _selectedCategory)['label']!;
+      final categoryMap = await ref.read(categoryNameMapProvider.future);
+      final categoryName = categoryMap[_selectedCategory] ?? _selectedCategory;
 
       final newRecipe = Recipe(
         id: recipeId,

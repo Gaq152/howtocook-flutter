@@ -271,50 +271,75 @@ class RecipeShareCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          // ✨ 显示所有步骤（长截图）
-          ...recipe.steps.asMap().entries.map((entry) {
-            final index = entry.key;
-            final step = entry.value;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 24,
-                    height: 24,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryLight,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      '${index + 1}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primaryDark,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      step.description,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textPrimary,
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
+          ..._buildStepItems(),
         ],
       ),
     );
+  }
+
+  static final _headingPattern = RegExp(r'^#{1,4}\s+(.+)$');
+
+  List<Widget> _buildStepItems() {
+    final widgets = <Widget>[];
+    int stepNumber = 0;
+    for (final step in recipe.steps) {
+      final match = _headingPattern.firstMatch(step.description);
+      if (match != null) {
+        widgets.add(Padding(
+          padding: EdgeInsets.only(
+            top: widgets.isEmpty ? 0 : 8,
+            bottom: 4,
+          ),
+          child: Text(
+            match.group(1)!,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: AppColors.primaryDark,
+            ),
+          ),
+        ));
+      } else {
+        stepNumber++;
+        widgets.add(Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 24,
+                height: 24,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight,
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  '$stepNumber',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primaryDark,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  step.description,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textPrimary,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ));
+      }
+    }
+    return widgets;
   }
 
   /// 构建小贴士部分

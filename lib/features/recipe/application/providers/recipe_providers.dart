@@ -69,3 +69,9 @@ final manifestProvider = FutureProvider<Manifest>((ref) async {
   final bundledLoader = ref.watch(bundledDataLoaderProvider);
   return bundledLoader.loadManifest();
 });
+
+/// 分类代码 → 分类名称映射（从 manifest 动态获取）
+final categoryNameMapProvider = FutureProvider<Map<String, String>>((ref) async {
+  final manifest = await ref.watch(manifestProvider.future);
+  return manifest.categories.map((key, info) => MapEntry(key, info.name));
+});

@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../domain/entities/recipe.dart';
+import '../../application/providers/recipe_providers.dart';
 import '../../infrastructure/services/wechat_qr_scanner.dart';
 
 import '../../../tips/application/providers/tip_providers.dart';
@@ -815,7 +816,8 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
     // 5. 构建 Recipe 对象
 
     final category = json['c'] as String;
-    final categoryName = json['cn'] as String? ?? _categoryNameFromCode(category);
+    final categoryMap = ref.read(categoryNameMapProvider).valueOrNull ?? {};
+    final categoryName = json['cn'] as String? ?? categoryMap[category] ?? category;
 
     // 兼容新旧格式：新格式用 \n 分隔字符串，旧格式是 List
     final rawIngredients = json['i'];
@@ -881,21 +883,6 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
     return recipe;
   }
 
-  String _categoryNameFromCode(String code) {
-    const map = {
-      'meat_dish': '荤菜',
-      'vegetable_dish': '素菜',
-      'aquatic': '水产',
-      'breakfast': '早餐',
-      'staple': '主食',
-      'soup': '汤羹',
-      'dessert': '甜品',
-      'drink': '饮品',
-      'condiment': '调味品',
-      'semi-finished': '半成品',
-    };
-    return map[code] ?? code;
-  }
 }
 
 /// 扫描框遮罩绘制器

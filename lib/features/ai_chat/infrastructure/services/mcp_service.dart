@@ -137,16 +137,16 @@ class MCPService {
       final idParts = id.split('-');
       final category = idParts.length > 1 ? idParts[1] : 'unknown';
 
-      // 分类名称映射
+      // 分类名称映射（与 manifest.json 保持一致）
       final categoryNameMap = {
         'meat_dish': '荤菜',
         'vegetable_dish': '素菜',
         'breakfast': '早餐',
         'staple': '主食',
-        'soup': '汤',
+        'soup': '汤粥',
         'dessert': '甜品',
-        'drink': '饮品',
-        'semi-finished': '半成品加工',
+        'drink': '饮料',
+        'semi-finished': '半成品',
         'condiment': '调料',
         'aquatic': '水产',
       };

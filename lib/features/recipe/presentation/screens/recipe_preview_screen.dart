@@ -251,50 +251,74 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
           ],
         ),
         const SizedBox(height: 16),
-        ...widget.recipe.steps.asMap().entries.map((entry) {
-          final index = entry.key;
-          final step = entry.value;
-          return Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 步骤编号
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '${index + 1}',
-                        style: const TextStyle(
-                          color: AppColors.surface,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+        ..._buildStepWidgets(),
+      ],
+    );
+  }
+
+  static final _headingPattern = RegExp(r'^#{1,4}\s+(.+)$');
+
+  List<Widget> _buildStepWidgets() {
+    final widgets = <Widget>[];
+    int stepNumber = 0;
+    for (final step in widget.recipe.steps) {
+      final match = _headingPattern.firstMatch(step.description);
+      if (match != null) {
+        widgets.add(Padding(
+          padding: EdgeInsets.only(
+            top: widgets.isEmpty ? 0 : 12,
+            bottom: 4,
+          ),
+          child: Text(
+            match.group(1)!,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppColors.primary,
+            ),
+          ),
+        ));
+      } else {
+        stepNumber++;
+        widgets.add(Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '$stepNumber',
+                      style: const TextStyle(
+                        color: AppColors.surface,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  // 步骤描述
-                  Expanded(
-                    child: Text(
-                      step.description,
-                      style: AppTextStyles.cookingStep,
-                    ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    step.description,
+                    style: AppTextStyles.cookingStep,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          );
-        }),
-      ],
-    );
+          ),
+        ));
+      }
+    }
+    return widgets;
   }
 
   /// 构建小贴士部分
