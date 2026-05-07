@@ -53,7 +53,7 @@ class UpdateDownloadState {
 const _kNotifChannelId = 'update_download';
 const _kNotifId = 1001;
 
-@riverpod
+@Riverpod(keepAlive: true)
 class UpdateDownloadNotifier extends _$UpdateDownloadNotifier {
   static final _notifications = FlutterLocalNotificationsPlugin();
   static bool _notifInitialized = false;

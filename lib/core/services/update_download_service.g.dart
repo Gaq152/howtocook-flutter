@@ -7,12 +7,12 @@ part of 'update_download_service.dart';
 // **************************************************************************
 
 String _$updateDownloadNotifierHash() =>
-    r'64e47cb179ca4fdee39ae2ae41dc7557d507254c';
+    r'5eb91047703c3569b7b268af798e4ecbc9b74c49';
 
 /// See also [UpdateDownloadNotifier].
 @ProviderFor(UpdateDownloadNotifier)
-final updateDownloadNotifierProvider = AutoDisposeNotifierProvider<
-    UpdateDownloadNotifier, UpdateDownloadState>.internal(
+final updateDownloadNotifierProvider =
+    NotifierProvider<UpdateDownloadNotifier, UpdateDownloadState>.internal(
   UpdateDownloadNotifier.new,
   name: r'updateDownloadNotifierProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -22,6 +22,6 @@ final updateDownloadNotifierProvider = AutoDisposeNotifierProvider<
   allTransitiveDependencies: null,
 );
 
-typedef _$UpdateDownloadNotifier = AutoDisposeNotifier<UpdateDownloadState>;
+typedef _$UpdateDownloadNotifier = Notifier<UpdateDownloadState>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member
