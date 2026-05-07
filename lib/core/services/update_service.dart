@@ -1,16 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:crypto/crypto.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:install_plugin/install_plugin.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 
 import '../storage/hive_service.dart';
 import 'github_mirror_resolver.dart';
@@ -138,11 +134,14 @@ class UpdateService {
       );
     }
 
+    final manifestCode = info.versionCode >= 1000
+        ? info.versionCode % 1000
+        : info.versionCode;
     final skipped = respectSkippedVersion ? getSkippedVersion() : null;
     final hasUpdate =
         (_compareVersionNames(info.versionName, currentName) > 0 ||
-            info.versionCode > currentCode) &&
-        info.versionCode != skipped;
+            manifestCode > currentCode) &&
+        manifestCode != skipped;
 
     return UpdateCheckResult(
       info: info,
@@ -150,79 +149,6 @@ class UpdateService {
       currentVersionCode: currentCode,
       currentVersionName: currentName,
     );
-  }
-
-  /// 下载 APK 到外部存储，校验 SHA256，失败自动切下一个镜像源。
-  ///
-  /// 成功返回本地文件绝对路径；全部镜像失败抛异常。
-  Future<String> downloadUpdate(
-    UpdateInfo info, {
-    void Function(double progress)? onProgress,
-    CancelToken? cancelToken,
-  }) async {
-    if (info.downloadUrl.isEmpty || info.sha256.isEmpty) {
-      throw ArgumentError('manifest 缺少 downloadUrl 或 sha256');
-    }
-    final resolved = await info.resolveForDevice();
-    final candidates = GithubMirrorResolver.candidates(resolved.url);
-    final saveDir = await _prepareDownloadDir();
-    final savePath =
-        p.join(saveDir.path, 'howtocook-${info.versionName}-${info.versionCode}.apk');
-
-    // 命中本地缓存：若文件存在且 SHA 一致，直接复用
-    final cached = File(savePath);
-    if (await cached.exists()) {
-      final localSha = await _sha256OfFile(cached);
-      if (localSha == resolved.sha256) {
-        debugPrint('✅ 命中本地缓存 APK，跳过下载：$savePath');
-        onProgress?.call(1.0);
-        return savePath;
-      }
-      await cached.delete();
-    }
-
-    Object? lastError;
-    for (final url in candidates) {
-      try {
-        debugPrint('⬇️  下载更新包：$url');
-        await _dio.download(
-          url,
-          savePath,
-          cancelToken: cancelToken,
-          onReceiveProgress: (received, total) {
-            if (total > 0 && onProgress != null) {
-              onProgress(received / total);
-            }
-          },
-          options: Options(
-            followRedirects: true,
-            receiveTimeout: const Duration(minutes: 10),
-          ),
-        );
-        final sha = await _sha256OfFile(File(savePath));
-        if (sha != resolved.sha256) {
-          debugPrint('❌ SHA256 校验失败 expected=${resolved.sha256} actual=$sha');
-          await File(savePath).delete();
-          lastError = Exception('SHA256 校验失败');
-          continue;
-        }
-        debugPrint('✅ APK 下载完成并通过 SHA256 校验');
-        return savePath;
-      } catch (e) {
-        debugPrint('⚠️  镜像 $url 下载失败：$e');
-        lastError = e;
-        final f = File(savePath);
-        if (await f.exists()) await f.delete();
-      }
-    }
-    throw lastError ?? Exception('所有下载源均失败');
-  }
-
-  /// 调起系统安装器安装 APK。
-  Future<void> installApk(String apkPath) async {
-    final file = File(apkPath);
-    if (!await file.exists()) throw Exception('APK 文件不存在：$apkPath');
-    await InstallPlugin.installApk(apkPath, appId: 'com.anlife.howtocook');
   }
 
   /// 记录用户跳过的版本号。
@@ -273,21 +199,6 @@ class UpdateService {
     return 0;
   }
 
-  Future<Directory> _prepareDownloadDir() async {
-    final root = await getExternalStorageDirectory() ??
-        await getApplicationDocumentsDirectory();
-    final dir = Directory(p.join(root.path, 'updates'));
-    if (!await dir.exists()) {
-      await dir.create(recursive: true);
-    }
-    return dir;
-  }
-
-  Future<String> _sha256OfFile(File file) async {
-    // APK 通常 10-50MB，一次性读取内存可接受；若未来需要支持超大包再改分块
-    final bytes = await file.readAsBytes();
-    return sha256.convert(bytes).toString().toLowerCase();
-  }
 }
 
 /// 单例 Provider

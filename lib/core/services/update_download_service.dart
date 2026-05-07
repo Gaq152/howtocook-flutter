@@ -1,15 +1,17 @@
 import 'dart:io';
 
-import 'package:dio/dio.dart';
+import 'package:background_downloader/background_downloader.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:install_plugin/install_plugin.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import 'update_service.dart';
 
-part 'update_download_service.g.dart';
+// ── 状态定义 ────────────────────────────────────────────
 
-enum UpdateDownloadStatus { idle, downloading, paused, done, error }
+enum UpdateDownloadStatus { idle, preparing, downloading, done, error }
 
 class UpdateDownloadState {
   const UpdateDownloadState({
@@ -30,7 +32,7 @@ class UpdateDownloadState {
 
   bool get isActive =>
       status == UpdateDownloadStatus.downloading ||
-      status == UpdateDownloadStatus.paused;
+      status == UpdateDownloadStatus.preparing;
 
   UpdateDownloadState copyWith({
     UpdateDownloadStatus? status,
@@ -50,64 +52,173 @@ class UpdateDownloadState {
       );
 }
 
-const _kNotifChannelId = 'update_download';
-const _kNotifId = 1001;
+// ── 底层服务 ────────────────────────────────────────────
 
-@Riverpod(keepAlive: true)
-class UpdateDownloadNotifier extends _$UpdateDownloadNotifier {
-  static final _notifications = FlutterLocalNotificationsPlugin();
-  static bool _notifInitialized = false;
+class _DownloadService {
+  static const String _taskGroup = 'howtocook-update';
 
-  // 全局单例引用，用于通知 action 回调
-  static UpdateDownloadNotifier? _instance;
+  static Future<void> initialize() async {
+    if (kIsWeb || !Platform.isAndroid) return;
 
-  CancelToken? _cancelToken;
-  bool _paused = false;
+    final downloader = FileDownloader();
+    await downloader.ready;
 
-  @override
-  UpdateDownloadState build() {
-    _instance = this;
-    return const UpdateDownloadState();
+    downloader.configureNotification(
+      running: const TaskNotification(
+        '正在下载更新 {filename}',
+        '{progress} · {networkSpeed}',
+      ),
+      complete: const TaskNotification('下载完成', '点击安装新版本'),
+      error: const TaskNotification('下载失败', '请在应用内重试'),
+      progressBar: true,
+    );
+
+    await downloader.trackTasks();
+    await downloader.start();
   }
 
-  /// 初始化通知（仅 Android，调用一次）
-  static Future<void> initNotifications() async {
-    if (_notifInitialized || kIsWeb || !Platform.isAndroid) return;
-    const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-    await _notifications.initialize(
-      const InitializationSettings(android: android),
-      onDidReceiveNotificationResponse: _onNotificationAction,
-    );
-    // 申请 Android 13+ 通知权限
-    await _notifications
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.requestNotificationsPermission();
-    const channel = AndroidNotificationChannel(
-      _kNotifChannelId,
-      '应用更新',
-      description: '显示应用更新下载进度',
-      importance: Importance.low,
-      showBadge: false,
-    );
-    await _notifications
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(channel);
-    _notifInitialized = true;
+  Future<Directory> _apkDir() async {
+    final external = await getExternalStorageDirectory();
+    final root = external ?? await getApplicationSupportDirectory();
+    final dir = Directory('${root.path}/update');
+    if (!dir.existsSync()) {
+      dir.createSync(recursive: true);
+    }
+    return dir;
   }
 
-  static void _onNotificationAction(NotificationResponse response) {
-    final action = response.actionId;
-    final notifier = _instance;
-    if (notifier == null) return;
-    switch (action) {
-      case 'pause':
-        notifier.pause();
-      case 'resume':
-        notifier.resume();
-      case 'cancel':
-        notifier.cancel();
+  Future<String> resolveApkPath(String version) async {
+    final dir = await _apkDir();
+    return '${dir.path}/howtocook-v$version.apk';
+  }
+
+  Future<bool> isApkAlreadyDownloaded(String version) async {
+    final path = await resolveApkPath(version);
+    final file = File(path);
+    if (!file.existsSync()) return false;
+    try {
+      return file.lengthSync() > 0;
+    } catch (_) {
+      return false;
     }
   }
+
+  Future<void> cleanupOldApks({String? keepVersion}) async {
+    try {
+      final dir = await _apkDir();
+      final keepName =
+          keepVersion != null ? 'howtocook-v$keepVersion.apk' : null;
+      for (final entity in dir.listSync()) {
+        if (entity is! File) continue;
+        final name = entity.uri.pathSegments.last;
+        if (!name.startsWith('howtocook-v') || !name.endsWith('.apk')) continue;
+        if (keepName != null && name == keepName) continue;
+        try {
+          entity.deleteSync();
+        } catch (e) {
+          debugPrint('cleanupOldApks: $name 删除失败: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('cleanupOldApks 异常: $e');
+    }
+  }
+
+  Future<DownloadTask> buildTask({
+    required String version,
+    required String url,
+    required int mirrorIndex,
+  }) async {
+    final dir = await _apkDir();
+    return DownloadTask(
+      taskId: 'howtocook-update-v$version-m$mirrorIndex',
+      url: url,
+      filename: 'howtocook-v$version.apk',
+      baseDirectory: BaseDirectory.root,
+      directory: dir.path,
+      group: _taskGroup,
+      updates: Updates.statusAndProgress,
+      retries: 0,
+      allowPause: false,
+      displayName: 'HowToCook v$version',
+    );
+  }
+
+  Future<TaskStatusUpdate> runTask(
+    DownloadTask task, {
+    required void Function(double progress) onProgress,
+  }) {
+    return FileDownloader().download(
+      task,
+      onProgress: (progress) {
+        onProgress(progress.clamp(0.0, 1.0));
+      },
+    );
+  }
+
+  Future<void> cancelByVersion(String version) async {
+    final prefix = 'howtocook-update-v$version';
+    try {
+      final tasks = await FileDownloader().allTasks(group: _taskGroup);
+      final ids = tasks
+          .map((t) => t.taskId)
+          .where((id) => id.startsWith(prefix))
+          .toList();
+      if (ids.isNotEmpty) {
+        await FileDownloader().cancelTasksWithIds(ids);
+      }
+    } catch (e) {
+      debugPrint('cancelByVersion 异常: $e');
+    }
+  }
+
+  Future<void> cancelAll() async {
+    try {
+      final tasks = await FileDownloader().allTasks(group: _taskGroup);
+      final ids = tasks.map((t) => t.taskId).toList();
+      if (ids.isNotEmpty) {
+        await FileDownloader().cancelTasksWithIds(ids);
+      }
+    } catch (e) {
+      debugPrint('cancelAll 异常: $e');
+    }
+  }
+
+  Future<bool> installApk(String filePath) async {
+    try {
+      await InstallPlugin.installApk(filePath, appId: 'com.anlife.howtocook');
+      return true;
+    } catch (e) {
+      debugPrint('installApk 失败: $e');
+      return false;
+    }
+  }
+
+  Future<bool> ensureInstallPermission() async {
+    if (!Platform.isAndroid) return true;
+    final status = await Permission.requestInstallPackages.status;
+    if (status.isGranted) return true;
+    final result = await Permission.requestInstallPackages.request();
+    return result.isGranted;
+  }
+
+  Future<bool> ensureNotificationPermission() async {
+    if (!Platform.isAndroid) return true;
+    final status = await Permission.notification.status;
+    if (status.isGranted) return true;
+    final result = await Permission.notification.request();
+    return result.isGranted;
+  }
+}
+
+// ── 状态管理 ────────────────────────────────────────────
+
+class UpdateDownloadNotifier extends StateNotifier<UpdateDownloadState> {
+  UpdateDownloadNotifier() : super(const UpdateDownloadState());
+
+  final _service = _DownloadService();
+
+  static Future<void> initialize() => _DownloadService.initialize();
 
   void setUpdateInfo(UpdateInfo info, String currentVersionName) {
     state = state.copyWith(info: info, currentVersionName: currentVersionName);
@@ -116,75 +227,128 @@ class UpdateDownloadNotifier extends _$UpdateDownloadNotifier {
   Future<void> startDownload() async {
     final info = state.info;
     if (info == null) return;
-    _paused = false;
-    _cancelToken = CancelToken();
-    state = state.copyWith(
-      status: UpdateDownloadStatus.downloading,
-      progress: 0.0,
-      error: null,
-    );
 
-    try {
-      final service = ref.read(updateServiceProvider);
-      final path = await service.downloadUpdate(
-        info,
-        cancelToken: _cancelToken,
-        onProgress: (p) {
-          if (_paused) return;
-          state = state.copyWith(progress: p);
-          _showProgressNotification(p);
-        },
-      );
-      await _cancelNotification();
+    if (await _service.isApkAlreadyDownloaded(info.versionName)) {
+      final path = await _service.resolveApkPath(info.versionName);
       state = state.copyWith(
         status: UpdateDownloadStatus.done,
         progress: 1.0,
         apkPath: path,
       );
-      _showDoneNotification();
-      try {
-        await service.installApk(path);
-      } catch (e) {
-        state = state.copyWith(
-          status: UpdateDownloadStatus.error,
-          error: '安装失败：$e',
-        );
-      }
-    } on DioException catch (e) {
-      if (e.type != DioExceptionType.cancel) {
-        await _cancelNotification();
-        state = state.copyWith(
-          status: UpdateDownloadStatus.error,
-          error: e.message,
-        );
-      }
-    } catch (e) {
-      await _cancelNotification();
+      return;
+    }
+
+    state = state.copyWith(
+      status: UpdateDownloadStatus.preparing,
+      progress: 0.0,
+      error: null,
+    );
+
+    await _service.ensureNotificationPermission();
+    await _service.cleanupOldApks(keepVersion: info.versionName);
+
+    final resolved = await info.resolveForDevice();
+    final mirrors = _buildMirrorList(resolved.url);
+
+    await _tryMirror(info, mirrors, 0);
+  }
+
+  Future<void> _tryMirror(
+    UpdateInfo info,
+    List<String> mirrors,
+    int index,
+  ) async {
+    if (index >= mirrors.length) {
       state = state.copyWith(
         status: UpdateDownloadStatus.error,
-        error: e.toString(),
+        error: '所有下载源均失败',
       );
+      return;
+    }
+
+    state = state.copyWith(
+      status: UpdateDownloadStatus.downloading,
+      progress: 0.0,
+    );
+
+    DownloadTask task;
+    try {
+      task = await _service.buildTask(
+        version: info.versionName,
+        url: mirrors[index],
+        mirrorIndex: index,
+      );
+    } catch (e) {
+      debugPrint('buildTask 失败: $e');
+      await _tryMirror(info, mirrors, index + 1);
+      return;
+    }
+
+    TaskStatusUpdate result;
+    try {
+      result = await _service.runTask(
+        task,
+        onProgress: (progress) {
+          if (state.status == UpdateDownloadStatus.downloading) {
+            state = state.copyWith(progress: progress);
+          }
+        },
+      );
+    } catch (e) {
+      debugPrint('镜像 $index 下载异常: $e');
+      await _tryMirror(info, mirrors, index + 1);
+      return;
+    }
+
+    switch (result.status) {
+      case TaskStatus.complete:
+        final path = await _service.resolveApkPath(info.versionName);
+        if (!File(path).existsSync()) {
+          await _tryMirror(info, mirrors, index + 1);
+          return;
+        }
+        state = state.copyWith(
+          status: UpdateDownloadStatus.done,
+          progress: 1.0,
+          apkPath: path,
+        );
+        return;
+
+      case TaskStatus.canceled:
+        return;
+
+      case TaskStatus.failed:
+      case TaskStatus.notFound:
+        await _tryMirror(info, mirrors, index + 1);
+        return;
+
+      default:
+        await _tryMirror(info, mirrors, index + 1);
+        return;
     }
   }
 
-  void pause() {
-    if (state.status != UpdateDownloadStatus.downloading) return;
-    _paused = true;
-    _cancelToken?.cancel('paused');
-    _cancelToken = null;
-    state = state.copyWith(status: UpdateDownloadStatus.paused);
-    _showPausedNotification();
-  }
+  Future<bool> install() async {
+    final path = state.apkPath;
+    if (path == null || state.status != UpdateDownloadStatus.done) return false;
 
-  Future<void> resume() async {
-    if (state.status != UpdateDownloadStatus.paused) return;
-    await startDownload();
+    final granted = await _service.ensureInstallPermission();
+    if (!granted) {
+      state = state.copyWith(
+        status: UpdateDownloadStatus.error,
+        error: '需要授予安装权限才能更新',
+      );
+      return false;
+    }
+
+    return _service.installApk(path);
   }
 
   void cancel() {
-    _cancelToken?.cancel('cancelled');
-    _cancelToken = null;
-    _cancelNotification();
+    final info = state.info;
+    if (info != null) {
+      _service.cancelByVersion(info.versionName);
+    }
     state = const UpdateDownloadState();
   }
 
@@ -195,79 +359,19 @@ class UpdateDownloadNotifier extends _$UpdateDownloadNotifier {
     }
   }
 
-  // ── 通知辅助 ──────────────────────────────────────────
-
-  void _showProgressNotification(double progress) {
-    if (kIsWeb || !Platform.isAndroid) return;
-    final percent = (progress * 100).round();
-    _notifications.show(
-      _kNotifId,
-      '正在下载更新',
-      '${state.info?.versionName ?? ''} — $percent%',
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          _kNotifChannelId,
-          '应用更新',
-          channelDescription: '显示应用更新下载进度',
-          importance: Importance.low,
-          priority: Priority.low,
-          showProgress: true,
-          maxProgress: 100,
-          progress: percent,
-          ongoing: true,
-          autoCancel: false,
-          actions: [
-            const AndroidNotificationAction('pause', '暂停'),
-            const AndroidNotificationAction('cancel', '取消'),
-          ],
-        ),
-      ),
+  List<String> _buildMirrorList(String url) {
+    if (!url.contains('github.com')) return [url];
+    final mirrored = url.replaceFirst(
+      'https://github.com',
+      'https://ghfast.top/https://github.com',
     );
-  }
-
-  void _showPausedNotification() {
-    if (kIsWeb || !Platform.isAndroid) return;
-    _notifications.show(
-      _kNotifId,
-      '下载已暂停',
-      state.info?.versionName ?? '',
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          _kNotifChannelId,
-          '应用更新',
-          importance: Importance.low,
-          priority: Priority.low,
-          ongoing: true,
-          autoCancel: false,
-          actions: [
-            const AndroidNotificationAction('resume', '继续'),
-            const AndroidNotificationAction('cancel', '取消'),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showDoneNotification() {
-    if (kIsWeb || !Platform.isAndroid) return;
-    _notifications.show(
-      _kNotifId,
-      '下载完成',
-      '点击安装 ${state.info?.versionName ?? ''}',
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          _kNotifChannelId,
-          '应用更新',
-          importance: Importance.high,
-          priority: Priority.high,
-          autoCancel: true,
-        ),
-      ),
-    );
-  }
-
-  Future<void> _cancelNotification() async {
-    if (kIsWeb || !Platform.isAndroid) return;
-    await _notifications.cancel(_kNotifId);
+    return [mirrored, url];
   }
 }
+
+// ── Provider ────────────────────────────────────────────
+
+final updateDownloadNotifierProvider =
+    StateNotifierProvider<UpdateDownloadNotifier, UpdateDownloadState>(
+  (ref) => UpdateDownloadNotifier(),
+);

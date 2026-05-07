@@ -45,10 +45,10 @@ Future<void> _initializeServices() async {
       debugPrint('ℹ️ Web 平台：跳过 Sqflite 初始化（使用 Hive 存储）');
     }
 
-    // 初始化更新下载通知（仅 Android）
-  await UpdateDownloadNotifier.initNotifications();
+    // 初始化 background_downloader（仅 Android）
+    await UpdateDownloadNotifier.initialize();
 
-  debugPrint('✅ 所有服务初始化成功');
+    debugPrint('✅ 所有服务初始化成功');
   } catch (e, stackTrace) {
     debugPrint('❌ 服务初始化失败: $e');
     debugPrint('Stack trace: $stackTrace');
