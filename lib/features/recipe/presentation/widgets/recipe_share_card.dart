@@ -56,6 +56,12 @@ class RecipeShareCard extends StatelessWidget {
                   _buildIngredientsSection(),
                   const SizedBox(height: 16),
 
+                  // 工具列表（如果有）
+                  if (recipe.tools.isNotEmpty) ...[
+                    _buildToolsSection(),
+                    const SizedBox(height: 16),
+                  ],
+
                   // 步骤列表
                   _buildStepsSection(),
 
@@ -183,6 +189,56 @@ class RecipeShareCard extends StatelessWidget {
                   ),
                 ),
               )),
+        ],
+      ),
+    );
+  }
+
+  /// 构建工具部分
+  Widget _buildToolsSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.cardShadow,
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '🔧 所需工具',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: recipe.tools.map((tool) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                tool,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppColors.primaryDark,
+                ),
+              ),
+            )).toList(),
+          ),
         ],
       ),
     );

@@ -201,7 +201,9 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
     if (_isWechatDecoding) return;
     final now = DateTime.now();
     if (_lastWechatAttempt != null &&
-        now.difference(_lastWechatAttempt!).inMilliseconds < 800) return;
+        now.difference(_lastWechatAttempt!).inMilliseconds < 800) {
+      return;
+    }
     final image = capture.image;
     if (image == null || capture.barcodes.isEmpty) return;
 
@@ -812,47 +814,55 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
 
     // 5. 构建 Recipe 对象
 
+    final category = json['c'] as String;
+    final categoryName = json['cn'] as String? ?? _categoryNameFromCode(category);
+
+    // 兼容新旧格式：新格式用 \n 分隔字符串，旧格式是 List
+    final rawIngredients = json['i'];
+    final ingredientTexts = rawIngredients is String
+        ? rawIngredients.split('\n')
+        : List<String>.from(rawIngredients as List<dynamic>);
+
+    final rawSteps = json['s'];
+    final stepTexts = rawSteps is String
+        ? rawSteps.split('\n')
+        : List<String>.from(rawSteps as List<dynamic>);
+
+    final rawWarnings = json['w'];
+    final warnings = rawWarnings == null
+        ? <String>[]
+        : rawWarnings is String
+            ? rawWarnings.split('\n')
+            : List<String>.from(rawWarnings as List<dynamic>);
+
+    final rawTools = json['tl'];
+    final tools = rawTools == null
+        ? <String>[]
+        : rawTools is String
+            ? rawTools.split('\n').where((t) => t.isNotEmpty).toList()
+            : List<String>.from(rawTools as List<dynamic>);
+
     final recipe = Recipe(
       id: recipeId,
-
       name: json['n'] as String,
-
-      category: json['c'] as String,
-
-      categoryName: json['cn'] as String,
-
+      category: category,
+      categoryName: categoryName,
       difficulty: json['d'] as int,
-
-      ingredients: (json['i'] as List<dynamic>).map((text) {
-        final textStr = text as String;
-
-        // 从字符串提取食材名称（第一个空格前的部分）
-
+      ingredients: ingredientTexts.where((t) => t.isNotEmpty).map((textStr) {
         final firstSpaceIndex = textStr.indexOf(' ');
-
         final name = firstSpaceIndex > 0
             ? textStr.substring(0, firstSpaceIndex)
             : textStr;
-
         return Ingredient(name: name, text: textStr);
       }).toList(),
-
-      steps: (json['s'] as List<dynamic>)
-          .map((desc) => CookingStep(description: desc as String))
+      steps: stepTexts.where((d) => d.isNotEmpty)
+          .map((desc) => CookingStep(description: desc))
           .toList(),
-
       tips: json['t'] as String?,
-
-      warnings: json['w'] != null
-          ? List<String>.from(json['w'] as List<dynamic>)
-          : [],
-
-      tools: [], // 二维码中不包含工具列表
-
-      images: [], // 二维码中不包含图片
-
-      hash: json['hash'] as String? ?? '', // 用于版本追踪（默认空字符串）
-
+      warnings: warnings,
+      tools: tools,
+      images: [],
+      hash: '',
       source: recipeSource,
     );
 
@@ -869,6 +879,22 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
     debugPrint('  - CategoryName: ${recipe.categoryName}');
 
     return recipe;
+  }
+
+  String _categoryNameFromCode(String code) {
+    const map = {
+      'meat_dish': '荤菜',
+      'vegetable_dish': '素菜',
+      'aquatic': '水产',
+      'breakfast': '早餐',
+      'staple': '主食',
+      'soup': '汤羹',
+      'dessert': '甜品',
+      'drink': '饮品',
+      'condiment': '调味品',
+      'semi-finished': '半成品',
+    };
+    return map[code] ?? code;
   }
 }
 

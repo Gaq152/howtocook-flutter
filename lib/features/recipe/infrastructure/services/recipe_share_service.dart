@@ -224,88 +224,49 @@ class RecipeShareService {
 
       switch (recipe.source) {
         case RecipeSource.bundled:
-          // 内置食谱：只包含 ID 和基本信息
+          // 内置食谱：只包含 ID
           payload = {
-            'src': 'b',  // bundled
+            'src': 'b',
             'id': recipe.id,
-            'n': recipe.name,  // 用于显示
-            if (recipe.hash.isNotEmpty) 'hash': recipe.hash,
+            'n': recipe.name,
           };
           debugPrint('📦 生成内置食谱二维码: ${recipe.name}');
           break;
 
         case RecipeSource.userModified:
-          // 修改的内置食谱：包含基础 ID + 所有字段（简化处理，不做 diff）
-          // TODO: 未来可以优化为只传递改动字段
+          // 修改的内置食谱：包含 ID + 所有字段
           payload = {
-            'src': 'm',  // modified
+            'src': 'm',
             'id': recipe.id,
             'n': recipe.name,
             'd': recipe.difficulty,
             'c': recipe.category,
-            'cn': recipe.categoryName,
-            'i': recipe.ingredients.map((ing) => ing.text).toList(),
-            's': recipe.steps.map((step) => step.description).toList(),
+            'i': recipe.ingredients.map((ing) => ing.text).join('\n'),
+            's': recipe.steps.map((step) => step.description).join('\n'),
+            if (recipe.tools.isNotEmpty) 'tl': recipe.tools.join('\n'),
             if (recipe.tips != null && recipe.tips!.isNotEmpty) 't': recipe.tips,
-            if (recipe.warnings.isNotEmpty) 'w': recipe.warnings,
-            if (recipe.hash.isNotEmpty) 'hash': recipe.hash,
+            if (recipe.warnings.isNotEmpty) 'w': recipe.warnings.join('\n'),
           };
           debugPrint('✏️  生成修改版食谱二维码: ${recipe.name}');
           break;
 
         case RecipeSource.userCreated:
-          // 用户创建：完整信息
-          payload = {
-            'src': 'u',  // user
-            'id': recipe.id,
-            'n': recipe.name,
-            'd': recipe.difficulty,
-            'c': recipe.category,
-            'cn': recipe.categoryName,
-            'i': recipe.ingredients.map((ing) => ing.text).toList(),
-            's': recipe.steps.map((step) => step.description).toList(),
-            if (recipe.tips != null && recipe.tips!.isNotEmpty) 't': recipe.tips,
-            if (recipe.warnings.isNotEmpty) 'w': recipe.warnings,
-            if (recipe.hash.isNotEmpty) 'hash': recipe.hash,
-          };
-          debugPrint('👤 生成用户创建食谱二维码: ${recipe.name}');
-          break;
-
         case RecipeSource.aiGenerated:
-          // AI 生成：完整信息
-          payload = {
-            'src': 'a',  // ai
-            'id': recipe.id,
-            'n': recipe.name,
-            'd': recipe.difficulty,
-            'c': recipe.category,
-            'cn': recipe.categoryName,
-            'i': recipe.ingredients.map((ing) => ing.text).toList(),
-            's': recipe.steps.map((step) => step.description).toList(),
-            if (recipe.tips != null && recipe.tips!.isNotEmpty) 't': recipe.tips,
-            if (recipe.warnings.isNotEmpty) 'w': recipe.warnings,
-            if (recipe.hash.isNotEmpty) 'hash': recipe.hash,
-          };
-          debugPrint('🤖 生成 AI 创建食谱二维码: ${recipe.name}');
-          break;
-
         case RecipeSource.scanned:
         case RecipeSource.cloud:
-          // 扫码导入/云端下载：完整信息（兼容旧版，默认当作用户创建处理）
+          // 用户创建/AI/扫码/云端：完整信息（不传 id，接收方生成新 ID）
           payload = {
-            'src': 'u',  // 默认当作用户创建
-            'id': recipe.id,
+            'src': recipe.source == RecipeSource.aiGenerated ? 'a' : 'u',
             'n': recipe.name,
             'd': recipe.difficulty,
             'c': recipe.category,
-            'cn': recipe.categoryName,
-            'i': recipe.ingredients.map((ing) => ing.text).toList(),
-            's': recipe.steps.map((step) => step.description).toList(),
+            'i': recipe.ingredients.map((ing) => ing.text).join('\n'),
+            's': recipe.steps.map((step) => step.description).join('\n'),
+            if (recipe.tools.isNotEmpty) 'tl': recipe.tools.join('\n'),
             if (recipe.tips != null && recipe.tips!.isNotEmpty) 't': recipe.tips,
-            if (recipe.warnings.isNotEmpty) 'w': recipe.warnings,
-            if (recipe.hash.isNotEmpty) 'hash': recipe.hash,
+            if (recipe.warnings.isNotEmpty) 'w': recipe.warnings.join('\n'),
           };
-          debugPrint('📥 生成扫码/云端食谱二维码: ${recipe.name}');
+          debugPrint('👤 生成食谱二维码: ${recipe.name}');
       }
 
       // 2. 转为 JSON 字符串
