@@ -46,7 +46,7 @@ class _AboutScreenState extends ConsumerState<AboutScreen> {
   Widget build(BuildContext context) {
     final version = _pkg == null
         ? '--'
-        : 'v${_pkg!.version} (${_pkg!.buildNumber})';
+        : 'v${_pkg!.version}';
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 

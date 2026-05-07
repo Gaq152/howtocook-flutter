@@ -57,7 +57,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     final version = _pkg == null
         ? '--'
-        : '${_pkg!.version} (${_pkg!.buildNumber})';
+        : 'v${_pkg!.version}';
 
     return Scaffold(
       appBar: AppBar(title: const Text('设置')),

@@ -138,7 +138,9 @@ jobs:
           SIZE_ARM64=$(stat -c%s "$APK_ARM64")
           FNAME_ARM64=$(basename "$APK_ARM64")
           FNAME_ARM32=$(basename "$APK_ARM32")
-          VCODE=$(grep '^version:' pubspec.yaml | awk '{print $2}' | awk -F'+' '{print ($2==""?1:$2)}')
+          # split-per-abi 时 Flutter 给 arm64 的 versionCode 加 2000 前缀，manifest 需保持一致
+          RAW_VCODE=$(grep '^version:' pubspec.yaml | awk '{print $2}' | awk -F'+' '{print ($2==""?1:$2)}')
+          VCODE=$((2000 + RAW_VCODE))
           VNAME_STRIPPED="${VNAME#v}"
           export SHA_ARM64 SHA_ARM32 SIZE_ARM64 FNAME_ARM64 FNAME_ARM32 VCODE VNAME_STRIPPED OWNER_REPO
           python3 - <<'PY' > manifest.json

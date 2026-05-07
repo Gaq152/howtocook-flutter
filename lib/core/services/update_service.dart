@@ -122,7 +122,10 @@ class UpdateService {
     bool respectSkippedVersion = true,
   }) async {
     final packageInfo = await PackageInfo.fromPlatform();
-    final currentCode = int.tryParse(packageInfo.buildNumber) ?? 0;
+    // split-per-abi 构建时 Flutter 会给 versionCode 加 ABI 前缀
+    // (arm64=2000, arm32=1000, x86_64=3000)，需还原为 pubspec 中的原始值
+    final rawCode = int.tryParse(packageInfo.buildNumber) ?? 0;
+    final currentCode = rawCode >= 1000 ? rawCode % 1000 : rawCode;
     final currentName = packageInfo.version;
 
     final info = await _fetchManifest(_manifestUrl);
@@ -137,7 +140,9 @@ class UpdateService {
 
     final skipped = respectSkippedVersion ? getSkippedVersion() : null;
     final hasUpdate =
-        info.versionCode > currentCode && info.versionCode != skipped;
+        (_compareVersionNames(info.versionName, currentName) > 0 ||
+            info.versionCode > currentCode) &&
+        info.versionCode != skipped;
 
     return UpdateCheckResult(
       info: info,
@@ -253,6 +258,19 @@ class UpdateService {
       }
     }
     return null;
+  }
+
+  /// 语义版本比较：返回 >0 表示 a 更新，0 相等，<0 表示 b 更新
+  static int _compareVersionNames(String a, String b) {
+    final partsA = a.split('.').map((s) => int.tryParse(s) ?? 0).toList();
+    final partsB = b.split('.').map((s) => int.tryParse(s) ?? 0).toList();
+    final len = partsA.length > partsB.length ? partsA.length : partsB.length;
+    for (int i = 0; i < len; i++) {
+      final va = i < partsA.length ? partsA[i] : 0;
+      final vb = i < partsB.length ? partsB[i] : 0;
+      if (va != vb) return va - vb;
+    }
+    return 0;
   }
 
   Future<Directory> _prepareDownloadDir() async {
