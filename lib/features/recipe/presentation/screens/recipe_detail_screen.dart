@@ -96,7 +96,8 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     if (path.isEmpty) return false;
     if (path.startsWith('data:image/')) return true;
     if (path.startsWith('http://') || path.startsWith('https://')) return true;
-    if (path.startsWith('assets/')) return true;
+    // assets/images/ 是详情图的占位路径，实际未内置，需走下载缓存逻辑
+    if (path.startsWith('assets/') && !path.startsWith('assets/images/')) return true;
     if (path.startsWith('/')) return true; // Unix 绝对路径
     // Windows 绝对路径：C:\ 或 C:/
     if (RegExp(r'^[A-Za-z]:[\\/]').hasMatch(path)) return true;
