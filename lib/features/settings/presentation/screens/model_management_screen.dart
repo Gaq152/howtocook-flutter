@@ -35,16 +35,18 @@ class _ModelManagementScreenState
     return Scaffold(
       appBar: AppBar(
         title: const Text('模型管理', style: AppTextStyles.appBarTitle),
+        actions: [
+          IconButton(
+            onPressed: () => _openModelForm(),
+            icon: const Icon(Icons.add),
+            tooltip: '添加模型',
+          ),
+        ],
       ),
       body: modelsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => _buildError(error),
         data: (models) => _buildModelSections(models),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openModelForm(),
-        icon: const Icon(Icons.add),
-        label: const Text('添加模型'),
       ),
     );
   }
@@ -63,10 +65,10 @@ class _ModelManagementScreenState
                 AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 12),
-          TextButton.icon(
+          IconButton(
             onPressed: () => ref.invalidate(availableModelsProvider),
             icon: const Icon(Icons.refresh),
-            label: const Text('重新加载'),
+            tooltip: '重新加载',
           ),
         ],
       ),
@@ -82,7 +84,7 @@ class _ModelManagementScreenState
       onRefresh: _refreshModels,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         children: [
           _buildSectionHeader('内置模型', Icons.workspace_premium_outlined),
           ...builtinModels.map(_buildModelCard),
@@ -128,7 +130,7 @@ class _ModelManagementScreenState
         borderRadius: BorderRadius.circular(16),
       ),
       child: Text(
-        '还没有自定义模型，点击右下角按钮即可添加。',
+        '还没有自定义模型，点击右上角 + 即可添加。',
         style:
             AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
       ),
