@@ -100,6 +100,7 @@ flutter:
   # 资源文件
   assets:
     - .env
+    - CHANGELOG.md
     - assets/icon/
     - assets/manifest.json
     # WeChat QRCode models

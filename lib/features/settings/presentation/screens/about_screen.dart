@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../../core/services/update_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_snack_bar.dart';
+import 'changelog_screen.dart';
 
 class AboutScreen extends ConsumerStatefulWidget {
   const AboutScreen({super.key});
@@ -17,7 +16,6 @@ class AboutScreen extends ConsumerStatefulWidget {
 
 class _AboutScreenState extends ConsumerState<AboutScreen> {
   PackageInfo? _pkg;
-  bool _loading = false;
 
   @override
   void initState() {
@@ -27,53 +25,14 @@ class _AboutScreenState extends ConsumerState<AboutScreen> {
     });
   }
 
-  Future<void> _showChangelog() async {
-    if (_loading) return;
-    setState(() => _loading = true);
-    try {
-      final result = await ref
-          .read(updateServiceProvider)
-          .checkForUpdate(respectSkippedVersion: false);
-      if (!mounted) return;
-      final notes = result.info?.notes.trim() ?? '';
-      final versionName = result.info?.versionName ?? _pkg?.version ?? '--';
-      showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text('更新日志 v$versionName'),
-          content: ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 400, maxWidth: 380),
-            child: notes.isEmpty
-                ? const Text('暂无更新日志')
-                : Scrollbar(
-                    child: SingleChildScrollView(
-                      child: MarkdownBody(
-                        data: notes,
-                        selectable: true,
-                        onTapLink: (_, href, __) {
-                          if (href == null) return;
-                          final uri = Uri.tryParse(href);
-                          if (uri != null) {
-                            launchUrl(uri, mode: LaunchMode.externalApplication);
-                          }
-                        },
-                      ),
-                    ),
-                  ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('关闭'),
-            ),
-          ],
+  void _openChangelog() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ChangelogScreen(
+          currentVersion: _pkg?.version ?? '0.0.0',
         ),
-      );
-    } catch (e) {
-      if (mounted) AppSnackBar.show(context, '获取更新日志失败：$e');
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+      ),
+    );
   }
 
   Future<void> _openUrl(String url) async {
@@ -184,33 +143,12 @@ class _AboutScreenState extends ConsumerState<AboutScreen> {
                 _SectionCard(
                   children: [
                     ListTile(
-                      leading: const Icon(Icons.code_outlined,
-                          color: AppColors.primary),
-                      title: const Text('开源仓库'),
-                      subtitle:
-                          const Text('github.com/Gaq152/howtocook-flutter'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => _openUrl(
-                          'https://github.com/Gaq152/howtocook-flutter'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                _SectionCard(
-                  children: [
-                    ListTile(
                       leading: const Icon(Icons.history_outlined,
                           color: AppColors.primary),
                       title: const Text('更新日志'),
-                      subtitle: const Text('查看当前版本的更新内容'),
-                      trailing: _loading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child:
-                                  CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.chevron_right),
-                      onTap: _loading ? null : _showChangelog,
+                      subtitle: const Text('查看版本更新内容'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: _openChangelog,
                     ),
                     const Divider(height: 1, indent: 16, endIndent: 16),
                     ListTile(
