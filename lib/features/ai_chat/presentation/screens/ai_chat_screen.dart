@@ -1484,7 +1484,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
 
   /// 解析 XML 格式的工具调用（CherryStudio 风格）
   ///
-  /// 从响应文本中提取 <tool_use> 标签内容
+  /// 从响应文本中提取 `<tool_use>` 标签内容
   /// 返回工具调用列表，每个元素包含 id, name 和 arguments
   List<Map<String, dynamic>> _parseXmlToolCalls(String text) {
     final toolCalls = <Map<String, dynamic>>[];
@@ -1854,11 +1854,11 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
     debugPrint('🔧 ===== MCP Tool Call End =====');
     debugPrint('🔧 Tool: $cleanToolName');
     debugPrint('🔧 Duration: ${duration.inMilliseconds}ms');
-    debugPrint('🔧 Success: ${result?['success']}');
+    debugPrint('🔧 Success: ${result['success']}');
     if (errorMessage != null) {
       debugPrint('🔧 Error: $errorMessage');
     }
-    debugPrint('🔧 Result keys: ${result?.keys.toList()}');
+    debugPrint('🔧 Result keys: ${result.keys.toList()}');
     debugPrint('🔧 ==============================');
 
     if (kDebugMode) {

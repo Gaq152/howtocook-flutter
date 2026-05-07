@@ -4,12 +4,17 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:gal/gal.dart';
 import 'package:archive/archive.dart';
 import '../../domain/entities/recipe.dart';
 import '../../presentation/widgets/recipe_share_card.dart';
+
+final recipeShareServiceProvider = Provider<RecipeShareService>((ref) {
+  return RecipeShareService();
+});
 
 /// 分享结果枚举
 enum RecipeShareResult {
@@ -30,8 +35,8 @@ class RecipeShareService {
   /// 包含: 菜谱名称、难度星级、食材列表、烹饪步骤、小贴士
   Future<RecipeShareResult> shareAsText(Recipe recipe) async {
     try {
-      final text = _formatRecipeText(recipe);
-      await Clipboard.setData(ClipboardData(text: text));
+      final text = formatRecipeText(recipe);
+      await Share.share(text, subject: recipe.name);
       return RecipeShareResult.success;
     } catch (e) {
       debugPrint('分享文本失败: $e');
@@ -39,8 +44,7 @@ class RecipeShareService {
     }
   }
 
-  /// 格式化菜谱为纯文本
-  String _formatRecipeText(Recipe recipe) {
+  String formatRecipeText(Recipe recipe) {
     final buffer = StringBuffer();
 
     // 标题

@@ -499,6 +499,7 @@ class ClaudeAdapter implements AIService {
   /// 将工具定义转换为 XML 格式（CherryStudio 风格）
   ///
   /// 格式示例：
+  /// ```xml
   /// <tools>
   /// <tool>
   ///   <name>tool_name</name>
@@ -506,6 +507,7 @@ class ClaudeAdapter implements AIService {
   ///   <arguments>{"jsonSchema": ...}</arguments>
   /// </tool>
   /// </tools>
+  /// ```
   String _convertToolsToXml(List<Map<String, dynamic>> tools) {
     final buffer = StringBuffer();
     buffer.writeln('## Tool Use Available Tools');

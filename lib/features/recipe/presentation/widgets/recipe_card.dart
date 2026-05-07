@@ -4,16 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../domain/entities/recipe.dart';
 import '../../application/providers/recipe_providers.dart';
-import '../../infrastructure/services/recipe_share_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/app_snack_bar.dart';
 import '../../../../core/widgets/cached_recipe_image.dart';
-
-/// Provider for RecipeShareService
-final recipeShareServiceProvider = Provider<RecipeShareService>((ref) {
-  return RecipeShareService();
-});
+import 'share_bottom_sheet.dart';
 
 /// 菜谱卡片组件
 ///
@@ -129,7 +124,7 @@ class RecipeCard extends ConsumerWidget {
               title: const Text('分享'),
               onTap: () {
                 Navigator.pop(sheetContext);
-                _showShareOptions(context, ref);
+                showRecipeShareSheet(context: context, ref: ref, recipe: recipe);
               },
             ),
             ListTile(
@@ -237,96 +232,6 @@ class RecipeCard extends ConsumerWidget {
         size: 16,
       ),
     );
-  }
-
-  /// 显示分享选项
-  void _showShareOptions(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.text_fields_outlined),
-              title: const Text('复制为文本'),
-              subtitle: const Text('纯文本格式，可粘贴到任意位置'),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _shareAsText(context, ref);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.image_outlined),
-              title: const Text('分享图片'),
-              subtitle: const Text('带二维码的精美卡片'),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _shareAsImage(context, ref);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// 分享为文本
-  Future<void> _shareAsText(BuildContext context, WidgetRef ref) async {
-    try {
-      final shareService = ref.read(recipeShareServiceProvider);
-      final result = await shareService.shareAsText(recipe);
-
-      if (!context.mounted) return;
-
-      String message;
-      switch (result) {
-        case RecipeShareResult.success:
-          message = '✅ 已复制菜谱内容到剪贴板';
-          break;
-        case RecipeShareResult.cancelled:
-          message = '已取消复制';
-          break;
-        case RecipeShareResult.failed:
-          message = '复制失败，请稍后再试';
-          break;
-      }
-
-      AppSnackBar.show(context, message);
-    } catch (e) {
-      if (context.mounted) {
-        AppSnackBar.show(context, '分享失败: $e');
-      }
-    }
-  }
-
-  /// 分享为图片
-  Future<void> _shareAsImage(BuildContext context, WidgetRef ref) async {
-    try {
-      final shareService = ref.read(recipeShareServiceProvider);
-      final result = await shareService.shareAsImage(recipe, context);
-
-      if (!context.mounted) return;
-
-      String message;
-      switch (result) {
-        case RecipeShareResult.success:
-          message = '✅ 已生成图片，快去分享吧';
-          break;
-        case RecipeShareResult.cancelled:
-          message = '已取消分享';
-          break;
-        case RecipeShareResult.failed:
-          message = '生成图片失败，请稍后再试';
-          break;
-      }
-
-      AppSnackBar.show(context, message);
-    } catch (e) {
-      if (context.mounted) {
-        AppSnackBar.show(context, '分享失败: $e');
-      }
-    }
   }
 
   /// 检查是否可以删除
