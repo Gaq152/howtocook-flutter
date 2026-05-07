@@ -111,7 +111,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
 
 重要提示：
 ⚠️ 当前模型不支持使用MCP工具获取菜谱数据库信息。如果用户需要查询具体菜谱、食材、做法等详细信息，请建议用户：
-1. 切换到支持工具调用的模型（如 Claude 系列模型、deepseek-chat 等）
+1. 切换到支持工具调用的模型（如 Claude 系列模型、DeepSeek V4 等）
 2. 或者直接在应用的菜谱页面中浏览和搜索
 
 你可以：

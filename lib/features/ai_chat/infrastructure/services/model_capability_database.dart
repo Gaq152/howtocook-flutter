@@ -190,23 +190,30 @@ class ModelCapabilityDatabase {
     ),
 
     // ========== DeepSeek 模型 ==========
+    'deepseek:deepseek-v4-flash': const ModelCapabilities(
+      supportsImageInput: false,
+      supportsMCP: true,
+      maxTokens: 8192,
+      contextWindow: 1000000,
+    ),
+    'deepseek:deepseek-v4-pro': const ModelCapabilities(
+      supportsImageInput: false,
+      supportsMCP: true,
+      maxTokens: 8192,
+      contextWindow: 1000000,
+    ),
+    // 旧模型 ID（兼容期至 2026-07-24，之后将停用）
     'deepseek:deepseek-chat': const ModelCapabilities(
       supportsImageInput: false,
       supportsMCP: true,
       maxTokens: 8192,
-      contextWindow: 64000,
-    ),
-    'deepseek:deepseek-coder': const ModelCapabilities(
-      supportsImageInput: false,
-      supportsMCP: true,
-      maxTokens: 8192,
-      contextWindow: 64000,
+      contextWindow: 1000000,
     ),
     'deepseek:deepseek-reasoner': const ModelCapabilities(
       supportsImageInput: false,
-      supportsMCP: false,
+      supportsMCP: true,
       maxTokens: 8192,
-      contextWindow: 64000,
+      contextWindow: 1000000,
     ),
   };
 

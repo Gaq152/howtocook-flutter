@@ -295,10 +295,10 @@ class DeepSeekAdapter implements AIService {
       requestData['max_tokens'] = maxTokens;
     }
 
-    // deepseek-reasoner 不支持 Function Calling
+    // 旧版 deepseek-reasoner 不支持 Function Calling，建议迁移到 deepseek-v4-flash/pro
     if (modelId.contains('reasoner')) {
       if (tools != null && tools.isNotEmpty) {
-        throw Exception('deepseek-reasoner 不支持 Function Calling，请使用 deepseek-chat');
+        throw Exception('deepseek-reasoner 不支持工具调用，请切换到 deepseek-v4-flash 或 deepseek-v4-pro');
       }
       // 过滤掉历史消息中的工具调用和结果
       requestData['messages'] = (requestData['messages'] as List)

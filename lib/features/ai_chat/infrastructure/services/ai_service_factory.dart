@@ -149,16 +149,16 @@ class AIServiceFactory {
       AIModelConfig(
         id: 'builtin-deepseek-chat',
         provider: AIProvider.deepseek,
-        modelId: 'deepseek-chat',
-        displayName: 'DeepSeek Chat',
-        description: '国产大模型，性能优秀且价格实惠',
+        modelId: 'deepseek-v4-flash',
+        displayName: 'DeepSeek V4 Flash',
+        description: '国产大模型，支持 1M 上下文，性能优秀且价格实惠',
         isBuiltin: true,
-        isDefault: true, // 设为默认模型
+        isDefault: true,
         capabilities: const ModelCapabilities(
           supportsImageInput: false,
           supportsMCP: true,
           maxTokens: 8192,
-          contextWindow: 64000,
+          contextWindow: 1000000,
         ),
       ),
     ];
