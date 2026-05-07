@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart' as mobile;
 import 'package:image_picker/image_picker.dart';
@@ -47,19 +50,38 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
       );
 
   final WeChatQRScanner _wechatScanner = WeChatQRScanner();
+  final GlobalKey _cameraKey = GlobalKey();
   bool _isProcessing = false;
   bool _isWechatDecoding = false;
   DateTime? _lastWechatAttempt;
+  Timer? _periodicScanTimer;
+  Timer? _hintTimer;
+  String _scanStatus = '';
+  int _scanAttempts = 0;
 
   @override
   void initState() {
     super.initState();
-    // 提前初始化 WeChatQRCode 模型，避免首次触发时延迟
-    _wechatScanner.initialize().catchError((_) {});
+    _wechatScanner.initialize().catchError((e) {
+      debugPrint('WeChatQRCode init failed: $e');
+      if (mounted) setState(() => _scanStatus = '增强识别引擎加载失败');
+    });
+    _periodicScanTimer = Timer.periodic(
+      const Duration(milliseconds: 2000),
+      (_) => _periodicWeChatScan(),
+    );
+    // 6 秒后如果还没扫到，显示提示（备用）
+    _hintTimer = Timer(const Duration(seconds: 6), () {
+      if (mounted && !_isProcessing && _scanStatus.isEmpty) {
+        setState(() => _scanStatus = '未识别到二维码，请调整距离或角度');
+      }
+    });
   }
 
   @override
   void dispose() {
+    _periodicScanTimer?.cancel();
+    _hintTimer?.cancel();
     _controller.dispose();
     _wechatScanner.dispose();
     super.dispose();
@@ -99,10 +121,12 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
       body: Stack(
         children: [
           // 相机扫描区域
-          mobile.MobileScanner(
-            controller: _controller,
-
-            onDetect: _onBarcodeDetect,
+          RepaintBoundary(
+            key: _cameraKey,
+            child: mobile.MobileScanner(
+              controller: _controller,
+              onDetect: _onBarcodeDetect,
+            ),
           ),
 
           // 扫描框遮罩
@@ -137,30 +161,44 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
             ),
           ),
 
+          // 扫描状态提示
+          if (_scanStatus.isNotEmpty)
+            Positioned(
+              bottom: 100,
+              left: 24,
+              right: 24,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  _scanStatus,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
+
           // 底部相册按钮
           Positioned(
             bottom: 40,
-
             left: 0,
-
             right: 0,
-
             child: Center(
               child: ElevatedButton.icon(
                 onPressed: _pickImageFromGallery,
-
                 icon: const Icon(Icons.photo_library),
-
                 label: const Text('从相册选择'),
-
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.surface,
-
                   foregroundColor: AppColors.primary,
-
                   padding: const EdgeInsets.symmetric(
                     horizontal: 24,
-
                     vertical: 12,
                   ),
                 ),
@@ -198,6 +236,9 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
     }
 
     // MLKit 定位到二维码但解不出内容（高密度码）→ WeChatQRCode 兜底
+    if (mounted && _scanStatus != '已定位到二维码，正在解析...') {
+      setState(() => _scanStatus = '已定位到二维码，正在解析...');
+    }
     // 降频：每 800ms 最多触发一次
     if (_isWechatDecoding) return;
     final now = DateTime.now();
@@ -219,6 +260,42 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
       final results = await _wechatScanner.detectAndDecode(tempPath);
       if (results.isNotEmpty) _processQRCode(results.first);
     } catch (_) {
+    } finally {
+      _isWechatDecoding = false;
+      try { await tempFile?.delete(); } catch (_) {}
+    }
+  }
+
+  /// 定时截取相机预览画面，交给 WeChatQRCode 识别
+  /// 解决 MLKit 对高密度二维码完全无法触发 onDetect 的问题
+  Future<void> _periodicWeChatScan() async {
+    if (_isProcessing || _isWechatDecoding) return;
+    if (!mounted) return;
+
+    final renderObject = _cameraKey.currentContext?.findRenderObject();
+    if (renderObject is! RenderRepaintBoundary) return;
+
+    _isWechatDecoding = true;
+    _scanAttempts++;
+    File? tempFile;
+    try {
+      final image = await renderObject.toImage(pixelRatio: 1.5);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) return;
+
+      final tempDir = await getTemporaryDirectory();
+      final tempPath = '${tempDir.path}/periodic_qr_${DateTime.now().millisecondsSinceEpoch}.png';
+      tempFile = File(tempPath);
+      await tempFile.writeAsBytes(byteData.buffer.asUint8List());
+
+      final results = await _wechatScanner.detectAndDecode(tempPath);
+      if (results.isNotEmpty && mounted) {
+        _processQRCode(results.first);
+      } else if (mounted && _scanAttempts > 3 && _scanStatus.isEmpty) {
+        setState(() => _scanStatus = '未识别到二维码，请调整距离或角度');
+      }
+    } catch (e) {
+      debugPrint('定时扫描异常: $e');
     } finally {
       _isWechatDecoding = false;
       try { await tempFile?.delete(); } catch (_) {}
@@ -301,6 +378,8 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
 
   void _processQRCode(String code) {
     if (_isProcessing) return;
+    _periodicScanTimer?.cancel();
+    if (mounted) setState(() => _scanStatus = '识别成功，正在解析内容...');
 
     Uri? uri;
 

@@ -401,23 +401,31 @@ class RecipeShareCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // 二维码
+          // 二维码（大安静区 + 高对比度 + 定位增强边框）
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: Colors.white,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: AppColors.textDisabled.withValues(alpha: 0.35),
-                width: 2,
+                color: AppColors.textPrimary,
+                width: 3,
               ),
             ),
             child: QrImageView(
               data: qrData,
               version: QrVersions.auto,
-              size: 200, // 增大二维码尺寸从 120 → 200（图片中将是 400x400）
-              errorCorrectionLevel: QrErrorCorrectLevel.M, // 保持中等纠错级别，平衡尺寸和容错
-              backgroundColor: AppColors.surface,
+              size: 200,
+              errorCorrectionLevel: QrErrorCorrectLevel.L,
+              backgroundColor: Colors.white,
+              eyeStyle: const QrEyeStyle(
+                eyeShape: QrEyeShape.square,
+                color: Colors.black,
+              ),
+              dataModuleStyle: const QrDataModuleStyle(
+                dataModuleShape: QrDataModuleShape.square,
+                color: Colors.black,
+              ),
             ),
           ),
           const SizedBox(height: 12),
