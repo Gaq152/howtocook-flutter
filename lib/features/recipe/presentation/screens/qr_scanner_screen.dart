@@ -306,7 +306,6 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
 
   Future<void> _pickImageFromGallery() async {
     if (_isProcessing) return;
-    _isProcessing = true;
 
     try {
       debugPrint('🔍 开始从相册选择图片...');
@@ -369,8 +368,6 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
           backgroundColor: AppColors.error,
         );
       }
-    } finally {
-      _isProcessing = false;
     }
   }
 
@@ -378,7 +375,9 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
 
   void _processQRCode(String code) {
     if (_isProcessing) return;
+    _isProcessing = true;
     _periodicScanTimer?.cancel();
+    _controller.stop();
     if (mounted) setState(() => _scanStatus = '识别成功，正在解析内容...');
 
     Uri? uri;
@@ -394,10 +393,6 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
 
       return;
     }
-
-    setState(() {
-      _isProcessing = true;
-    });
 
     try {
       final recipe = _parseRecipeQRCode(code);
@@ -475,12 +470,6 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
   }
 
   Future<void> _handleTipQRCode(Uri uri) async {
-    if (_isProcessing) return;
-
-    setState(() {
-      _isProcessing = true;
-    });
-
     try {
       final tip = _parseTipUri(uri);
 
