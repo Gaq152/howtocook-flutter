@@ -18,7 +18,8 @@ import '../../infrastructure/services/recipe_share_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/app_snack_bar.dart';
-import '../../../../core/widgets/linkable_text.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/widgets/cached_recipe_image.dart';
 
 /// Provider for RecipeShareService
@@ -737,9 +738,19 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: Text(
-                          entry.value.text,
-                          style: AppTextStyles.ingredient,
+                        child: MarkdownBody(
+                          data: entry.value.text,
+                          shrinkWrap: true,
+                          selectable: true,
+                          fitContent: true,
+                          styleSheet: MarkdownStyleSheet(
+                            p: AppTextStyles.ingredient,
+                          ),
+                          onTapLink: (text, href, title) {
+                            if (href == null) return;
+                            final uri = Uri.tryParse(href);
+                            if (uri != null) launchUrl(uri, mode: LaunchMode.externalApplication);
+                          },
                         ),
                       ),
                     ],
@@ -855,11 +866,20 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            LinkableTextRich(
-              recipe.tips!,
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.textPrimary,
+            MarkdownBody(
+              data: recipe.tips!,
+              shrinkWrap: true,
+              selectable: true,
+              styleSheet: MarkdownStyleSheet(
+                p: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textPrimary,
+                ),
               ),
+              onTapLink: (text, href, title) {
+                if (href == null) return;
+                final uri = Uri.tryParse(href);
+                if (uri != null) launchUrl(uri, mode: LaunchMode.externalApplication);
+              },
             ),
           ],
         ),
@@ -893,11 +913,21 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     Icon(Icons.circle, size: 6, color: AppColors.warning),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: LinkableTextRich(
-                        warning,
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          color: AppColors.textPrimary,
+                      child: MarkdownBody(
+                        data: warning,
+                        shrinkWrap: true,
+                        selectable: true,
+                        fitContent: true,
+                        styleSheet: MarkdownStyleSheet(
+                          p: AppTextStyles.bodyMedium.copyWith(
+                            color: AppColors.textPrimary,
+                          ),
                         ),
+                        onTapLink: (text, href, title) {
+                          if (href == null) return;
+                          final uri = Uri.tryParse(href);
+                          if (uri != null) launchUrl(uri, mode: LaunchMode.externalApplication);
+                        },
                       ),
                     ),
                   ],
@@ -1588,9 +1618,19 @@ class _StepCard extends StatelessWidget {
             const SizedBox(width: 12),
             // 步骤描述
             Expanded(
-              child: LinkableTextRich(
-                description,
-                style: AppTextStyles.cookingStep,
+              child: MarkdownBody(
+                data: description,
+                shrinkWrap: true,
+                selectable: true,
+                fitContent: true,
+                styleSheet: MarkdownStyleSheet(
+                  p: AppTextStyles.cookingStep,
+                ),
+                onTapLink: (text, href, title) {
+                  if (href == null) return;
+                  final uri = Uri.tryParse(href);
+                  if (uri != null) launchUrl(uri, mode: LaunchMode.externalApplication);
+                },
               ),
             ),
           ],

@@ -339,9 +339,12 @@ class RecipeShareService {
                 ),
                 child: Directionality(
                   textDirection: TextDirection.ltr,
-                  child: RecipeShareCard(
-                    recipe: recipe,
-                    qrData: qrData,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: RecipeShareCard(
+                      recipe: recipe,
+                      qrData: qrData,
+                    ),
                   ),
                 ),
               ),

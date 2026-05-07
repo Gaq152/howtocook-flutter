@@ -1,8 +1,10 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../domain/entities/recipe.dart';
 import '../../application/providers/recipe_providers.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -222,9 +224,13 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: Text(
-                          ingredient.text,
-                          style: AppTextStyles.ingredient,
+                        child: MarkdownBody(
+                          data: ingredient.text,
+                          shrinkWrap: true,
+                          fitContent: true,
+                          styleSheet: MarkdownStyleSheet(
+                            p: AppTextStyles.ingredient,
+                          ),
                         ),
                       ),
                     ],
@@ -307,9 +313,13 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    step.description,
-                    style: AppTextStyles.cookingStep,
+                  child: MarkdownBody(
+                    data: step.description,
+                    shrinkWrap: true,
+                    fitContent: true,
+                    styleSheet: MarkdownStyleSheet(
+                      p: AppTextStyles.cookingStep,
+                    ),
                   ),
                 ),
               ],
@@ -338,11 +348,19 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            Text(
-              widget.recipe.tips!,
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.textPrimary,
+            MarkdownBody(
+              data: widget.recipe.tips!,
+              shrinkWrap: true,
+              styleSheet: MarkdownStyleSheet(
+                p: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textPrimary,
+                ),
               ),
+              onTapLink: (text, href, title) {
+                if (href == null) return;
+                final uri = Uri.tryParse(href);
+                if (uri != null) launchUrl(uri, mode: LaunchMode.externalApplication);
+              },
             ),
           ],
         ),
@@ -380,10 +398,14 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        warning,
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          color: AppColors.textPrimary,
+                      child: MarkdownBody(
+                        data: warning,
+                        shrinkWrap: true,
+                        fitContent: true,
+                        styleSheet: MarkdownStyleSheet(
+                          p: AppTextStyles.bodyMedium.copyWith(
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                       ),
                     ),

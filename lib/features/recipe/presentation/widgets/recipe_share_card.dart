@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../domain/entities/recipe.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -180,13 +181,21 @@ class RecipeShareCard extends StatelessWidget {
           // ✨ 显示所有食材（长截图）
           ...recipe.ingredients.map((ingredient) => Padding(
                 padding: const EdgeInsets.only(bottom: 6),
-                child: Text(
-                  '• ${ingredient.text}',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textPrimary,
-                    height: 1.4,
-                  ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('• ', style: TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+                    Expanded(
+                      child: MarkdownBody(
+                        data: ingredient.text,
+                        shrinkWrap: true,
+                        fitContent: true,
+                        styleSheet: MarkdownStyleSheet(
+                          p: const TextStyle(fontSize: 13, color: AppColors.textPrimary, height: 1.4),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               )),
         ],
@@ -325,12 +334,12 @@ class RecipeShareCard extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  step.description,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textPrimary,
-                    height: 1.4,
+                child: MarkdownBody(
+                  data: step.description,
+                  shrinkWrap: true,
+                  fitContent: true,
+                  styleSheet: MarkdownStyleSheet(
+                    p: const TextStyle(fontSize: 13, color: AppColors.textPrimary, height: 1.4),
                   ),
                 ),
               ),
@@ -366,13 +375,11 @@ class RecipeShareCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          // ✨ 显示完整小贴士（长截图）
-          Text(
-            recipe.tips!,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textPrimary,
-              height: 1.4,
+          MarkdownBody(
+            data: recipe.tips!,
+            shrinkWrap: true,
+            styleSheet: MarkdownStyleSheet(
+              p: const TextStyle(fontSize: 12, color: AppColors.textPrimary, height: 1.4),
             ),
           ),
         ],
