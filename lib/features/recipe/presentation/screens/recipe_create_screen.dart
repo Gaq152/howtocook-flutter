@@ -110,7 +110,9 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
             const SizedBox(height: 24),
             _buildWarningsSection(),
             const SizedBox(height: 24),
-            _buildImagesSection(),
+            _buildCoverImageSection(),
+            const SizedBox(height: 24),
+            _buildDetailImagesSection(),
             const SizedBox(height: 80), // 底部留白
           ],
         ),
@@ -461,8 +463,167 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
     );
   }
 
-  /// 图片部分
-  Widget _buildImagesSection() {
+  /// 构建图片预览组件
+  Widget _buildImagePreview(String imagePath, {double? width, double? height, BoxFit fit = BoxFit.cover}) {
+    final isBase64 = imagePath.startsWith('data:image/');
+    final isUrl = imagePath.startsWith('http');
+    final isAsset = imagePath.startsWith('assets/');
+    final isLocalFile = !isUrl && !isAsset && !isBase64;
+
+    if (isBase64) {
+      try {
+        final base64String = imagePath.split(',')[1];
+        final bytes = base64Decode(base64String);
+        return Image.memory(bytes, width: width, height: height, fit: fit,
+          errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 48));
+      } catch (_) {
+        return const Icon(Icons.broken_image, size: 48);
+      }
+    } else if (isLocalFile && !kIsWeb && File(imagePath).existsSync()) {
+      return Image.file(File(imagePath), width: width, height: height, fit: fit,
+        errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 48));
+    } else if (isUrl) {
+      return Image.network(imagePath, width: width, height: height, fit: fit,
+        errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 48));
+    }
+    return Icon(Icons.image, size: height != null ? height * 0.4 : 48, color: AppColors.textDisabled);
+  }
+
+  /// 封面图片部分
+  Widget _buildCoverImageSection() {
+    final hasCover = _images.isNotEmpty;
+    final coverImage = hasCover ? _images[0] : null;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('封面图片', style: AppTextStyles.h3),
+            const SizedBox(height: 12),
+            if (hasCover && coverImage != null)
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 200,
+                      child: _buildImagePreview(coverImage, height: 200),
+                    ),
+                  ),
+                  Positioned(
+                    right: 8,
+                    bottom: 8,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _imageActionButton(
+                          icon: Icons.photo_library,
+                          tooltip: '从相册替换',
+                          onPressed: () => _pickLocalImage(isCover: true),
+                        ),
+                        const SizedBox(width: 8),
+                        _imageActionButton(
+                          icon: Icons.link,
+                          tooltip: '用URL替换',
+                          onPressed: () => _addImageUrl(isCover: true),
+                        ),
+                        const SizedBox(width: 8),
+                        _imageActionButton(
+                          icon: Icons.delete,
+                          tooltip: '移除封面',
+                          onPressed: () => setState(() => _images.removeAt(0)),
+                          color: AppColors.error,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              )
+            else
+              InkWell(
+                onTap: () => _showCoverImageSourceDialog(),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  width: double.infinity,
+                  height: 160,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceAlt,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.textDisabled.withValues(alpha: 0.3), width: 1),
+                  ),
+                  child: const Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.add_photo_alternate, size: 48, color: AppColors.textDisabled),
+                      SizedBox(height: 8),
+                      Text('点击添加封面图片', style: TextStyle(color: AppColors.textDisabled)),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _imageActionButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onPressed,
+    Color? color,
+  }) {
+    return Material(
+      color: (color ?? AppColors.primary).withValues(alpha: 0.9),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Icon(icon, size: 20, color: Colors.white),
+        ),
+      ),
+    );
+  }
+
+  /// 显示封面图片来源选择
+  void _showCoverImageSourceDialog() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('从相册选择'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickLocalImage(isCover: true);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.link),
+              title: const Text('输入图片URL'),
+              onTap: () {
+                Navigator.pop(context);
+                _addImageUrl(isCover: true);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 详情图片部分
+  Widget _buildDetailImagesSection() {
+    final detailImages = _images.length > 1 ? _images.sublist(1) : <String>[];
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -471,69 +632,39 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
           children: [
             Row(
               children: [
-                Text('图片', style: AppTextStyles.h3),
+                Text('详情图片', style: AppTextStyles.h3),
+                const SizedBox(width: 8),
+                Text('(${detailImages.length})', style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
                 const Spacer(),
                 IconButton(
-                  onPressed: () => _addImageUrl(),
+                  onPressed: () => _addImageUrl(isCover: false),
                   icon: const Icon(Icons.link),
                   tooltip: '添加URL',
                 ),
                 IconButton(
-                  onPressed: () => _pickLocalImage(),
+                  onPressed: () => _pickLocalImage(isCover: false),
                   icon: const Icon(Icons.photo_library),
                   tooltip: '选择本地图片',
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            if (_images.isEmpty)
+            if (detailImages.isEmpty)
               const Padding(
                 padding: EdgeInsets.all(16),
                 child: Center(
-                  child: Text('暂无图片', style: TextStyle(color: AppColors.textDisabled)),
+                  child: Text('暂无详情图片', style: TextStyle(color: AppColors.textDisabled)),
                 ),
               )
             else
-              ..._images.asMap().entries.map((entry) {
-                final index = entry.key;
+              ...detailImages.asMap().entries.map((entry) {
+                final displayIndex = entry.key;
+                final realIndex = displayIndex + 1;
                 final imagePath = entry.value;
                 final isUrl = imagePath.startsWith('http');
-                final isAsset = imagePath.startsWith('assets/');
                 final isBase64 = imagePath.startsWith('data:image/');
+                final isAsset = imagePath.startsWith('assets/');
                 final isLocalFile = !isUrl && !isAsset && !isBase64;
-
-                Widget leadingWidget;
-                if (isBase64) {
-                  try {
-                    final base64String = imagePath.split(',')[1];
-                    final bytes = base64Decode(base64String);
-                    leadingWidget = ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: Image.memory(
-                        bytes,
-                        width: 40,
-                        height: 40,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
-                      ),
-                    );
-                  } catch (e) {
-                    leadingWidget = const Icon(Icons.broken_image);
-                  }
-                } else if (isLocalFile && !kIsWeb && File(imagePath).existsSync()) {
-                  leadingWidget = ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: Image.file(
-                      File(imagePath),
-                      width: 40,
-                      height: 40,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
-                    ),
-                  );
-                } else {
-                  leadingWidget = const Icon(Icons.image);
-                }
 
                 String displayText;
                 String? subtitle;
@@ -549,12 +680,15 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
                 }
 
                 return ListTile(
-                  leading: leadingWidget,
-                  title: Text(
-                    displayText,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  leading: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: _buildImagePreview(imagePath, width: 40, height: 40),
+                    ),
                   ),
+                  title: Text(displayText, maxLines: 1, overflow: TextOverflow.ellipsis),
                   subtitle: subtitle != null
                       ? Text(subtitle, style: const TextStyle(fontSize: 12))
                       : null,
@@ -564,11 +698,11 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
                       if (isUrl)
                         IconButton(
                           icon: const Icon(Icons.edit, size: 20),
-                          onPressed: () => _editImageUrl(index),
+                          onPressed: () => _editImageUrl(realIndex),
                         ),
                       IconButton(
                         icon: const Icon(Icons.delete, size: 20),
-                        onPressed: () => _deleteListItem(_images, index),
+                        onPressed: () => _deleteListItem(_images, realIndex),
                       ),
                     ],
                   ),
@@ -794,8 +928,8 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
   }
 
   /// 添加图片URL
-  void _addImageUrl() {
-    _editImageUrlDialog(-1);
+  void _addImageUrl({bool isCover = false}) {
+    _editImageUrlDialog(-1, isCover: isCover);
   }
 
   /// 编辑图片URL
@@ -804,16 +938,19 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
   }
 
   /// 图片URL编辑对话框
-  void _editImageUrlDialog(int index) {
+  void _editImageUrlDialog(int index, {bool isCover = false}) {
     final controller = TextEditingController(
       text: index >= 0 ? _images[index] : '',
     );
+
+    final isEditing = index >= 0;
+    final title = isEditing ? '编辑图片URL' : (isCover ? '设置封面图片URL' : '添加详情图片URL');
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(
-          index >= 0 ? '编辑图片URL' : '添加图片URL',
+          title,
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -845,8 +982,14 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
               final url = controller.text.trim();
               if (url.isNotEmpty) {
                 setState(() {
-                  if (index >= 0) {
+                  if (isEditing) {
                     _images[index] = url;
+                  } else if (isCover) {
+                    if (_images.isNotEmpty) {
+                      _images[0] = url;
+                    } else {
+                      _images.insert(0, url);
+                    }
                   } else {
                     _images.add(url);
                   }
@@ -862,7 +1005,7 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
   }
 
   /// 选择本地图片
-  Future<void> _pickLocalImage() async {
+  Future<void> _pickLocalImage({bool isCover = false}) async {
     try {
       final ImagePicker picker = ImagePicker();
       final XFile? image = await picker.pickImage(
@@ -928,17 +1071,25 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
         imagePath = targetPath;
       }
 
-      // 添加到图片列表
       if (mounted) {
         setState(() {
-          _images.add(imagePath);
+          if (isCover) {
+            if (_images.isNotEmpty) {
+              _images[0] = imagePath;
+            } else {
+              _images.insert(0, imagePath);
+            }
+          } else {
+            _images.add(imagePath);
+          }
           _isUploadingImage = false;
         });
-        Navigator.of(context).pop(); // 关闭加载对话框
+        Navigator.of(context).pop();
 
+        final label = isCover ? '封面图片' : '详情图片';
         AppSnackBar.show(
           context,
-          '图片添加成功 ($originalSizeKB KB → $compressedSizeKB KB)',
+          '$label已更新 ($originalSizeKB KB → $compressedSizeKB KB)',
           duration: const Duration(seconds: 2),
         );
       }
