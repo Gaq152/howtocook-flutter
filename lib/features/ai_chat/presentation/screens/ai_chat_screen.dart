@@ -199,6 +199,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
 
   @override
   void dispose() {
+    _saveChatHistory();
     _inputController.dispose();
     _scrollController.dispose();
     super.dispose();
