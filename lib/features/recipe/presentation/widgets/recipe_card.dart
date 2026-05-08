@@ -43,7 +43,18 @@ class RecipeCard extends ConsumerWidget {
           children: [
             // 图片区域 - 使用Expanded让其灵活适应空间
             Expanded(
-              child: _buildImage(),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _buildImage(),
+                  if (_hasSourceBadge())
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: _buildSourceBadge(),
+                    ),
+                ],
+              ),
             ),
 
             // 内容区域 - 固定高度
@@ -305,5 +316,43 @@ class RecipeCard extends ConsumerWidget {
         );
       }
     }
+  }
+
+  bool _hasSourceBadge() {
+    return recipe.source != RecipeSource.bundled &&
+        recipe.source != RecipeSource.cloud;
+  }
+
+  Widget _buildSourceBadge() {
+    final (IconData icon, String label, Color color) = switch (recipe.source) {
+      RecipeSource.aiGenerated => (Icons.auto_awesome, 'AI', AppColors.secondary),
+      RecipeSource.userCreated => (Icons.person, '自建', AppColors.primary),
+      RecipeSource.scanned => (Icons.qr_code_scanner, '扫码', AppColors.primary),
+      RecipeSource.userModified => (Icons.edit, '改', AppColors.plum),
+      _ => (Icons.label, '', AppColors.textDisabled),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 10, color: Colors.white),
+          const SizedBox(width: 2),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 9,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

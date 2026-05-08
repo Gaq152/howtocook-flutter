@@ -127,6 +127,18 @@ class ConversationRepository {
     );
   }
 
+  /// 根据食谱 ID 反查所属会话 ID
+  Future<String?> findConversationByRecipeId(String recipeId) async {
+    final conversations = await getAll();
+    for (final conv in conversations) {
+      final recipes = await getRecipes(conv.id);
+      for (final recipe in recipes) {
+        if (recipe['id'] == recipeId) return conv.id;
+      }
+    }
+    return null;
+  }
+
   // ========== 活跃会话 ==========
 
   String? getActiveConversationId() {

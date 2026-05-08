@@ -7,7 +7,9 @@ import '../../../../core/widgets/app_snack_bar.dart';
 import '../../../recipe/domain/entities/recipe.dart';
 import '../../domain/entities/chat_message.dart';
 import '../../infrastructure/services/recipe_recognizer.dart';
+import '../../infrastructure/services/tip_recognizer.dart';
 import 'recipe_card_widget.dart';
+import 'tip_card_widget.dart';
 
 /// 消息气泡组件
 ///
@@ -31,8 +33,10 @@ class MessageBubble extends StatefulWidget {
   final String? streamingText;
   final String? streamingReasoningText; // 流式思考内容
   final RecipeRecognizer? recipeRecognizer;
+  final TipRecognizer? tipRecognizer;
   final Function(String recipeId)? onRecipeTap;
-  final Map<String, Recipe>? createdRecipes; // AI 生成的食谱列表
+  final Function(String tipId, String category)? onTipTap;
+  final Map<String, Recipe>? createdRecipes;
 
   const MessageBubble({
     super.key,
@@ -46,7 +50,9 @@ class MessageBubble extends StatefulWidget {
     this.streamingText,
     this.streamingReasoningText,
     this.recipeRecognizer,
+    this.tipRecognizer,
     this.onRecipeTap,
+    this.onTipTap,
     this.createdRecipes,
   });
 
@@ -56,22 +62,27 @@ class MessageBubble extends StatefulWidget {
 
 class _MessageBubbleState extends State<MessageBubble> {
   List<RecipeCardData>? _recognizedRecipes;
-  bool _isReasoningExpanded = false; // 思考过程展开状态
+  List<TipCardData>? _recognizedTips;
+  bool _isReasoningExpanded = false;
 
   @override
   void initState() {
     super.initState();
-    _recognizeRecipes();
+    _recognizeContent();
   }
 
   @override
   void didUpdateWidget(MessageBubble oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // 如果消息内容变化或流式文本变化，重新识别菜谱
     if (widget.message.content != oldWidget.message.content ||
         widget.streamingText != oldWidget.streamingText) {
-      _recognizeRecipes();
+      _recognizeContent();
     }
+  }
+
+  void _recognizeContent() {
+    _recognizeRecipes();
+    _recognizeTips();
   }
 
   /// 识别消息中的菜谱（包括内置和 AI 生成的）
@@ -140,6 +151,31 @@ class _MessageBubbleState extends State<MessageBubble> {
     } catch (e) {
       // 识别失败不影响消息显示
       debugPrint('Recipe recognition error: $e');
+    }
+  }
+
+  Future<void> _recognizeTips() async {
+    if (widget.message.role != MessageRole.assistant) return;
+    if (widget.tipRecognizer == null) return;
+
+    final displayText = widget.isStreaming && widget.streamingText != null
+        ? widget.streamingText!
+        : widget.message.content
+            .whereType<TextContent>()
+            .map((c) => c.text)
+            .join('\n');
+
+    if (displayText.isEmpty) return;
+
+    try {
+      final tips = await widget.tipRecognizer!.extractTipsFromText(displayText);
+      if (mounted) {
+        setState(() {
+          _recognizedTips = tips.isEmpty ? null : tips;
+        });
+      }
+    } catch (e) {
+      debugPrint('Tip recognition error: $e');
     }
   }
 
@@ -224,6 +260,15 @@ class _MessageBubbleState extends State<MessageBubble> {
                       recipe: recipe,
                       onTap: widget.onRecipeTap != null
                           ? () => widget.onRecipeTap!(recipe.id)
+                          : null,
+                    )),
+
+                  // 教程卡片（仅AI消息）
+                  if (!isUser && _recognizedTips != null && _recognizedTips!.isNotEmpty)
+                    ..._recognizedTips!.map((tip) => TipCardWidget(
+                      tip: tip,
+                      onTap: widget.onTipTap != null
+                          ? () => widget.onTipTap!(tip.id, tip.category)
                           : null,
                     )),
 

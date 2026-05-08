@@ -21,6 +21,7 @@ import '../../infrastructure/repositories/conversation_repository.dart';
 import '../../infrastructure/services/ai_service_factory.dart';
 import '../../infrastructure/services/mcp_service.dart';
 import '../../infrastructure/services/recipe_recognizer.dart';
+import '../../infrastructure/services/tip_recognizer.dart';
 import '../widgets/conversation_drawer.dart';
 import '../widgets/message_bubble.dart';
 
@@ -65,6 +66,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   final ImagePicker _imagePicker = ImagePicker();
   final MCPService _mcpService = MCPService();
   late final RecipeRecognizer _recipeRecognizer;
+  late final TipRecognizer _tipRecognizer;
 
   bool _isLoading = false;
   bool _isStreaming = false;
@@ -167,7 +169,9 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   @override
   void initState() {
     super.initState();
-    _recipeRecognizer = RecipeRecognizer(BundledDataLoader());
+    final dataLoader = BundledDataLoader();
+    _recipeRecognizer = RecipeRecognizer(dataLoader);
+    _tipRecognizer = TipRecognizer(dataLoader);
     _initConversations();
     _loadSettings();
     _loadMCPTools();
@@ -864,6 +868,10 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                   _showEditDialog(context, message, index);
                 }
               : null,
+          tipRecognizer: _tipRecognizer,
+          onTipTap: (tipId, category) {
+            context.push('/tips/$category/$tipId');
+          },
         );
       },
     );

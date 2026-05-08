@@ -17,6 +17,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/widgets/cached_recipe_image.dart';
 import '../widgets/share_bottom_sheet.dart';
+import '../../../ai_chat/infrastructure/repositories/conversation_repository.dart';
 
 /// 菜谱详情页面
 ///
@@ -370,9 +371,14 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     children: [
                       if (recipe.source != RecipeSource.bundled &&
                           recipe.source != RecipeSource.cloud)
-                        _GlassTag(
-                          label: _getSourceLabel(recipe.source),
-                          highlight: true,
+                        GestureDetector(
+                          onTap: recipe.source == RecipeSource.aiGenerated
+                              ? () => _navigateToSourceConversation(recipe)
+                              : null,
+                          child: _GlassTag(
+                            label: _getSourceLabel(recipe.source),
+                            highlight: true,
+                          ),
                         ),
                       _GlassTag(label: recipe.categoryName),
                       _GlassTag(
@@ -629,6 +635,20 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
       RecipeSource.scanned => '扫码导入',
       _ => '',
     };
+  }
+
+  Future<void> _navigateToSourceConversation(Recipe recipe) async {
+    final repo = ConversationRepository();
+    final convId = await repo.findConversationByRecipeId(recipe.id);
+    if (!mounted) return;
+    if (convId == null) {
+      AppSnackBar.show(context, '关联会话已被删除或不存在');
+      return;
+    }
+    // 设置活跃会话并跳转到聊天页
+    await repo.setActiveConversationId(convId);
+    if (!mounted) return;
+    context.go('/ai-chat');
   }
 
   bool _canDeleteRecipe(Recipe recipe) {
