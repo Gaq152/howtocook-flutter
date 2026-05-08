@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../application/providers/recipe_providers.dart';
+import '../../domain/entities/recipe.dart';
 import '../widgets/recipe_card.dart';
 import '../../../../core/theme/app_colors.dart';
 
@@ -22,6 +23,9 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
 
   /// 当前选中的难度，null表示"全部"
   int? _selectedDifficulty;
+
+  /// 当前选中的来源筛选，null表示"全部"
+  String? _selectedSource;
 
   /// 滚动控制器，用于双击滚动到顶部
   final ScrollController _scrollController = ScrollController();
@@ -53,11 +57,22 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
             SliverToBoxAdapter(child: _buildFilterBar()),
             ...recipesAsync.when(
               data: (recipes) {
-                final filtered = _selectedDifficulty == null
-                    ? recipes
-                    : recipes
-                        .where((r) => r.difficulty == _selectedDifficulty)
-                        .toList();
+                var filtered = recipes.toList();
+                if (_selectedDifficulty != null) {
+                  filtered = filtered
+                      .where((r) => r.difficulty == _selectedDifficulty)
+                      .toList();
+                }
+                if (_selectedSource != null) {
+                  filtered = filtered.where((r) {
+                    return switch (_selectedSource) {
+                      'builtin' => r.source == RecipeSource.bundled || r.source == RecipeSource.cloud,
+                      'ai' => r.source == RecipeSource.aiGenerated,
+                      'user' => r.source == RecipeSource.userCreated || r.source == RecipeSource.userModified || r.source == RecipeSource.scanned,
+                      _ => true,
+                    };
+                  }).toList();
+                }
                 if (filtered.isEmpty) {
                   return [
                     SliverFillRemaining(
@@ -109,7 +124,7 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
     final scaffoldBg = Theme.of(context).scaffoldBackgroundColor;
 
     return SliverAppBar(
-      expandedHeight: 200,
+      expandedHeight: 170,
       toolbarHeight: 72,
       pinned: true,
       elevation: 0,
@@ -118,7 +133,7 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
       flexibleSpace: LayoutBuilder(
         builder: (context, constraints) {
           final statusBarHeight = MediaQuery.of(context).padding.top;
-          final maxExtent = 200.0 + statusBarHeight;
+          final maxExtent = 170.0 + statusBarHeight;
           final minExtent = 72.0 + statusBarHeight;
           final t = ((constraints.maxHeight - minExtent) / (maxExtent - minExtent)).clamp(0.0, 1.0);
 
@@ -135,7 +150,7 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         SizedBox(
-                          height: 128 * t,
+                          height: 98 * t,
                           child: ClipRect(
                             child: OverflowBox(
                               maxHeight: double.infinity,
@@ -156,9 +171,9 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
                                     ),
                                     const SizedBox(height: 6),
                                     const Text(
-                                      '今天\n想做点什么？',
+                                      '今天想做点什么？',
                                       style: TextStyle(
-                                        fontSize: 28,
+                                        fontSize: 26,
                                         fontWeight: FontWeight.w900,
                                         height: 1.3,
                                         color: AppColors.textPrimary,
@@ -406,8 +421,7 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
       child: Row(
         children: [
           const Text('难度', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
-          const SizedBox(width: 12),
-          // 小巧的下拉菜单
+          const SizedBox(width: 8),
           Container(
             height: 32,
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -444,6 +458,36 @@ class _RecipeHomeScreenState extends ConsumerState<RecipeHomeScreen> {
                 onChanged: (value) {
                   setState(() {
                     _selectedDifficulty = value;
+                  });
+                },
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          const Text('来源', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+          const SizedBox(width: 8),
+          Container(
+            height: 32,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              border: Border.all(color: AppColors.divider),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String?>(
+                value: _selectedSource,
+                isDense: true,
+                style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                icon: const Icon(Icons.arrow_drop_down, size: 20),
+                items: const [
+                  DropdownMenuItem<String?>(value: null, child: Text('全部')),
+                  DropdownMenuItem<String?>(value: 'builtin', child: Text('内置')),
+                  DropdownMenuItem<String?>(value: 'ai', child: Text('AI')),
+                  DropdownMenuItem<String?>(value: 'user', child: Text('自创')),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _selectedSource = value;
                   });
                 },
               ),
