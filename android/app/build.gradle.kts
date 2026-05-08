@@ -54,6 +54,10 @@ android {
 
     buildTypes {
         debug {
+            // 复用 release 签名，确保 debug/release 可覆盖安装且数据不丢失
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
 
         release {
