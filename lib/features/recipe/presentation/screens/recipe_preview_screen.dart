@@ -12,7 +12,7 @@ import '../../../../core/theme/app_text_styles.dart';
 
 /// 食谱预览页面
 ///
-/// 展示扫码导入的食谱，用户可以选择保存或取消
+/// 展示外部导入（扫码、AI 生成等）的食谱，用户可以选择保存或取消
 class RecipePreviewScreen extends ConsumerStatefulWidget {
   final Recipe recipe;
 
@@ -34,6 +34,17 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
     debugPrint('🎬 RecipePreviewScreen initState');
     debugPrint('  - Recipe ID: ${widget.recipe.id}');
     debugPrint('  - Recipe Name: ${widget.recipe.name}');
+  }
+
+  String _getPreviewHint() {
+    switch (widget.recipe.source) {
+      case RecipeSource.aiGenerated:
+        return '预览 AI 生成的食谱，确认无误后可保存到我的食谱';
+      case RecipeSource.scanned:
+        return '预览扫码导入的食谱，确认无误后可保存到我的食谱';
+      default:
+        return '预览食谱内容，确认无误后可保存到我的食谱';
+    }
   }
 
   @override
@@ -79,7 +90,7 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      '预览扫码导入的食谱，确认无误后可保存到我的食谱',
+                      _getPreviewHint(),
                       style: AppTextStyles.bodyMedium.copyWith(
                         color: AppColors.info,
                       ),
@@ -447,8 +458,8 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
         color = AppColors.primary;
         break;
       default:
-        icon = Icons.qr_code_scanner;
-        label = '扫码导入';
+        icon = Icons.restaurant;
+        label = '外部导入';
         color = AppColors.primary;
     }
 

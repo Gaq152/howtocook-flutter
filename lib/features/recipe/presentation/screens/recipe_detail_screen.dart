@@ -368,6 +368,12 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
+                      if (recipe.source != RecipeSource.bundled &&
+                          recipe.source != RecipeSource.cloud)
+                        _GlassTag(
+                          label: _getSourceLabel(recipe.source),
+                          highlight: true,
+                        ),
                       _GlassTag(label: recipe.categoryName),
                       _GlassTag(
                         label: '★' * recipe.difficulty.clamp(1, 5),
@@ -613,6 +619,16 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     } else {
       return errorWidget;
     }
+  }
+
+  String _getSourceLabel(RecipeSource source) {
+    return switch (source) {
+      RecipeSource.aiGenerated => 'AI 生成',
+      RecipeSource.userCreated => '用户创建',
+      RecipeSource.userModified => '已修改',
+      RecipeSource.scanned => '扫码导入',
+      _ => '',
+    };
   }
 
   bool _canDeleteRecipe(Recipe recipe) {
@@ -1193,15 +1209,18 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
 /// 毛玻璃标签（图片上的信息标签）
 class _GlassTag extends StatelessWidget {
   final String label;
+  final bool highlight;
 
-  const _GlassTag({required this.label});
+  const _GlassTag({required this.label, this.highlight = false});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
       decoration: BoxDecoration(
-        color: AppColors.textPrimary.withValues(alpha: 0.25),
+        color: highlight
+            ? AppColors.primary.withValues(alpha: 0.6)
+            : AppColors.textPrimary.withValues(alpha: 0.25),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: AppColors.surface.withValues(alpha: 0.2),
