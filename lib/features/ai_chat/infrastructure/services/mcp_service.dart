@@ -184,7 +184,8 @@ class MCPService {
           ? difficultyMatch.group(1)!.length
           : 3;
 
-      final recipeName = mcpData['name'] as String? ?? '未知菜谱';
+      var recipeName = mcpData['name'] as String? ?? '未知菜谱';
+      recipeName = recipeName.replaceFirst(RegExp(r'的做法$'), '');
 
       // 构建 Recipe JSON
       final recipeJson = {

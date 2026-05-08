@@ -357,8 +357,10 @@ class RecipeShareService {
         ),
       );
 
-      // 插入到 Overlay（使用传入的 context）
-      Overlay.of(context, rootOverlay: true).insert(overlayEntry);
+      // 延迟到下一帧再插入 Overlay，避免在 build 阶段调用 markNeedsBuild
+      final overlayState = Overlay.of(context, rootOverlay: true);
+      await Future.delayed(Duration.zero);
+      overlayState.insert(overlayEntry);
 
       // 等待渲染完成（包括二维码）
       await Future.delayed(const Duration(milliseconds: 1000));

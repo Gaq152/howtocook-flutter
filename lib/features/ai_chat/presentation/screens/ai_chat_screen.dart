@@ -13,6 +13,7 @@ import '../../../../core/widgets/main_scaffold.dart';
 import '../../../../core/storage/hive_service.dart';
 import '../../../sync/infrastructure/bundled_data_loader.dart';
 import '../../../recipe/domain/entities/recipe.dart';
+import '../../../recipe/application/providers/recipe_providers.dart';
 import '../../application/providers/ai_providers.dart';
 import '../../domain/entities/ai_model_config.dart';
 import '../../domain/entities/chat_message.dart';
@@ -437,7 +438,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
           children: [
             Text('小厨', style: TextStyle(color: AppColors.textPrimary)),
             const SizedBox(width: 8),
-            _buildModelSelector(),
+            Flexible(child: _buildModelSelector()),
           ],
         ),
         centerTitle: false,
@@ -569,10 +570,14 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
               color: AppColors.primary,
               fontWeight: FontWeight.w600,
             ),
+            isExpanded: true,
             items: models.map((model) {
               return DropdownMenuItem(
                 value: model.id,
-                child: Text(model.displayName),
+                child: Text(
+                  model.displayName,
+                  overflow: TextOverflow.ellipsis,
+                ),
               );
             }).toList(),
             onChanged: (modelId) {
@@ -826,14 +831,18 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
               : null,
           recipeRecognizer: _recipeRecognizer,
           createdRecipes: _createdRecipes, // 传递 AI 创建的食谱列表
-          onRecipeTap: (recipeId) {
-            // 检查是否是 AI 生成的食谱
+          onRecipeTap: (recipeId) async {
             if (_createdRecipes.containsKey(recipeId)) {
-              // AI 生成的食谱：跳转到预览页面
-              final recipe = _createdRecipes[recipeId]!;
-              context.push('/recipe-preview', extra: recipe);
+              final repo = ref.read(recipeRepositoryProvider);
+              final saved = await repo.getRecipeById(recipeId);
+              if (!context.mounted) return;
+              if (saved != null) {
+                context.push('/recipe/$recipeId');
+              } else {
+                final recipe = _createdRecipes[recipeId]!;
+                context.push('/recipe-preview', extra: recipe);
+              }
             } else {
-              // 内置食谱：直接跳转到详情页
               context.push('/recipe/$recipeId');
             }
           },
@@ -1930,7 +1939,8 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
 
             // 生成 ID 和 hash
             final timestamp = DateTime.now().millisecondsSinceEpoch;
-            final recipeName = recipeData['name'] as String? ?? '未命名食谱';
+            var recipeName = recipeData['name'] as String? ?? '未命名食谱';
+            recipeName = recipeName.replaceFirst(RegExp(r'的做法$'), '');
             final recipeId = 'ai_${categoryId}_${timestamp.toRadixString(16)}';
             final hash = '$recipeId-$timestamp'.hashCode.abs().toString();
 

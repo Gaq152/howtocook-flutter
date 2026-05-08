@@ -191,6 +191,7 @@ class TipShareService {
       );
 
       final overlayState = Overlay.of(context, rootOverlay: true);
+      await Future.delayed(Duration.zero);
       overlayState.insert(overlayEntry);
 
       await Future<void>.delayed(const Duration(milliseconds: 1000));
