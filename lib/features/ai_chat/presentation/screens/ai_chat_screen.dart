@@ -76,9 +76,6 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   // MCP 工具调用历史（仅 debug 模式）
   final List<MCPToolCall> _mcpCallHistory = [];
 
-  // 联网搜索开关
-  bool _enableWebSearch = false;
-
   // 深度思考开关
   bool _enableThinking = false;
 
@@ -248,17 +245,12 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   Future<void> _loadSettings() async {
     try {
       final hiveService = HiveService();
-      final enableWebSearch = await hiveService.getSetting(
-        'enable_web_search',
-        defaultValue: false,
-      );
       final enableThinking = await hiveService.getSetting(
         'enable_thinking',
         defaultValue: false,
       );
 
       setState(() {
-        _enableWebSearch = enableWebSearch as bool;
         _enableThinking = enableThinking as bool;
       });
     } catch (e) {
@@ -525,58 +517,6 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
       },
       // loading/error 状态：保持当前选择，不回退
       orElse: () => selected,
-    );
-  }
-
-  /// 构建联网搜索开关
-  Widget _buildWebSearchToggle() {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _enableWebSearch = !_enableWebSearch;
-        });
-        _saveSetting('enable_web_search', _enableWebSearch);
-
-        AppSnackBar.show(
-          context,
-          _enableWebSearch ? '已开启联网搜索（暂未接入）' : '已关闭联网搜索',
-          duration: const Duration(seconds: 1),
-          bottomOffset: AppSnackBar.kChatBottomOffset,
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: _enableWebSearch
-              ? AppColors.primary.withValues(alpha: 0.12)
-              : AppColors.textSecondary.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: _enableWebSearch
-                ? AppColors.primary.withValues(alpha: 0.4)
-                : AppColors.textSecondary.withValues(alpha: 0.2),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.language,
-              size: 16,
-              color: _enableWebSearch ? AppColors.primary : AppColors.textSecondary,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              '联网搜索',
-              style: AppTextStyles.bodySmall.copyWith(
-                color: _enableWebSearch ? AppColors.primary : AppColors.textSecondary,
-                fontWeight: _enableWebSearch ? FontWeight.w600 : FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -874,8 +814,6 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
             child: Row(
               children: [
                 _buildThinkingToggle(),
-                const SizedBox(width: 8),
-                _buildWebSearchToggle(),
               ],
             ),
           ),
