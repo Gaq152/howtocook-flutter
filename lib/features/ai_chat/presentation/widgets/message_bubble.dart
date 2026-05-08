@@ -554,7 +554,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                     Icon(Icons.psychology, size: 16, color: AppColors.warning),
                     const SizedBox(width: 4),
                     Text(
-                      '💭 思考过程',
+                      '思考过程',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: AppColors.warning,
