@@ -45,7 +45,6 @@ class MCPToolCall {
 /// 功能：
 /// - 发送和接收消息
 /// - 模型切换（Claude、OpenAI、DeepSeek）
-/// - 联网搜索开关
 /// - 图片上传（多模态）
 /// - 聊天记录持久化
 /// - MCP 工具默认集成

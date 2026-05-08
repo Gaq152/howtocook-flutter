@@ -55,7 +55,6 @@ class ModelCapabilities with _$ModelCapabilities {
   const factory ModelCapabilities({
     @Default(false) bool supportsImageInput,     // 支持图片输入
     @Default(false) bool supportsFileInput,      // 支持文件输入
-    @Default(false) bool supportsWebSearch,      // 支持联网搜索
     @Default(true) bool supportsMCP,             // 支持 MCP 工具调用
     @Default(true) bool enableStreaming,         // 启用流式输出
     @Default(false) bool enableThinking,         // 启用思考链（Extended Thinking）

@@ -110,7 +110,6 @@ class AvailableModels extends _$AvailableModels {
       'capabilities': {
         'supportsImageInput': model.capabilities.supportsImageInput,
         'supportsFileInput': model.capabilities.supportsFileInput,
-        'supportsWebSearch': model.capabilities.supportsWebSearch,
         'supportsMCP': model.capabilities.supportsMCP,
         'enableStreaming': model.capabilities.enableStreaming,
         'enableThinking': model.capabilities.enableThinking,

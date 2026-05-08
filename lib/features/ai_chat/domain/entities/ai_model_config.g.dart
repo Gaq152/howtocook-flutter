@@ -78,7 +78,6 @@ _$ModelCapabilitiesImpl _$$ModelCapabilitiesImplFromJson(
     _$ModelCapabilitiesImpl(
       supportsImageInput: json['supportsImageInput'] as bool? ?? false,
       supportsFileInput: json['supportsFileInput'] as bool? ?? false,
-      supportsWebSearch: json['supportsWebSearch'] as bool? ?? false,
       supportsMCP: json['supportsMCP'] as bool? ?? true,
       enableStreaming: json['enableStreaming'] as bool? ?? true,
       enableThinking: json['enableThinking'] as bool? ?? false,
@@ -93,7 +92,6 @@ Map<String, dynamic> _$$ModelCapabilitiesImplToJson(
     <String, dynamic>{
       'supportsImageInput': instance.supportsImageInput,
       'supportsFileInput': instance.supportsFileInput,
-      'supportsWebSearch': instance.supportsWebSearch,
       'supportsMCP': instance.supportsMCP,
       'enableStreaming': instance.enableStreaming,
       'enableThinking': instance.enableThinking,

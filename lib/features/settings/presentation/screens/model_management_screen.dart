@@ -229,8 +229,6 @@ class _ModelManagementScreenState
               children: [
                 _buildCapabilityTag(
                     '图片输入', model.capabilities.supportsImageInput),
-                _buildCapabilityTag(
-                    '联网搜索', model.capabilities.supportsWebSearch),
                 _buildCapabilityTag('MCP', model.capabilities.supportsMCP),
                 _buildCapabilityTag(
                     '流式输出', model.capabilities.enableStreaming),
@@ -372,7 +370,6 @@ class _ModelFormSheetState extends ConsumerState<ModelFormSheet> {
 
   late AIProvider _provider;
   late bool _supportsImageInput;
-  late bool _supportsWebSearch;
   late bool _supportsFileInput;
   late bool _supportsMCP;
   late bool _enableStreaming;
@@ -415,7 +412,6 @@ class _ModelFormSheetState extends ConsumerState<ModelFormSheet> {
     );
 
     _supportsImageInput = initial?.capabilities.supportsImageInput ?? false;
-    _supportsWebSearch = initial?.capabilities.supportsWebSearch ?? false;
     _supportsFileInput = initial?.capabilities.supportsFileInput ?? false;
     _supportsMCP = initial?.capabilities.supportsMCP ?? true;
     _enableStreaming = initial?.capabilities.enableStreaming ?? true;
@@ -614,15 +610,6 @@ class _ModelFormSheetState extends ConsumerState<ModelFormSheet> {
                 title: Text('支持图片输入', style: AppTextStyles.bodyMedium),
               ),
               SwitchListTile.adaptive(
-                value: _supportsWebSearch,
-                contentPadding: EdgeInsets.zero,
-                onChanged: (value) => setState(() {
-                  _supportsWebSearch = value;
-                  _markCapabilitiesEdited();
-                }),
-                title: Text('支持联网搜索', style: AppTextStyles.bodyMedium),
-              ),
-              SwitchListTile.adaptive(
                 value: _supportsFileInput,
                 contentPadding: EdgeInsets.zero,
                 onChanged: (value) => setState(() {
@@ -812,7 +799,6 @@ class _ModelFormSheetState extends ConsumerState<ModelFormSheet> {
       capabilities: ModelCapabilities(
         supportsImageInput: _supportsImageInput,
         supportsFileInput: _supportsFileInput,
-        supportsWebSearch: _supportsWebSearch,
         supportsMCP: _supportsMCP,
         enableStreaming: _enableStreaming,
         enableThinking: _enableThinking,
@@ -875,7 +861,6 @@ class _ModelFormSheetState extends ConsumerState<ModelFormSheet> {
     _isApplyingCapabilities = true;
     _supportsImageInput = capabilities.supportsImageInput;
     _supportsFileInput = capabilities.supportsFileInput;
-    _supportsWebSearch = capabilities.supportsWebSearch;
     _supportsMCP = capabilities.supportsMCP;
     _enableStreaming = capabilities.enableStreaming;
     _enableThinking = capabilities.enableThinking;

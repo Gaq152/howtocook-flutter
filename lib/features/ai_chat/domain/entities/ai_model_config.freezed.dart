@@ -557,7 +557,6 @@ ModelCapabilities _$ModelCapabilitiesFromJson(Map<String, dynamic> json) {
 mixin _$ModelCapabilities {
   bool get supportsImageInput => throw _privateConstructorUsedError; // 支持图片输入
   bool get supportsFileInput => throw _privateConstructorUsedError; // 支持文件输入
-  bool get supportsWebSearch => throw _privateConstructorUsedError; // 支持联网搜索
   bool get supportsMCP => throw _privateConstructorUsedError; // 支持 MCP 工具调用
   bool get enableStreaming => throw _privateConstructorUsedError; // 启用流式输出
   bool get enableThinking =>
@@ -582,7 +581,6 @@ abstract class $ModelCapabilitiesCopyWith<$Res> {
   $Res call(
       {bool supportsImageInput,
       bool supportsFileInput,
-      bool supportsWebSearch,
       bool supportsMCP,
       bool enableStreaming,
       bool enableThinking,
@@ -606,7 +604,6 @@ class _$ModelCapabilitiesCopyWithImpl<$Res, $Val extends ModelCapabilities>
   $Res call({
     Object? supportsImageInput = null,
     Object? supportsFileInput = null,
-    Object? supportsWebSearch = null,
     Object? supportsMCP = null,
     Object? enableStreaming = null,
     Object? enableThinking = null,
@@ -622,10 +619,6 @@ class _$ModelCapabilitiesCopyWithImpl<$Res, $Val extends ModelCapabilities>
       supportsFileInput: null == supportsFileInput
           ? _value.supportsFileInput
           : supportsFileInput // ignore: cast_nullable_to_non_nullable
-              as bool,
-      supportsWebSearch: null == supportsWebSearch
-          ? _value.supportsWebSearch
-          : supportsWebSearch // ignore: cast_nullable_to_non_nullable
               as bool,
       supportsMCP: null == supportsMCP
           ? _value.supportsMCP
@@ -666,7 +659,6 @@ abstract class _$$ModelCapabilitiesImplCopyWith<$Res>
   $Res call(
       {bool supportsImageInput,
       bool supportsFileInput,
-      bool supportsWebSearch,
       bool supportsMCP,
       bool enableStreaming,
       bool enableThinking,
@@ -688,7 +680,6 @@ class __$$ModelCapabilitiesImplCopyWithImpl<$Res>
   $Res call({
     Object? supportsImageInput = null,
     Object? supportsFileInput = null,
-    Object? supportsWebSearch = null,
     Object? supportsMCP = null,
     Object? enableStreaming = null,
     Object? enableThinking = null,
@@ -704,10 +695,6 @@ class __$$ModelCapabilitiesImplCopyWithImpl<$Res>
       supportsFileInput: null == supportsFileInput
           ? _value.supportsFileInput
           : supportsFileInput // ignore: cast_nullable_to_non_nullable
-              as bool,
-      supportsWebSearch: null == supportsWebSearch
-          ? _value.supportsWebSearch
-          : supportsWebSearch // ignore: cast_nullable_to_non_nullable
               as bool,
       supportsMCP: null == supportsMCP
           ? _value.supportsMCP
@@ -743,7 +730,6 @@ class _$ModelCapabilitiesImpl implements _ModelCapabilities {
   const _$ModelCapabilitiesImpl(
       {this.supportsImageInput = false,
       this.supportsFileInput = false,
-      this.supportsWebSearch = false,
       this.supportsMCP = true,
       this.enableStreaming = true,
       this.enableThinking = false,
@@ -762,10 +748,6 @@ class _$ModelCapabilitiesImpl implements _ModelCapabilities {
   @JsonKey()
   final bool supportsFileInput;
 // 支持文件输入
-  @override
-  @JsonKey()
-  final bool supportsWebSearch;
-// 支持联网搜索
   @override
   @JsonKey()
   final bool supportsMCP;
@@ -792,7 +774,7 @@ class _$ModelCapabilitiesImpl implements _ModelCapabilities {
 
   @override
   String toString() {
-    return 'ModelCapabilities(supportsImageInput: $supportsImageInput, supportsFileInput: $supportsFileInput, supportsWebSearch: $supportsWebSearch, supportsMCP: $supportsMCP, enableStreaming: $enableStreaming, enableThinking: $enableThinking, thinkingBudgetTokens: $thinkingBudgetTokens, maxTokens: $maxTokens, contextWindow: $contextWindow)';
+    return 'ModelCapabilities(supportsImageInput: $supportsImageInput, supportsFileInput: $supportsFileInput, supportsMCP: $supportsMCP, enableStreaming: $enableStreaming, enableThinking: $enableThinking, thinkingBudgetTokens: $thinkingBudgetTokens, maxTokens: $maxTokens, contextWindow: $contextWindow)';
   }
 
   @override
@@ -804,8 +786,6 @@ class _$ModelCapabilitiesImpl implements _ModelCapabilities {
                 other.supportsImageInput == supportsImageInput) &&
             (identical(other.supportsFileInput, supportsFileInput) ||
                 other.supportsFileInput == supportsFileInput) &&
-            (identical(other.supportsWebSearch, supportsWebSearch) ||
-                other.supportsWebSearch == supportsWebSearch) &&
             (identical(other.supportsMCP, supportsMCP) ||
                 other.supportsMCP == supportsMCP) &&
             (identical(other.enableStreaming, enableStreaming) ||
@@ -826,7 +806,6 @@ class _$ModelCapabilitiesImpl implements _ModelCapabilities {
       runtimeType,
       supportsImageInput,
       supportsFileInput,
-      supportsWebSearch,
       supportsMCP,
       enableStreaming,
       enableThinking,
@@ -853,7 +832,6 @@ abstract class _ModelCapabilities implements ModelCapabilities {
   const factory _ModelCapabilities(
       {final bool supportsImageInput,
       final bool supportsFileInput,
-      final bool supportsWebSearch,
       final bool supportsMCP,
       final bool enableStreaming,
       final bool enableThinking,
@@ -869,8 +847,6 @@ abstract class _ModelCapabilities implements ModelCapabilities {
   @override // 支持图片输入
   bool get supportsFileInput;
   @override // 支持文件输入
-  bool get supportsWebSearch;
-  @override // 支持联网搜索
   bool get supportsMCP;
   @override // 支持 MCP 工具调用
   bool get enableStreaming;
