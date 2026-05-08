@@ -349,9 +349,10 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
       }
     }
 
+    final hasNewMessages = _messages.length != conv.messageCount;
     final updated = conv.copyWith(
       title: title,
-      updatedAt: DateTime.now(),
+      updatedAt: hasNewMessages ? DateTime.now() : conv.updatedAt,
       lastMessagePreview: lastPreview,
       messageCount: _messages.length,
     );
