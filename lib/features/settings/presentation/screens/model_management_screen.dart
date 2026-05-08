@@ -653,8 +653,8 @@ class _ModelFormSheetState extends ConsumerState<ModelFormSheet> {
                   style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
                 ),
               ),
-              // 思考链开关（仅 Claude 支持）
-              if (_provider == AIProvider.claude)
+              // 思考链开关（Claude 和 DeepSeek 支持）
+              if (_provider == AIProvider.claude || _provider == AIProvider.deepseek)
                 SwitchListTile.adaptive(
                   value: _enableThinking,
                   contentPadding: EdgeInsets.zero,
@@ -664,11 +664,13 @@ class _ModelFormSheetState extends ConsumerState<ModelFormSheet> {
                   }),
                   title: Text('启用思考链', style: AppTextStyles.bodyMedium),
                   subtitle: Text(
-                    '让 AI 展示推理过程（Extended Thinking）',
+                    _provider == AIProvider.deepseek
+                        ? '让 AI 展示推理过程（Deep Thinking）'
+                        : '让 AI 展示推理过程（Extended Thinking）',
                     style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
                   ),
                 ),
-              // 思考预算（仅启用思考链时显示）
+              // 思考预算（仅 Claude 启用思考链时显示）
               if (_provider == AIProvider.claude && _enableThinking)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),

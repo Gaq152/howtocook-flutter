@@ -47,6 +47,7 @@ class AIServiceFactory {
           apiKey: apiKey,
           modelId: config.modelId,
           customApiUrl: apiUrl,
+          enableThinking: config.capabilities.enableThinking,
         );
     }
   }

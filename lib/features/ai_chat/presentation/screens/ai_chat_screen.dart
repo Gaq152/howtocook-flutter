@@ -79,6 +79,9 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   // 联网搜索开关
   bool _enableWebSearch = false;
 
+  // 深度思考开关
+  bool _enableThinking = false;
+
   // System Prompt（根据模型能力动态生成）
   String _buildSystemPrompt({required bool supportsTools}) {
     final now = DateTime.now();
@@ -249,9 +252,14 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
         'enable_web_search',
         defaultValue: false,
       );
+      final enableThinking = await hiveService.getSetting(
+        'enable_thinking',
+        defaultValue: false,
+      );
 
       setState(() {
         _enableWebSearch = enableWebSearch as bool;
+        _enableThinking = enableThinking as bool;
       });
     } catch (e) {
       debugPrint('Failed to load settings: $e');
@@ -293,6 +301,13 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
     }
   }
 
+  String? _buildFinalReasoning(StringBuffer accumulated, String? current) {
+    if (accumulated.isEmpty && (current == null || current.isEmpty)) return null;
+    if (accumulated.isEmpty) return current;
+    if (current == null || current.isEmpty) return accumulated.toString();
+    return '${accumulated.toString()}\n\n$current';
+  }
+
   /// 保存设置
   Future<void> _saveSetting(String key, dynamic value) async {
     try {
@@ -318,7 +333,6 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
         ),
         centerTitle: false,
         actions: [
-          _buildWebSearchToggle(),
           IconButton(
             icon: const Icon(Icons.delete_outline),
             tooltip: '清空聊天记录',
@@ -516,13 +530,8 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
 
   /// 构建联网搜索开关
   Widget _buildWebSearchToggle() {
-    return IconButton(
-      icon: Icon(
-        _enableWebSearch ? Icons.language : Icons.language_outlined,
-        color: _enableWebSearch ? AppColors.primary : null,
-      ),
-      tooltip: _enableWebSearch ? '关闭联网搜索' : '开启联网搜索',
-      onPressed: () {
+    return GestureDetector(
+      onTap: () {
         setState(() {
           _enableWebSearch = !_enableWebSearch;
         });
@@ -530,11 +539,96 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
 
         AppSnackBar.show(
           context,
-          _enableWebSearch ? '已开启联网搜索' : '已关闭联网搜索',
+          _enableWebSearch ? '已开启联网搜索（暂未接入）' : '已关闭联网搜索',
           duration: const Duration(seconds: 1),
           bottomOffset: AppSnackBar.kChatBottomOffset,
         );
       },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: _enableWebSearch
+              ? AppColors.primary.withValues(alpha: 0.12)
+              : AppColors.textSecondary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: _enableWebSearch
+                ? AppColors.primary.withValues(alpha: 0.4)
+                : AppColors.textSecondary.withValues(alpha: 0.2),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.language,
+              size: 16,
+              color: _enableWebSearch ? AppColors.primary : AppColors.textSecondary,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              '联网搜索',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: _enableWebSearch ? AppColors.primary : AppColors.textSecondary,
+                fontWeight: _enableWebSearch ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 构建深度思考开关
+  Widget _buildThinkingToggle() {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _enableThinking = !_enableThinking;
+        });
+        _saveSetting('enable_thinking', _enableThinking);
+
+        AppSnackBar.show(
+          context,
+          _enableThinking ? '已开启深度思考' : '已关闭深度思考',
+          duration: const Duration(seconds: 1),
+          bottomOffset: AppSnackBar.kChatBottomOffset,
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: _enableThinking
+              ? AppColors.primary.withValues(alpha: 0.12)
+              : AppColors.textSecondary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: _enableThinking
+                ? AppColors.primary.withValues(alpha: 0.4)
+                : AppColors.textSecondary.withValues(alpha: 0.2),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.psychology,
+              size: 16,
+              color: _enableThinking ? AppColors.primary : AppColors.textSecondary,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              '深度思考',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: _enableThinking ? AppColors.primary : AppColors.textSecondary,
+                fontWeight: _enableThinking ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -658,13 +752,16 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
 
         // 判断这是否是最后一条正在流式显示的消息
         final isLastStreaming = index == _messages.length - 1 && _isStreaming;
+        final isLastMessage = index == _messages.length - 1;
 
         return MessageBubble(
           message: message,
           modelName: modelName,
           isStreaming: isLastStreaming,
           streamingText: isLastStreaming ? _streamingText : null,
-          streamingReasoningText: isLastStreaming ? _streamingReasoningText : null,
+          streamingReasoningText: isLastMessage && _streamingReasoningText.isNotEmpty
+              ? _streamingReasoningText
+              : null,
           recipeRecognizer: _recipeRecognizer,
           createdRecipes: _createdRecipes, // 传递 AI 创建的食谱列表
           onRecipeTap: (recipeId) {
@@ -771,6 +868,18 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // 工具栏
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                _buildThinkingToggle(),
+                const SizedBox(width: 8),
+                _buildWebSearchToggle(),
+              ],
+            ),
+          ),
+
           // 图片预览
           if (_selectedImagePath != null)
             Container(
@@ -963,8 +1072,13 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
     _scrollToBottom();
 
     try {
-      // 获取当前有效的模型
-      final currentModel = _resolveActiveModel();
+      // 获取当前有效的模型，应用聊天页的 thinking 开关覆盖
+      final baseModel = _resolveActiveModel();
+      final currentModel = baseModel.copyWith(
+        capabilities: baseModel.capabilities.copyWith(
+          enableThinking: _enableThinking,
+        ),
+      );
       final aiService = AIServiceFactory.create(currentModel);
 
       // 准备消息历史（不包括刚添加的临时消息）
@@ -1060,6 +1174,12 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
         final createdRecipeIds = <String>[];
         // 跨轮次累积文本（AI 先说话再调工具的场景）
         final accumulatedText = StringBuffer();
+        // 跨轮次累积思考内容
+        final accumulatedReasoning = StringBuffer();
+
+        setState(() {
+          _streamingReasoningText = '';
+        });
 
         while (toolCallCount < maxToolCalls) {
           toolCallCount++;
@@ -1089,6 +1209,16 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                       );
                     });
                   }
+                });
+              }
+            },
+            onReasoningContent: (value) {
+              if (mounted) {
+                setState(() {
+                  // value 是当前轮的累积思考，拼接之前轮次的
+                  _streamingReasoningText = accumulatedReasoning.isEmpty
+                      ? value
+                      : '${accumulatedReasoning.toString()}\n\n$value';
                 });
               }
             },
@@ -1135,9 +1265,11 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                 content: finalContent,
                 timestamp: tempAssistantMessage.timestamp,
                 modelId: currentModel.id,
+                reasoningContent: _buildFinalReasoning(accumulatedReasoning, response.reasoningContent),
                 createdRecipeIds: createdRecipeIds.isNotEmpty ? createdRecipeIds : null,
               );
               _isLoading = false;
+              _streamingReasoningText = '';
             });
             break;
           }
@@ -1149,6 +1281,11 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
           if (roundText.isNotEmpty) {
             if (accumulatedText.isNotEmpty) accumulatedText.write('\n\n');
             accumulatedText.write(roundText);
+          }
+          // 把本轮思考内容追加到跨轮累积区
+          if (response.reasoningContent != null && response.reasoningContent!.isNotEmpty) {
+            if (accumulatedReasoning.isNotEmpty) accumulatedReasoning.write('\n\n');
+            accumulatedReasoning.write(response.reasoningContent);
           }
           // 更新 UI 显示工具调用状态（保留前置文本）
           setState(() {
@@ -1236,6 +1373,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
               createdRecipeIds: createdRecipeIds.isNotEmpty ? createdRecipeIds : null,
             );
             _isLoading = false;
+            _streamingReasoningText = '';
           });
         }
       } else {
