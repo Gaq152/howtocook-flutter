@@ -351,20 +351,11 @@ class OpenAIAdapter implements AIService {
   /// 转换消息格式（用于标准 OpenAI API）
   Map<String, dynamic> _convertMessage(ChatMessage message) {
     final content = <dynamic>[];
+    final toolCalls = <Map<String, dynamic>>[];
 
     for (final item in message.content) {
       if (item is TextContent) {
-        // 如果只有一个文本内容，直接用字符串
-        if (message.content.length == 1) {
-          return {
-            'role': _convertRole(message.role),
-            'content': item.text,
-          };
-        }
-        content.add({
-          'type': 'text',
-          'text': item.text,
-        });
+        content.add(item.text);
       } else if (item is ImageContent) {
         content.add({
           'type': 'image_url',
@@ -373,20 +364,14 @@ class OpenAIAdapter implements AIService {
           },
         });
       } else if (item is ToolUseContent) {
-        // OpenAI 使用 tool_calls 字段
-        return {
-          'role': 'assistant',
-          'tool_calls': [
-            {
-              'id': item.toolUseId,
-              'type': 'function',
-              'function': {
-                'name': item.name,
-                'arguments': jsonEncode(item.input),
-              },
-            },
-          ],
-        };
+        toolCalls.add({
+          'id': item.toolUseId,
+          'type': 'function',
+          'function': {
+            'name': item.name,
+            'arguments': jsonEncode(item.input),
+          },
+        });
       } else if (item is ToolResultContent) {
         return {
           'role': 'tool',
@@ -396,9 +381,30 @@ class OpenAIAdapter implements AIService {
       }
     }
 
+    if (toolCalls.isNotEmpty) {
+      final textParts = content.whereType<String>().join();
+      return {
+        'role': 'assistant',
+        'content': textParts.isEmpty ? null : textParts,
+        'tool_calls': toolCalls,
+      };
+    }
+
+    if (content.length == 1 && content.first is String) {
+      return {
+        'role': _convertRole(message.role),
+        'content': content.first as String,
+      };
+    }
+
+    final formatted = content.map((c) {
+      if (c is String) return {'type': 'text', 'text': c};
+      return c;
+    }).toList();
+
     return {
       'role': _convertRole(message.role),
-      'content': content,
+      'content': formatted,
     };
   }
 

@@ -13,6 +13,7 @@ class DeepSeekAdapter implements AIService {
   final String apiKey;
   final String modelId;
   final String? customApiUrl;
+  final bool enableThinking;
 
   /// 默认 DeepSeek API 地址
   static const String defaultApiUrl = 'https://api.deepseek.com/v1';
@@ -21,6 +22,7 @@ class DeepSeekAdapter implements AIService {
     required this.apiKey,
     required this.modelId,
     this.customApiUrl,
+    this.enableThinking = false,
   }) : _dio = Dio() {
     final baseUrl = customApiUrl ?? defaultApiUrl;
     _dio.options.baseUrl = baseUrl;
@@ -99,7 +101,6 @@ class DeepSeekAdapter implements AIService {
                 final reasoningContent = delta['reasoning_content'] as String?;
                 if (reasoningContent != null) {
                   reasoningBuffer.write(reasoningContent);
-                  // 实时回调流式思考内容（累积）
                   if (onReasoningContent != null) {
                     onReasoningContent(reasoningBuffer.toString());
                   }
@@ -128,8 +129,6 @@ class DeepSeekAdapter implements AIService {
     void Function(String reasoningContent)? onReasoningContent,
   }) async {
     try {
-      // 直接解析 SSE 流：同时捕获 content / reasoning_content / tool_calls，
-      // 避免复用 sendMessage() 的纯文本流导致 tool_calls 被丢弃。
       final requestData = _buildRequest(messages, tools, maxTokens, stream: true);
 
       final response = await _dio.post(
@@ -240,6 +239,34 @@ class DeepSeekAdapter implements AIService {
         reasoningContent: reasoningBuffer.isEmpty ? null : reasoningBuffer.toString(),
       );
     } on DioException catch (e) {
+      if (e.response != null && e.response!.data is ResponseBody) {
+        try {
+          final responseBody = e.response!.data as ResponseBody;
+          final bytes = <int>[];
+          await for (final chunk in responseBody.stream) {
+            bytes.addAll(chunk);
+          }
+          final bodyStr = utf8.decode(bytes);
+          debugPrint('🔴 DeepSeek API error (${e.response!.statusCode}): $bodyStr');
+
+          String errorMessage = 'DeepSeek API error';
+          try {
+            final json = jsonDecode(bodyStr) as Map<String, dynamic>;
+            final error = json['error'] as Map<String, dynamic>?;
+            if (error != null) {
+              errorMessage = error['message'] as String? ?? errorMessage;
+            }
+          } catch (_) {
+            errorMessage = bodyStr;
+          }
+          throw Exception('DeepSeek API error (${e.response!.statusCode}): $errorMessage');
+        } catch (readError) {
+          if (readError is Exception && readError.toString().contains('DeepSeek API error')) {
+            rethrow;
+          }
+          debugPrint('🔴 Failed to read error response: $readError');
+        }
+      }
       throw _handleDioException(e);
     } catch (e) {
       throw Exception('DeepSeek API call failed: $e');
@@ -295,6 +322,12 @@ class DeepSeekAdapter implements AIService {
       requestData['max_tokens'] = maxTokens;
     }
 
+    // V4 模型支持 thinking 模式控制
+    if (!modelId.contains('reasoner')) {
+      final thinkingType = enableThinking ? 'enabled' : 'disabled';
+      requestData['thinking'] = {'type': thinkingType};
+    }
+
     // 旧版 deepseek-reasoner 不支持 Function Calling，建议迁移到 deepseek-v4-flash/pro
     if (modelId.contains('reasoner')) {
       if (tools != null && tools.isNotEmpty) {
@@ -314,39 +347,23 @@ class DeepSeekAdapter implements AIService {
 
   /// 转换消息格式
   Map<String, dynamic> _convertMessage(ChatMessage message) {
-    final content = <dynamic>[];
+    String? textContent;
+    final toolCalls = <Map<String, dynamic>>[];
 
     for (final item in message.content) {
       if (item is TextContent) {
-        // 如果只有一个文本内容，直接用字符串
-        if (message.content.length == 1) {
-          return {
-            'role': _convertRole(message.role),
-            'content': item.text,
-          };
-        }
-        content.add({
-          'type': 'text',
-          'text': item.text,
-        });
+        textContent = item.text;
       } else if (item is ImageContent) {
-        // DeepSeek 当前不支持图片，但保留接口
         throw Exception('DeepSeek does not support image input');
       } else if (item is ToolUseContent) {
-        // DeepSeek 使用 OpenAI 兼容的 tool_calls 格式
-        return {
-          'role': 'assistant',
-          'tool_calls': [
-            {
-              'id': item.toolUseId,
-              'type': 'function',
-              'function': {
-                'name': item.name,
-                'arguments': jsonEncode(item.input),
-              },
-            },
-          ],
-        };
+        toolCalls.add({
+          'id': item.toolUseId,
+          'type': 'function',
+          'function': {
+            'name': item.name,
+            'arguments': jsonEncode(item.input),
+          },
+        });
       } else if (item is ToolResultContent) {
         return {
           'role': 'tool',
@@ -356,10 +373,26 @@ class DeepSeekAdapter implements AIService {
       }
     }
 
-    return {
+    if (toolCalls.isNotEmpty) {
+      final msg = <String, dynamic>{
+        'role': 'assistant',
+        'content': textContent,
+        'tool_calls': toolCalls,
+      };
+      if (message.reasoningContent != null) {
+        msg['reasoning_content'] = message.reasoningContent;
+      }
+      return msg;
+    }
+
+    final msg = <String, dynamic>{
       'role': _convertRole(message.role),
-      'content': content,
+      'content': textContent ?? '',
     };
+    if (message.role == MessageRole.assistant && message.reasoningContent != null) {
+      msg['reasoning_content'] = message.reasoningContent;
+    }
+    return msg;
   }
 
   /// 转换角色
