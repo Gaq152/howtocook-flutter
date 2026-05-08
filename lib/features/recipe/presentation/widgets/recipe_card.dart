@@ -57,49 +57,45 @@ class RecipeCard extends ConsumerWidget {
               ),
             ),
 
-            // 内容区域 - 固定高度，防止长名称导致卡片不对齐
-            SizedBox(
-              height: 68,
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 菜谱名称
-                    Expanded(
-                      child: Text(
-                        recipe.name,
-                        style: AppTextStyles.recipeTitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
+            // 内容区域
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 菜谱名称 - 固定单行，保证所有卡片对齐
+                  Text(
+                    recipe.name,
+                    style: AppTextStyles.recipeTitle.copyWith(fontSize: 14),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
 
-                    // 难度和收藏
-                    Row(
-                      children: [
-                        // 难度星星
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: List.generate(
-                            recipe.difficulty.clamp(1, 5),
-                            (index) => const Icon(
-                              Icons.star,
-                              color: AppColors.butter,
-                              size: 10,
-                            ),
+                  // 难度和收藏
+                  Row(
+                    children: [
+                      // 难度星星
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: List.generate(
+                          recipe.difficulty.clamp(1, 5),
+                          (index) => const Icon(
+                            Icons.star,
+                            color: AppColors.butter,
+                            size: 10,
                           ),
                         ),
+                      ),
 
-                        const Spacer(),
+                      const Spacer(),
 
-                        // 收藏图标
-                        _buildFavoriteIcon(ref),
-                      ],
-                    ),
-                  ],
-                ),
+                      // 收藏图标
+                      _buildFavoriteIcon(ref),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
