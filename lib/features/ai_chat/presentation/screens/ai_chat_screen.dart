@@ -2281,6 +2281,9 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
 
   /// 新建会话
   Future<void> _createNewConversation() async {
+    // 当前会话为空时，不重复创建
+    if (_messages.isEmpty) return;
+
     // 保存当前会话
     await _saveChatHistory();
 
@@ -2296,14 +2299,6 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
     });
 
     _conversations = await _conversationRepo.getAll();
-
-    if (mounted) {
-      AppSnackBar.show(
-        context,
-        '已创建新会话',
-        bottomOffset: AppSnackBar.kChatBottomOffset,
-      );
-    }
   }
 
   /// 切换会话

@@ -69,7 +69,7 @@ class ConversationDrawer extends StatelessWidget {
           ),
           IconButton(
             onPressed: onNewConversation,
-            icon: const Icon(Icons.edit_square, size: 22),
+            icon: const Icon(Icons.add, size: 24),
             tooltip: '新建会话',
             color: AppColors.primary,
           ),
