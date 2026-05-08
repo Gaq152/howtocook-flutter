@@ -178,7 +178,7 @@ class HiveService {
       return data.map((item) {
         if (item is Map) {
           // 深度转换所有嵌套的 Map 和 List
-          return _deepConvertMap(item);
+          return deepConvertMap(item);
         }
         return <String, dynamic>{};
       }).toList();
@@ -188,14 +188,14 @@ class HiveService {
   }
 
   /// 深度转换 Map（处理 Hive 返回的 LinkedMap）
-  static Map<String, dynamic> _deepConvertMap(Map<dynamic, dynamic> source) {
+  static Map<String, dynamic> deepConvertMap(Map<dynamic, dynamic> source) {
     final result = <String, dynamic>{};
     source.forEach((key, value) {
       final stringKey = key.toString();
       if (value is Map) {
-        result[stringKey] = _deepConvertMap(value);
+        result[stringKey] = deepConvertMap(value);
       } else if (value is List) {
-        result[stringKey] = _deepConvertList(value);
+        result[stringKey] = deepConvertList(value);
       } else {
         result[stringKey] = value;
       }
@@ -204,12 +204,12 @@ class HiveService {
   }
 
   /// 深度转换 List
-  static List<dynamic> _deepConvertList(List<dynamic> source) {
+  static List<dynamic> deepConvertList(List<dynamic> source) {
     return source.map((item) {
       if (item is Map) {
-        return _deepConvertMap(item);
+        return deepConvertMap(item);
       } else if (item is List) {
-        return _deepConvertList(item);
+        return deepConvertList(item);
       } else {
         return item;
       }

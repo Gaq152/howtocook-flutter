@@ -16,9 +16,12 @@ import '../../../recipe/domain/entities/recipe.dart';
 import '../../application/providers/ai_providers.dart';
 import '../../domain/entities/ai_model_config.dart';
 import '../../domain/entities/chat_message.dart';
+import '../../domain/entities/conversation.dart';
+import '../../infrastructure/repositories/conversation_repository.dart';
 import '../../infrastructure/services/ai_service_factory.dart';
 import '../../infrastructure/services/mcp_service.dart';
 import '../../infrastructure/services/recipe_recognizer.dart';
+import '../widgets/conversation_drawer.dart';
 import '../widgets/message_bubble.dart';
 
 /// MCP 工具调用记录（用于调试面板）
@@ -74,6 +77,12 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   final Map<String, Recipe> _createdRecipes = {};
   // MCP 工具调用历史（仅 debug 模式）
   final List<MCPToolCall> _mcpCallHistory = [];
+
+  // 会话管理
+  final ConversationRepository _conversationRepo = ConversationRepository();
+  String? _currentConversationId;
+  List<Conversation> _conversations = [];
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   // 深度思考开关
   bool _enableThinking = false;
@@ -159,7 +168,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   void initState() {
     super.initState();
     _recipeRecognizer = RecipeRecognizer(BundledDataLoader());
-    _loadChatHistory();
+    _initConversations();
     _loadSettings();
     _loadMCPTools();
   }
@@ -195,47 +204,71 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
     super.dispose();
   }
 
-  /// 加载聊天历史
-  Future<void> _loadChatHistory() async {
+  /// 初始化会话系统
+  Future<void> _initConversations() async {
     try {
-      final hiveService = HiveService();
-
-      // 加载聊天消息
-      final historyJson = await hiveService.getChatHistory();
-      if (historyJson != null && historyJson.isNotEmpty) {
-        setState(() {
-          _messages.addAll(
-            historyJson.map((json) {
-              // 确保转换为 Map<String, dynamic>
-              final map = Map<String, dynamic>.from(json);
-              return ChatMessage.fromJson(map);
-            }).toList(),
-          );
-        });
+      // 检查旧数据迁移
+      if (await _conversationRepo.needsMigration()) {
+        await _conversationRepo.migrateOldData();
+        debugPrint('Old chat data migrated');
       }
 
-      // 加载 AI 创建的食谱
-      final recipesJson = await hiveService.getSetting('ai_created_recipes');
-      if (recipesJson is List) {
-        setState(() {
-          for (final item in recipesJson) {
-            if (item is Map) {
-              try {
-                final map = Map<String, dynamic>.from(item);
-                final recipe = Recipe.fromJson(map);
-                _createdRecipes[recipe.id] = recipe;
-              } catch (e) {
-                debugPrint('Failed to parse recipe: $e');
-              }
-            }
+      // 加载会话列表
+      _conversations = await _conversationRepo.getAll();
+
+      // 恢复上次活跃会话
+      var activeId = _conversationRepo.getActiveConversationId();
+      if (activeId != null) {
+        final exists = _conversations.any((c) => c.id == activeId);
+        if (!exists) activeId = null;
+      }
+
+      // 无会话时自动创建
+      if (_conversations.isEmpty) {
+        final conv = _conversationRepo.createNew();
+        await _conversationRepo.save(conv);
+        _conversations = [conv];
+        activeId = conv.id;
+      }
+
+      activeId ??= _conversations.first.id;
+      _currentConversationId = activeId;
+      await _conversationRepo.setActiveConversationId(activeId);
+
+      // 加载当前会话的消息和食谱
+      await _loadConversationData(activeId);
+    } catch (e, stackTrace) {
+      debugPrint('Failed to init conversations: $e');
+      debugPrint('Stack trace: $stackTrace');
+    }
+  }
+
+  /// 加载指定会话的消息和食谱
+  Future<void> _loadConversationData(String conversationId) async {
+    try {
+      final messagesJson = await _conversationRepo.getMessages(conversationId);
+      final recipesJson = await _conversationRepo.getRecipes(conversationId);
+
+      setState(() {
+        _messages.clear();
+        _createdRecipes.clear();
+        _messages.addAll(
+          messagesJson.map((json) => ChatMessage.fromJson(json)).toList(),
+        );
+        for (final item in recipesJson) {
+          try {
+            final recipe = Recipe.fromJson(item);
+            _createdRecipes[recipe.id] = recipe;
+          } catch (e) {
+            debugPrint('Failed to parse recipe: $e');
           }
-        });
-        debugPrint('Loaded ${_createdRecipes.length} AI-created recipes');
-      }
+        }
+      });
 
+      debugPrint('Loaded ${_messages.length} messages, ${_createdRecipes.length} recipes for $conversationId');
       _scrollToBottom();
     } catch (e, stackTrace) {
-      debugPrint('Failed to load chat history: $e');
+      debugPrint('Failed to load conversation data: $e');
       debugPrint('Stack trace: $stackTrace');
     }
   }
@@ -257,18 +290,19 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
     }
   }
 
-  /// 保存聊天历史
+  /// 保存当前会话的消息和食谱
   Future<void> _saveChatHistory() async {
+    final convId = _currentConversationId;
+    if (convId == null) return;
     try {
-      final hiveService = HiveService();
-
-      // 保存聊天消息
       final jsonString = jsonEncode(_messages.map((m) => m.toJson()).toList());
       final jsonList = (jsonDecode(jsonString) as List)
           .map((item) => item as Map<String, dynamic>)
           .toList();
-      await hiveService.saveChatHistory(jsonList);
-      debugPrint('Chat history saved: ${jsonList.length} messages');
+      await _conversationRepo.saveMessages(convId, jsonList);
+
+      // 更新会话元数据
+      await _updateConversationMeta();
 
       // 保存 AI 创建的食谱
       await _saveCreatedRecipes();
@@ -278,14 +312,69 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
     }
   }
 
+  /// 更新当前会话的元数据（标题、最后消息、消息数）
+  Future<void> _updateConversationMeta() async {
+    final convId = _currentConversationId;
+    if (convId == null) return;
+    final conv = await _conversationRepo.getById(convId);
+    if (conv == null) return;
+
+    String title = conv.title;
+    // 首条用户消息自动命名（仅当标题为默认值时）
+    if (title == '新对话' && _messages.isNotEmpty) {
+      for (final msg in _messages) {
+        if (msg.role == MessageRole.user) {
+          final text = _extractTextFromMessage(msg);
+          if (text.isNotEmpty) {
+            title = text.length > 20 ? '${text.substring(0, 20)}...' : text;
+          }
+          break;
+        }
+      }
+    }
+
+    // 提取最后一条消息摘要
+    String? lastPreview;
+    if (_messages.isNotEmpty) {
+      final lastMsg = _messages.last;
+      final text = _extractTextFromMessage(lastMsg);
+      if (text.isNotEmpty) {
+        lastPreview = text.length > 50 ? '${text.substring(0, 50)}...' : text;
+      }
+    }
+
+    final updated = conv.copyWith(
+      title: title,
+      updatedAt: DateTime.now(),
+      lastMessagePreview: lastPreview,
+      messageCount: _messages.length,
+    );
+    await _conversationRepo.save(updated);
+
+    // 刷新本地会话列表
+    _conversations = await _conversationRepo.getAll();
+  }
+
+  String _extractTextFromMessage(ChatMessage message) {
+    for (final item in message.content) {
+      if (item is TextContent) return item.text;
+    }
+    return '';
+  }
+
   /// 保存 AI 创建的食谱（独立方法，可在创建时立即调用）
   Future<void> _saveCreatedRecipes() async {
+    final convId = _currentConversationId;
+    if (convId == null) return;
     try {
-      final hiveService = HiveService();
       final recipesJson = _createdRecipes.values
           .map((recipe) => recipe.toJson())
           .toList();
-      await hiveService.saveSetting('ai_created_recipes', recipesJson);
+      final jsonStr = jsonEncode(recipesJson);
+      final jsonList = (jsonDecode(jsonStr) as List)
+          .map((item) => item as Map<String, dynamic>)
+          .toList();
+      await _conversationRepo.saveRecipes(convId, jsonList);
       debugPrint('Saved ${_createdRecipes.length} AI-created recipes');
     } catch (e) {
       debugPrint('Failed to save created recipes: $e');
@@ -312,8 +401,32 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
       resizeToAvoidBottomInset: false,
+      drawer: ConversationDrawer(
+        conversations: _conversations,
+        activeConversationId: _currentConversationId,
+        onNewConversation: () {
+          Navigator.pop(context);
+          _createNewConversation();
+        },
+        onConversationSelected: (id) {
+          Navigator.pop(context);
+          _switchConversation(id);
+        },
+        onConversationDeleted: (id) {
+          _deleteConversation(id);
+        },
+        onConversationRenamed: (id, newTitle) {
+          _renameConversation(id, newTitle);
+        },
+      ),
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          tooltip: '会话列表',
+          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+        ),
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -328,6 +441,11 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
             icon: const Icon(Icons.delete_outline),
             tooltip: '清空聊天记录',
             onPressed: _clearHistory,
+          ),
+          IconButton(
+            icon: const Icon(Icons.add),
+            tooltip: '新建会话',
+            onPressed: _createNewConversation,
           ),
         ],
       ),
@@ -2108,13 +2226,14 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
     // 移除 whenComplete，改为在按钮回调中处理 dispose
   }
 
-  /// 清空聊天历史
+  /// 清空当前会话消息（保留会话条目）
   void _clearHistory() {
+    if (_messages.isEmpty) return;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('清空聊天记录'),
-        content: const Text('确定要删除所有聊天记录吗？此操作不可恢复。'),
+        content: const Text('确定要清空当前会话的所有消息吗？会话仍会保留。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -2124,25 +2243,96 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
             onPressed: () {
               setState(() {
                 _messages.clear();
-                _createdRecipes.clear(); // 同时清空 AI 创建的食谱
+                _createdRecipes.clear();
               });
               _saveChatHistory();
               Navigator.pop(context);
-
               AppSnackBar.show(
                 context,
                 '聊天记录已清空',
                 bottomOffset: AppSnackBar.kChatBottomOffset,
               );
             },
-            child: Text(
-              '确定',
-              style: TextStyle(color: AppColors.error),
-            ),
+            child: Text('确定', style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),
     );
+  }
+
+  /// 新建会话
+  Future<void> _createNewConversation() async {
+    // 保存当前会话
+    await _saveChatHistory();
+
+    final conv = _conversationRepo.createNew();
+    await _conversationRepo.save(conv);
+    _currentConversationId = conv.id;
+    await _conversationRepo.setActiveConversationId(conv.id);
+
+    setState(() {
+      _messages.clear();
+      _createdRecipes.clear();
+      _mcpCallHistory.clear();
+    });
+
+    _conversations = await _conversationRepo.getAll();
+
+    if (mounted) {
+      AppSnackBar.show(
+        context,
+        '已创建新会话',
+        bottomOffset: AppSnackBar.kChatBottomOffset,
+      );
+    }
+  }
+
+  /// 切换会话
+  Future<void> _switchConversation(String conversationId) async {
+    if (conversationId == _currentConversationId) return;
+
+    // 保存当前会话
+    await _saveChatHistory();
+
+    _currentConversationId = conversationId;
+    await _conversationRepo.setActiveConversationId(conversationId);
+
+    setState(() {
+      _mcpCallHistory.clear();
+      _streamingText = '';
+      _streamingReasoningText = '';
+      _isStreaming = false;
+      _isLoading = false;
+    });
+
+    await _loadConversationData(conversationId);
+  }
+
+  /// 删除会话
+  Future<void> _deleteConversation(String conversationId) async {
+    await _conversationRepo.delete(conversationId);
+    _conversations = await _conversationRepo.getAll();
+
+    // 如果删除的是当前会话，切换到其他会话
+    if (conversationId == _currentConversationId) {
+      if (_conversations.isEmpty) {
+        // 无会话了，创建新会话
+        await _createNewConversation();
+      } else {
+        await _switchConversation(_conversations.first.id);
+      }
+    } else {
+      setState(() {});
+    }
+  }
+
+  /// 重命名会话
+  Future<void> _renameConversation(String id, String newTitle) async {
+    final conv = await _conversationRepo.getById(id);
+    if (conv == null) return;
+    await _conversationRepo.save(conv.copyWith(title: newTitle));
+    _conversations = await _conversationRepo.getAll();
+    setState(() {});
   }
 
   /// 显示 MCP 调试面板
