@@ -130,10 +130,9 @@ class MCPService {
   /// MCP 返回的数据格式与 Recipe 实体不完全匹配，需要进行字段映射和补充
   Recipe _mcpToRecipe(Map<String, dynamic> mcpData) {
     try {
-      // 从 ID 中提取分类（如 "dishes-meat_dish-乡村啤酒鸭" -> "meat_dish"）
-      // 如果没有 ID，则从 name 生成一个
+      final name = mcpData['name'] as String? ?? '未知菜谱';
       final id = mcpData['id'] as String? ??
-                 'recipe_${(mcpData['name'] as String).hashCode.abs()}';
+                 'recipe_${name.hashCode.abs()}';
       final idParts = id.split('-');
       final category = idParts.length > 1 ? idParts[1] : 'unknown';
 
@@ -163,44 +162,71 @@ class MCPService {
         return {'name': '', 'text': item.toString()};
       }).toList();
 
-      // 从 description 中提取步骤（简单处理：按行分割，过滤掉空行和标题）
+      // 优先使用 MCP 返回的 steps 字段，fallback 到 description 解析
+      final mcpSteps = mcpData['steps'] as List<dynamic>?;
       final description = mcpData['description'] as String? ?? '';
-      final lines = description.split('\n').where((line) {
-        final trimmed = line.trim();
-        return trimmed.isNotEmpty &&
-               !trimmed.startsWith('#') &&
-               !trimmed.startsWith('!') &&
-               !trimmed.startsWith('预估烹饪难度') &&
-               !trimmed.startsWith('预计制作');
-      }).toList();
+      List<String> steps;
 
-      final steps = lines.isEmpty
-          ? ['请参考菜谱详情']
-          : lines.map((line) => line.trim()).toList();
+      if (mcpSteps != null && mcpSteps.isNotEmpty) {
+        steps = mcpSteps.map((step) {
+          if (step is Map<String, dynamic>) {
+            // MCP 步骤格式: { step: number, description: string }
+            return (step['description'] ?? step['text'] ?? step['content'] ?? step.values.last)
+                .toString();
+          }
+          return step.toString();
+        }).toList();
+      } else if (description.isNotEmpty) {
+        final lines = description.split('\n').where((line) {
+          final trimmed = line.trim();
+          return trimmed.isNotEmpty &&
+                 !trimmed.startsWith('#') &&
+                 !trimmed.startsWith('!') &&
+                 !trimmed.startsWith('预估烹饪难度') &&
+                 !trimmed.startsWith('预计制作');
+        }).toList();
+        steps = lines.isEmpty ? ['请参考菜谱详情'] : lines.map((l) => l.trim()).toList();
+      } else {
+        steps = ['请参考菜谱详情'];
+      }
 
-      // 从 description 中提取难度（如 "预估烹饪难度：★★★★" -> 4）
-      final difficultyMatch = RegExp(r'预估烹饪难度：(★+)').firstMatch(description);
-      final difficulty = difficultyMatch != null
-          ? difficultyMatch.group(1)!.length
-          : 3;
+      // 优先使用 MCP 返回的 difficulty，fallback 到 description 解析
+      final mcpDifficulty = mcpData['difficulty'];
+      int difficulty;
+      if (mcpDifficulty is int) {
+        difficulty = mcpDifficulty;
+      } else if (mcpDifficulty is String) {
+        difficulty = mcpDifficulty.replaceAll(RegExp(r'[^★]'), '').length;
+        if (difficulty == 0) difficulty = int.tryParse(mcpDifficulty) ?? 3;
+      } else {
+        final difficultyMatch = RegExp(r'预估烹饪难度：(★+)').firstMatch(description);
+        difficulty = difficultyMatch != null ? difficultyMatch.group(1)!.length : 3;
+      }
 
-      var recipeName = mcpData['name'] as String? ?? '未知菜谱';
-      recipeName = recipeName.replaceFirst(RegExp(r'的做法$'), '');
+      // 提取 tools、tips、warnings
+      final mcpTools = mcpData['tools'] as List<dynamic>?;
+      final tools = mcpTools?.map((t) => t.toString()).toList() ?? <String>[];
 
-      // 构建 Recipe JSON
+      final tips = mcpData['tips'] as String?;
+
+      final mcpWarnings = mcpData['warnings'] as List<dynamic>?;
+      final warnings = mcpWarnings?.map((w) => w.toString()).toList() ?? <String>[];
+
+      var recipeName = name.replaceFirst(RegExp(r'的做法$'), '');
+
       final recipeJson = {
         'id': id,
         'name': recipeName,
         'category': category,
         'categoryName': categoryNameMap[category] ?? '其他',
         'difficulty': difficulty,
-        'images': [],
+        'images': mcpData['images'] as List<dynamic>? ?? [],
         'ingredients': ingredients,
-        'tools': [],
+        'tools': tools,
         'steps': steps,
-        'tips': null,
-        'warnings': [],
-        'hash': id.hashCode.toString(), // 使用 ID 的 hashCode 作为 hash
+        'tips': tips,
+        'warnings': warnings,
+        'hash': mcpData['hash'] as String? ?? id.hashCode.toString(),
       };
 
       return Recipe.fromJson(recipeJson);
@@ -252,22 +278,31 @@ class MCPService {
   ///
   /// [query] 菜谱名称或 ID（支持模糊匹配）
   /// 对应 MCP 工具: mcp_howtocook_getRecipeById
-  Future<Recipe> getRecipeById(String query) async {
+  ///
+  /// 返回 [Recipe]（精确匹配）或 [Map]（模糊匹配/错误建议，直接透传给 AI）
+  Future<dynamic> getRecipeById(String query) async {
     try {
       final result = await _callTool('getRecipeById', {
         'query': query,
       });
 
       if (result is Map<String, dynamic>) {
-        // 检查是否是错误响应
-        if (result.containsKey('error')) {
-          throw Exception('MCP getRecipeById error: ${result['error']}');
+        // 精确匹配：MCP 直接返回完整菜谱数据（含 name 字段）
+        if (result.containsKey('name') && result.containsKey('id')) {
+          return _mcpToRecipe(result);
         }
 
-        return _mcpToRecipe(result);
+        // 模糊匹配建议或错误信息：透传给 AI 决策
+        if (result.containsKey('possibleMatches') ||
+            result.containsKey('error') ||
+            result.containsKey('suggestion')) {
+          return result;
+        }
+      } else if (result is List && result.isNotEmpty && result[0] is Map<String, dynamic>) {
+        return _mcpToRecipe(result[0] as Map<String, dynamic>);
       }
 
-      throw Exception('Invalid getRecipeById result format');
+      return {'error': '未找到匹配「$query」的菜谱', 'query': query};
     } catch (e) {
       throw Exception('Failed to get recipe by ID: $e');
     }
@@ -371,7 +406,6 @@ class MCPService {
   /// 注意：如果传入的是通过 getAllRecipes 生成的 ID（格式：recipe_xxx），
   /// 则无法查询详情。建议使用菜谱名称进行查询。
   Future<Recipe> getRecipeDetail(String recipeId) async {
-    // 检查是否是生成的 ID
     if (recipeId.startsWith('recipe_')) {
       throw Exception(
         'Generated ID cannot be used for detail query. '
@@ -379,7 +413,9 @@ class MCPService {
         'Generated IDs are only from getAllRecipes which returns minimal data.',
       );
     }
-    return getRecipeById(recipeId);
+    final result = await getRecipeById(recipeId);
+    if (result is Recipe) return result;
+    throw Exception('未找到菜谱: $recipeId');
   }
 
   /// 获取收藏的菜谱（通过多次调用 getRecipeById）
@@ -389,14 +425,12 @@ class MCPService {
     try {
       final recipes = <Recipe>[];
 
-      // 并发获取所有收藏的菜谱
       final futures = favoriteIds.map((id) => getRecipeById(id));
-      final results = await Future.wait(
-        futures,
-        eagerError: false,
-      );
+      final results = await Future.wait(futures, eagerError: false);
 
-      recipes.addAll(results);
+      for (final r in results) {
+        if (r is Recipe) recipes.add(r);
+      }
       return recipes;
     } catch (e) {
       throw Exception('Failed to get favorite recipes: $e');
