@@ -70,20 +70,24 @@ class RecipeCardWidget extends StatelessWidget {
                     // 分类标签
                     Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.surfaceAlt,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            recipe.categoryName,
-                            style: AppTextStyles.bodySmall.copyWith(
-                              color: AppColors.textSecondary,
-                              fontSize: 11,
+                        Flexible(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceAlt,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              recipe.categoryName,
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: AppColors.textSecondary,
+                                fontSize: 11,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ),
@@ -91,6 +95,7 @@ class RecipeCardWidget extends StatelessWidget {
 
                         // 难度星级
                         Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: List.generate(
                             5,
                             (index) => Icon(

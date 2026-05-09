@@ -93,16 +93,20 @@ class RecipeRepositoryImpl implements RecipeRepository {
       }
 
       // 3. 否则从内置数据加载
-      final recipe = await _bundledLoader.loadRecipe(id);
+      try {
+        final recipe = await _bundledLoader.loadRecipe(id);
 
-      // 4. 合并收藏和笔记信息
-      final isFav = await isFavorite(id);
-      final note = await getUserNote(id);
+        // 4. 合并收藏和笔记信息
+        final isFav = await isFavorite(id);
+        final note = await getUserNote(id);
 
-      return recipe.copyWith(
-        isFavorite: isFav,
-        userNote: note,
-      );
+        return recipe.copyWith(
+          isFavorite: isFav,
+          userNote: note,
+        );
+      } catch (_) {
+        return null;
+      }
     } catch (e) {
       throw Exception('Failed to get recipe $id: $e');
     }
