@@ -63,7 +63,8 @@ class _DownloadService {
     final downloader = FileDownloader();
     await downloader.ready;
 
-    downloader.configureNotification(
+    downloader.configureNotificationForGroup(
+      _taskGroup,
       running: const TaskNotification(
         '正在下载更新 {filename}',
         '{progress} · {networkSpeed}',
@@ -73,8 +74,25 @@ class _DownloadService {
       progressBar: true,
     );
 
+    downloader.registerCallbacks(
+      group: _taskGroup,
+      taskNotificationTapCallback: _onNotificationTap,
+    );
+
     await downloader.trackTasks();
     await downloader.start();
+  }
+
+  static void _onNotificationTap(Task task, NotificationType notificationType) async {
+    if (notificationType != NotificationType.complete) return;
+    try {
+      final filePath = await task.filePath();
+      if (File(filePath).existsSync()) {
+        await InstallPlugin.installApk(filePath, appId: 'com.anlife.howtocook');
+      }
+    } catch (e) {
+      debugPrint('通知栏点击安装失败: $e');
+    }
   }
 
   Future<Directory> _apkDir() async {
