@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'core/services/app_notification_service.dart';
+import 'core/services/data_sync_service.dart';
+import 'core/services/image_download_manager.dart';
 import 'core/services/update_download_service.dart';
 import 'core/services/update_service.dart';
 import 'core/storage/hive_service.dart';
@@ -47,6 +50,13 @@ Future<void> _initializeServices() async {
 
     // 初始化 background_downloader（仅 Android）
     await UpdateDownloadNotifier.initialize();
+    ImageDownloadManager.configureNotifications();
+
+    // 初始化通知服务并请求权限
+    if (!kIsWeb) {
+      await AppNotificationService.instance.initialize();
+      await AppNotificationService.instance.requestPermission();
+    }
 
     debugPrint('✅ 所有服务初始化成功');
   } catch (e, stackTrace) {
@@ -65,16 +75,31 @@ class HowToCookApp extends ConsumerStatefulWidget {
 }
 
 class _HowToCookAppState extends ConsumerState<HowToCookApp> {
-  bool _updateCheckScheduled = false;
+  bool _startupChecksScheduled = false;
 
   @override
   void initState() {
     super.initState();
+
+    AppNotificationService.instance.initialize(
+      onTap: _handleNotificationTap,
+    );
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_updateCheckScheduled) return;
-      _updateCheckScheduled = true;
-      Future.delayed(const Duration(seconds: 3), _silentCheckUpdate);
+      if (_startupChecksScheduled) return;
+      _startupChecksScheduled = true;
+      Future.delayed(const Duration(seconds: 3), () {
+        _silentCheckUpdate();
+        _silentCheckDataSync();
+      });
     });
+  }
+
+  void _handleNotificationTap(String? payload) {
+    if (payload == 'data-sync') {
+      final router = ref.read(routerProvider);
+      router.push('/data-sync');
+    }
   }
 
   Future<void> _silentCheckUpdate() async {
@@ -96,6 +121,80 @@ class _HowToCookAppState extends ConsumerState<HowToCookApp> {
       );
     } catch (e) {
       debugPrint('⚠️ 启动更新检查失败（已静默忽略）：$e');
+    }
+  }
+
+  Future<void> _silentCheckDataSync() async {
+    if (!mounted || kIsWeb) return;
+    try {
+      final syncService = ref.read(dataSyncServiceProvider.notifier);
+
+      final remoteIndex = await syncService.downloadRemoteIndex();
+      if (remoteIndex == null || !mounted) return;
+
+      final localIndex = await syncService.loadLocalIndex();
+
+      final recipeUpdates = syncService.identifyUpdates(localIndex, remoteIndex);
+      final tipUpdates = syncService.identifyTipUpdates(localIndex, remoteIndex);
+
+      final newRecipes = recipeUpdates.where((u) => u.isNew).length;
+      final updatedRecipes = recipeUpdates.where((u) => !u.isNew).length;
+      final newTips = tipUpdates.where((u) => u.isNew).length;
+      final updatedTips = tipUpdates.where((u) => !u.isNew).length;
+
+      if (newRecipes + updatedRecipes + newTips + updatedTips > 0) {
+        await AppNotificationService.instance.showDataUpdateNotification(
+          newRecipes: newRecipes,
+          updatedRecipes: updatedRecipes,
+          newTips: newTips,
+          updatedTips: updatedTips,
+        );
+      }
+
+      // 检查详情图初始化下载
+      if (!mounted) return;
+      await _silentCheckMissingImages(syncService, localIndex);
+    } catch (e) {
+      debugPrint('⚠️ 启动数据同步检查失败（已静默忽略）：$e');
+    }
+  }
+
+  Future<void> _silentCheckMissingImages(
+    DataSyncService syncService,
+    Map<String, dynamic>? localIndex,
+  ) async {
+    if (localIndex == null || localIndex.isEmpty) return;
+
+    final recipes = localIndex['recipes'] as List<dynamic>? ?? [];
+    if (recipes.isEmpty) return;
+
+    int missingImages = 0;
+
+    for (final recipe in recipes) {
+      final hasImages = recipe['hasImages'] as bool? ?? false;
+      if (!hasImages) continue;
+
+      final recipeId = recipe['id'] as String;
+      final category = recipe['category'] as String;
+
+      final update = RecipeUpdate(
+        category: category,
+        recipeId: recipeId,
+        lastModified: '',
+        isNew: false,
+        hash: recipe['hash'] as String? ?? '',
+      );
+
+      final tasks = await syncService.extractDetailImageTasksFromAssets(update);
+      missingImages += tasks.length;
+
+      if (!mounted) return;
+    }
+
+    if (missingImages > 0) {
+      await AppNotificationService.instance.showImageDownloadNotification(
+        missingImages: missingImages,
+      );
     }
   }
 
