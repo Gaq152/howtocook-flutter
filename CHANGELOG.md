@@ -7,6 +7,31 @@
 
 ## [Unreleased]
 
+## [0.3.6] - 2026-05-09
+
+### 新增
+- **启动数据检查**：应用启动 3 秒后自动检查云端数据更新和未下载详情图，通过通知栏提醒用户，点击通知直接跳转数据同步页面。
+- **通知服务**：新增统一通知服务（`AppNotificationService`），管理数据更新提醒、详情图下载进度和完成通知，支持点击跳转。
+- **多源数据同步**：数据同步支持 jsDelivr / Fastly CDN / ghfast 代理 / GitHub Pages 直连四路回退，自动选择可用源，解决国内直连不稳定问题。
+- **详情图轮播增强**：菜谱详情页多图轮播支持手动翻页，新增进度环动画和右上角页码指示器。
+- **AI 状态标签**：AI 聊天消息气泡内联显示当前状态标签，区分回复中、思考中、工具调用中。
+
+### 变更
+- **下载进度改百分比**：数据同步页面的下载进度从「X/Y 项」改为百分比进度条，更直观。
+- **通知分组隔离**：APK 更新下载通知改为按组配置（`configureNotificationForGroup`），不再污染图片下载等其他下载组。
+- **下载状态持久化**：图片下载管理器改为 `keepAlive` 模式，离开数据同步页面后下载状态不再丢失，返回时自动恢复进度。
+
+### 修复
+- **AI 菜谱卡片崩溃**：修复 AI 聊天中菜谱卡片内容溢出和点击后崩溃的问题。
+- **跨会话菜谱识别**：修复切换会话后无法识别本地用户菜谱的问题，移除幽灵卡片。
+- **MCP 数据解析**：完善菜谱数据解析与模糊匹配透传逻辑。
+- **输入框交互**：修复 AI 聊天输入框内容溢出和键盘弹出遮挡的问题。
+- **debug 构建降级安装**：debug 构建 versionCode 加 ABI 偏移量，避免与 release 版本产生降级安装冲突。
+- **卡片名称遮挡**：修复菜谱卡片名称被图片遮挡的布局问题。
+- **下载完成刷新磁盘**：JSON 和详情图下载完成后自动刷新磁盘占用统计。
+- **下载通知残留**：修复下载完成后进度通知不消失、无法手动清除的问题。
+- **通知点击跳转**：修复下载进度通知点击后不跳转数据同步页面的问题。
+
 ## [0.3.5] - 2026-05-08
 
 ### 新增
@@ -161,7 +186,8 @@
 ### 修复
 - 解决 AGP 8 下部分三方插件（如 `install_plugin`）缺失 `namespace` 导致的构建失败。
 
-[Unreleased]: https://github.com/Gaq152/howtocook-flutter/compare/v0.3.5...HEAD
+[Unreleased]: https://github.com/Gaq152/howtocook-flutter/compare/v0.3.6...HEAD
+[0.3.6]: https://github.com/Gaq152/howtocook-flutter/compare/v0.3.5...v0.3.6
 [0.3.5]: https://github.com/Gaq152/howtocook-flutter/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/Gaq152/howtocook-flutter/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/Gaq152/howtocook-flutter/compare/v0.3.2...v0.3.3
