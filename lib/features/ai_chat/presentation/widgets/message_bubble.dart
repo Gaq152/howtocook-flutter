@@ -127,22 +127,6 @@ class _MessageBubbleState extends State<MessageBubble> {
         }
       }
 
-      // 3. 备用：识别其他 AI 创建的菜谱（依赖文本匹配）
-      if (displayText.isNotEmpty &&
-          widget.createdRecipes != null &&
-          widget.createdRecipes!.isNotEmpty) {
-        for (final entry in widget.createdRecipes!.entries) {
-          final recipe = entry.value;
-          // 检查文本中是否包含这个食谱的名称
-          if (displayText.contains(recipe.name)) {
-            // 避免重复添加（检查 ID 是否已存在）
-            if (!allRecipes.any((r) => r.id == recipe.id)) {
-              allRecipes.add(RecipeCardData.fromRecipe(recipe));
-            }
-          }
-        }
-      }
-
       if (mounted) {
         setState(() {
           _recognizedRecipes = allRecipes.isEmpty ? null : allRecipes;

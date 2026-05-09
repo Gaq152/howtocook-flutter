@@ -1,3 +1,4 @@
+import '../../../../core/storage/hive_service.dart';
 import '../../../sync/domain/entities/manifest.dart';
 import '../../../sync/infrastructure/bundled_data_loader.dart';
 import '../../../recipe/domain/entities/recipe.dart';
@@ -18,7 +19,6 @@ class RecipeCardData {
     required this.difficulty,
   });
 
-  /// 从 RecipeIndex 创建
   factory RecipeCardData.fromIndex(RecipeIndex index) {
     return RecipeCardData(
       id: index.id,
@@ -29,7 +29,6 @@ class RecipeCardData {
     );
   }
 
-  /// 从 Recipe 创建（用于 AI 生成的食谱）
   factory RecipeCardData.fromRecipe(Recipe recipe) {
     return RecipeCardData(
       id: recipe.id,
@@ -43,36 +42,66 @@ class RecipeCardData {
 
 /// 菜谱识别服务
 ///
-/// 从 AI 回复文本中识别菜谱名称，并与本地菜谱索引比对
+/// 从 AI 回复文本中识别菜谱名称，与内置索引和本地用户菜谱比对
 class RecipeRecognizer {
   final BundledDataLoader _dataLoader;
   Manifest? _cachedManifest;
+  List<RecipeCardData>? _cachedLocalRecipes;
 
   RecipeRecognizer(this._dataLoader);
 
   /// 从文本中提取菜谱引用
-  ///
-  /// 返回匹配到的菜谱卡片数据列表
   Future<List<RecipeCardData>> extractRecipesFromText(String text) async {
-    // 加载 manifest 索引（使用缓存）
     _cachedManifest ??= await _dataLoader.loadManifest();
+    _cachedLocalRecipes ??= _loadLocalRecipes();
 
     final matchedRecipes = <RecipeCardData>[];
+    final matchedIds = <String>{};
 
-    // 遍历所有菜谱索引，查找名称匹配
+    // 1. 内置/云端菜谱
     for (final recipeIndex in _cachedManifest!.recipes) {
-      // 如果文本中包含菜谱名称，认为是匹配
       if (text.contains(recipeIndex.name)) {
         matchedRecipes.add(RecipeCardData.fromIndex(recipeIndex));
+        matchedIds.add(recipeIndex.id);
+      }
+    }
+
+    // 2. 本地用户菜谱（AI 保存的、扫码、手动创建的）
+    for (final localRecipe in _cachedLocalRecipes!) {
+      if (!matchedIds.contains(localRecipe.id) && text.contains(localRecipe.name)) {
+        matchedRecipes.add(localRecipe);
       }
     }
 
     return matchedRecipes;
   }
 
-  /// 清除缓存（当需要重新加载数据时调用）
+  List<RecipeCardData> _loadLocalRecipes() {
+    final box = HiveService.getModifiedRecipesBox();
+    final recipes = <RecipeCardData>[];
+    for (final key in box.keys) {
+      try {
+        final data = box.get(key);
+        if (data == null) continue;
+        final name = data['name']?.toString();
+        if (name == null || name.isEmpty) continue;
+        recipes.add(RecipeCardData(
+          id: data['id']?.toString() ?? key.toString(),
+          name: name,
+          category: data['category']?.toString() ?? 'unknown',
+          categoryName: data['categoryName']?.toString() ?? '其他',
+          difficulty: (data['difficulty'] as int?) ?? 3,
+        ));
+      } catch (_) {
+        continue;
+      }
+    }
+    return recipes;
+  }
+
   void clearCache() {
     _cachedManifest = null;
+    _cachedLocalRecipes = null;
   }
 }
 
