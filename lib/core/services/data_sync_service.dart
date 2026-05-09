@@ -38,19 +38,21 @@ class SyncConfig {
 /// 数据同步服务
 @riverpod
 class DataSyncService extends _$DataSyncService {
-  late final String _remoteBaseUrl;
-  late final String _manifestUrl;
+  late String _remoteBaseUrl;
   static const String _localDataDirName = 'recipe_data';
 
-  String get _baseUrl => 'https://gaq152.github.io/HowToCook-assets';
+  static const List<String> _candidateBaseUrls = [
+    'https://cdn.jsdelivr.net/gh/Gaq152/HowToCook-assets@main',
+    'https://fastly.jsdelivr.net/gh/Gaq152/HowToCook-assets@main',
+    'https://ghfast.top/https://raw.githubusercontent.com/Gaq152/HowToCook-assets/refs/heads/main',
+    'https://gaq152.github.io/HowToCook-assets',
+  ];
 
   final Dio _dio = Dio();
 
   @override
   DataSyncState build() {
-    // 初始化URL
-    _remoteBaseUrl = _baseUrl;
-    _manifestUrl = '$_remoteBaseUrl/manifest.json';
+    _remoteBaseUrl = _candidateBaseUrls.first;
 
     return const DataSyncState(
       status: SyncStatus.idle,
@@ -204,52 +206,55 @@ class DataSyncService extends _$DataSyncService {
 
   /// 下载远程清单文件
   Future<Map<String, dynamic>?> downloadRemoteIndex() async {
-    try {
-      debugPrint('🌐 正在下载远程清单: $_manifestUrl');
-      final response = await _dio.get(_manifestUrl);
-
-      if (response.statusCode == 200) {
-        String responseData;
-        if (response.data is String) {
-          responseData = response.data;
-        } else {
-          responseData = jsonEncode(response.data);
-        }
-
-        final data = jsonDecode(responseData) as Map<String, dynamic>;
-
-        debugPrint('✅ 远程清单下载成功:');
-        debugPrint('   - 版本: ${data['version']}');
-        debugPrint('   - 生成时间: ${data['generatedAt']}');
-        debugPrint('   - 总食谱数: ${data['totalRecipes']}');
-        debugPrint(
-          '   - 实际食谱数组长度: ${(data['recipes'] as List<dynamic>?)?.length ?? 0}',
+    for (final baseUrl in _candidateBaseUrls) {
+      final url = '$baseUrl/manifest.json';
+      try {
+        debugPrint('🌐 正在下载远程清单: $url');
+        final response = await _dio.get(
+          url,
+          options: Options(receiveTimeout: const Duration(seconds: 10)),
         );
 
-        if (data['recipes'] is List && (data['recipes'] as List).isNotEmpty) {
-          final firstRecipe = (data['recipes'] as List)[0];
-          if (firstRecipe is Map) {
-            debugPrint('   - 示例食谱结构: ${firstRecipe.keys.toList()}');
-            debugPrint('   - 示例食谱: ${firstRecipe['name']} (${firstRecipe['id']})');
+        if (response.statusCode == 200) {
+          String responseData;
+          if (response.data is String) {
+            responseData = response.data;
+          } else {
+            responseData = jsonEncode(response.data);
           }
-        }
 
-        return data;
-      } else {
-        debugPrint('❌ 远程清单返回错误状态码: ${response.statusCode}');
-        return null;
+          final data = jsonDecode(responseData) as Map<String, dynamic>;
+
+          _remoteBaseUrl = baseUrl;
+          debugPrint('✅ 远程清单下载成功 (源: $baseUrl):');
+          debugPrint('   - 版本: ${data['version']}');
+          debugPrint('   - 生成时间: ${data['generatedAt']}');
+          debugPrint('   - 总食谱数: ${data['totalRecipes']}');
+          debugPrint(
+            '   - 实际食谱数组长度: ${(data['recipes'] as List<dynamic>?)?.length ?? 0}',
+          );
+
+          if (data['recipes'] is List && (data['recipes'] as List).isNotEmpty) {
+            final firstRecipe = (data['recipes'] as List)[0];
+            if (firstRecipe is Map) {
+              debugPrint('   - 示例食谱结构: ${firstRecipe.keys.toList()}');
+              debugPrint('   - 示例食谱: ${firstRecipe['name']} (${firstRecipe['id']})');
+            }
+          }
+
+          return data;
+        }
+      } on DioException catch (e) {
+        debugPrint('⚠️ 源 $baseUrl 失败: ${e.type} - ${e.message}');
+        continue;
+      } catch (e) {
+        debugPrint('⚠️ 源 $baseUrl 失败: $e');
+        continue;
       }
-    } on DioException catch (e) {
-      debugPrint('❌ 下载远程清单失败: ${e.type} - ${e.message}');
-      if (e.response?.statusCode == 404) {
-        debugPrint('❌ 远程清单文件不存在 (404): $_manifestUrl');
-        debugPrint('💡 请检查远程服务器上是否有 manifest.json 文件');
-      }
-      return null;
-    } catch (e) {
-      debugPrint('❌ 下载远程清单失败: $e');
-      return null;
     }
+
+    debugPrint('❌ 所有数据源均无法连接');
+    return null;
   }
 
   /// 加载本地清单文件
