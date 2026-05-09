@@ -134,6 +134,7 @@ class AppNotificationService {
       title: '正在下载详情图',
       body: '$completed / $total',
       notificationDetails: NotificationDetails(android: androidDetails),
+      payload: 'data-sync',
     );
   }
 
