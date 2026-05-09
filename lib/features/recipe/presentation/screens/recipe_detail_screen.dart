@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,54 +32,76 @@ class RecipeDetailScreen extends ConsumerStatefulWidget {
   ConsumerState<RecipeDetailScreen> createState() => _RecipeDetailScreenState();
 }
 
-class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
+class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen>
+    with TickerProviderStateMixin {
   final TextEditingController _noteController = TextEditingController();
   bool _isDeleting = false;
 
   // 图片轮播相关
   PageController? _pageController;
-  Timer? _autoScrollTimer;
+  AnimationController? _progressController;
+  Timer? _resumeTimer;
   int _currentPage = 0;
   int _totalImages = 0;
+  bool _isProgrammaticScroll = false;
+  bool _isAutoScrollPaused = false;
 
   @override
   void dispose() {
     _noteController.dispose();
-    _autoScrollTimer?.cancel();
+    _progressController?.dispose();
+    _resumeTimer?.cancel();
     _pageController?.dispose();
     super.dispose();
   }
 
-  /// 初始化图片轮播
   void _initImageCarousel(int imageCount) {
-    if (imageCount <= 1) return; // 单图或无图不需要轮播
+    if (imageCount <= 1) return;
 
     _totalImages = imageCount;
     _pageController = PageController(initialPage: 0);
 
-    _startAutoScroll();
+    _progressController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 5),
+    );
+    _progressController!.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _advanceToNextPage();
+      }
+    });
+    _progressController!.forward();
   }
 
-  /// 启动自动滚动定时器（每 3 秒切换一次）。
-  void _startAutoScroll() {
-    if (_totalImages <= 1) return;
-    _autoScrollTimer?.cancel();
-    _autoScrollTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
-      if (_pageController != null && _pageController!.hasClients) {
-        final nextPage = (_currentPage + 1) % _totalImages;
-        _pageController!.animateToPage(
-          nextPage,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-        );
-      }
+  void _advanceToNextPage() {
+    if (_pageController == null || !_pageController!.hasClients) return;
+    _isProgrammaticScroll = true;
+    final nextPage = (_currentPage + 1) % _totalImages;
+    _pageController!.animateToPage(
+      nextPage,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    ).then((_) {
+      _isProgrammaticScroll = false;
     });
   }
 
-  /// 暂停自动滚动（用户手势交互期间）。
-  void _stopAutoScroll() {
-    _autoScrollTimer?.cancel();
-    _autoScrollTimer = null;
+  void _restartProgress() {
+    _isAutoScrollPaused = false;
+    _progressController?.forward(from: 0.0);
+  }
+
+  void _pauseAutoScrollForInteraction() {
+    _progressController?.stop();
+    _isAutoScrollPaused = true;
+    _resumeTimer?.cancel();
+    _resumeTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() {
+          _restartProgress();
+        });
+      }
+    });
   }
 
   /// 判断 [path] 是否为可直接加载的图片来源（用户上传 / 网络 / 资源）。
@@ -325,23 +348,25 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
           fit: StackFit.expand,
           children: [
             _buildHeaderImage(recipe),
-            // 渐变遮罩
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppColors.textPrimary.withValues(alpha: 0.15),
-                    Colors.transparent,
-                    Colors.transparent,
-                    AppColors.textPrimary.withValues(alpha: 0.75),
-                  ],
-                  stops: const [0.0, 0.25, 0.5, 1.0],
+            // 渐变遮罩（不拦截触摸，让手势穿透到 PageView）
+            IgnorePointer(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      AppColors.textPrimary.withValues(alpha: 0.15),
+                      Colors.transparent,
+                      Colors.transparent,
+                      AppColors.textPrimary.withValues(alpha: 0.75),
+                    ],
+                    stops: const [0.0, 0.25, 0.5, 1.0],
+                  ),
                 ),
               ),
             ),
-            // 底部信息
+            // 底部信息（不拦截触摸，仅来源标签可点击）
             Positioned(
               bottom: 32,
               left: 20,
@@ -390,6 +415,47 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                 ],
               ),
             ),
+            // 轮播指示器（多图时显示，不拦截触摸）
+            if (recipe.images.length > 1) ...[
+              Positioned(
+                bottom: 108,
+                left: 0,
+                right: 0,
+                child: IgnorePointer(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(recipe.images.length, (index) {
+                      final isActive = _currentPage == index;
+                      if (isActive && _progressController != null) {
+                        return _buildActiveDotWithProgress();
+                      }
+                      return _buildInactiveDot();
+                    }),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 80,
+                right: 16,
+                child: IgnorePointer(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${_currentPage + 1} / ${recipe.images.length}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -430,63 +496,79 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     }
 
     // 多图轮播
-    return GestureDetector(
-      onPanDown: (_) => _stopAutoScroll(),
-      onPanEnd: (_) => _startAutoScroll(),
-      onPanCancel: _startAutoScroll,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          PageView.builder(
-            controller: _pageController,
-            itemCount: imageCount,
-            onPageChanged: (index) {
-              setState(() { _currentPage = index; });
-            },
-            itemBuilder: (context, index) {
-              final path = recipe.images[index];
-              if (_isDirectImagePath(path)) {
-                return _buildImageWidget(path);
-              }
-              return CachedRecipeImage.detail(
-                category: recipe.category,
-                recipeId: recipeId,
-                imageIndex: index,
-                width: double.infinity,
-                height: double.infinity,
-                fit: BoxFit.cover,
-                errorWidget: _buildImagePlaceholder(),
-              );
-            },
-          ),
-          Positioned(
-            bottom: 40,
-            left: 0,
-            right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                imageCount,
-                (index) => Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _currentPage == index
-                        ? AppColors.surface
-                        : AppColors.surface.withValues(alpha: 0.4),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (_isProgrammaticScroll) return false;
+        if (notification is ScrollStartNotification &&
+            notification.dragDetails != null) {
+          _progressController?.stop();
+        } else if (notification is ScrollEndNotification) {
+          _pauseAutoScrollForInteraction();
+        }
+        return false;
+      },
+      child: PageView.builder(
+        controller: _pageController,
+        itemCount: imageCount,
+        onPageChanged: (index) {
+          setState(() { _currentPage = index; });
+          if (_isProgrammaticScroll) {
+            _restartProgress();
+          }
+        },
+        itemBuilder: (context, index) {
+          final path = recipe.images[index];
+          if (_isDirectImagePath(path)) {
+            return _buildImageWidget(path);
+          }
+          return CachedRecipeImage.detail(
+            category: recipe.category,
+            recipeId: recipeId,
+            imageIndex: index,
+            width: double.infinity,
+            height: double.infinity,
+            fit: BoxFit.cover,
+            errorWidget: _buildImagePlaceholder(),
+          );
+        },
       ),
     );
   }
 
-  /// 构建图片占位符
+  Widget _buildActiveDotWithProgress() {
+    return AnimatedBuilder(
+      animation: _progressController!,
+      builder: (context, child) {
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          width: 18,
+          height: 18,
+          child: CustomPaint(
+            painter: _DotProgressPainter(
+              progress: _isAutoScrollPaused ? 0.0 : _progressController!.value,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildInactiveDot() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      width: 10,
+      height: 10,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withValues(alpha: 0.5),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.3),
+          width: 0.5,
+        ),
+      ),
+    );
+  }
+
   Widget _buildImagePlaceholder() {
     return Container(
       decoration: BoxDecoration(
@@ -1364,4 +1446,44 @@ class _StepCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _DotProgressPainter extends CustomPainter {
+  final double progress;
+
+  _DotProgressPainter({required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+
+    canvas.drawCircle(
+      center,
+      7.5,
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.2)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0,
+    );
+
+    canvas.drawCircle(center, 5.0, Paint()..color = Colors.white);
+
+    if (progress > 0) {
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: 7.5),
+        -pi / 2,
+        2 * pi * progress,
+        false,
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.9)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.0
+          ..strokeCap = StrokeCap.round,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DotProgressPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }

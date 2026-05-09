@@ -19,16 +19,9 @@ class ImageCacheService extends _$ImageCacheService {
       final coverPath = '${cacheDir.path}/recipe_images/covers/$category/$recipeName.webp';
       final file = File(coverPath);
 
-      debugPrint('🔍 查找封面图缓存:');
-      debugPrint('   - 分类: $category');
-      debugPrint('   - 菜名: $recipeName');
-      debugPrint('   - 路径: $coverPath');
-
       if (await file.exists()) {
-        debugPrint('   ✅ 缓存存在');
         return coverPath;
       }
-      debugPrint('   ❌ 缓存不存在');
       return null;
     } catch (e) {
       debugPrint('❌ 获取封面图路径失败: $category/$recipeName, 错误: $e');
@@ -44,17 +37,9 @@ class ImageCacheService extends _$ImageCacheService {
       final imagePath = '${cacheDir.path}/recipe_images/details/$category/${recipeId}_$index.webp';
       final file = File(imagePath);
 
-      debugPrint('🔍 查找详情图缓存:');
-      debugPrint('   - 分类: $category');
-      debugPrint('   - ID: $recipeId');
-      debugPrint('   - 索引: $index');
-      debugPrint('   - 路径: $imagePath');
-
       if (await file.exists()) {
-        debugPrint('   ✅ 缓存存在');
         return imagePath;
       }
-      debugPrint('   ❌ 缓存不存在');
       return null;
     } catch (e) {
       debugPrint('❌ 获取详情图路径失败: $category/${recipeId}_$index, 错误: $e');
