@@ -71,8 +71,9 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
 
   bool _isLoading = false;
   bool _isStreaming = false;
-  String _streamingText = ''; // 流式输出的当前文本
-  String _streamingReasoningText = ''; // 流式思考内容
+  String _streamingText = '';
+  String _streamingReasoningText = '';
+  String? _aiStatusText;
   bool _shouldStopStreaming = false;
   String? _selectedImagePath;
   List<Map<String, dynamic>>? _mcpTools;
@@ -796,12 +797,8 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.all(16),
-      itemCount: _messages.length + (_isLoading ? 1 : 0),
+      itemCount: _messages.length,
       itemBuilder: (context, index) {
-        if (index == _messages.length) {
-          return _buildLoadingIndicator();
-        }
-
         final message = _messages[index];
 
         // 获取模型名称（从消息保存的modelId，而不是当前选择的模型）
@@ -830,6 +827,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
           streamingReasoningText: isLastMessage && _streamingReasoningText.isNotEmpty
               ? _streamingReasoningText
               : null,
+          aiStatusText: isLastMessage ? _aiStatusText : null,
           recipeRecognizer: _recipeRecognizer,
           createdRecipes: _createdRecipes, // 传递 AI 创建的食谱列表
           onRecipeTap: (recipeId) async {
@@ -888,40 +886,17 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   }
 
   /// 构建加载指示器
-  Widget _buildLoadingIndicator() {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceAlt,
-          borderRadius: BorderRadius.circular(16).copyWith(
-            topLeft: const Radius.circular(4),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'AI 正在思考...',
-              style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  String _toolStatusText(String toolName) {
+    final clean = toolName.replaceFirst('mcp_howtocook_', '');
+    return switch (clean) {
+      'getRecipeById' => '搜索菜谱中...',
+      'getAllRecipes' => '获取菜谱列表中...',
+      'getRecipesByCategory' => '查询分类中...',
+      'createRecipe' => '创建食谱中...',
+      'recommendMeals' => '获取推荐中...',
+      'getRecipeDetail' => '获取详情中...',
+      _ => '调用工具中...',
+    };
   }
 
   /// 构建输入区域
@@ -1107,6 +1082,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
     setState(() {
       _messages.add(userMessage);
       _isLoading = true;
+      _aiStatusText = '回复中...';
       _inputController.clear();
       _selectedImagePath = null;
     });
@@ -1123,11 +1099,11 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
 
     setState(() {
       _isLoading = true;
+      _aiStatusText = '回复中...';
     });
 
     _scrollToBottom();
 
-    // 调用实际的发送逻辑
     await _sendMessageInternal();
   }
 
@@ -1271,6 +1247,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                 scheduleMicrotask(() {
                   if (mounted) {
                     setState(() {
+                      _aiStatusText = null;
                       final lastIndex = _messages.length - 1;
                       final display = accumulatedText.isEmpty
                           ? streamingTextBuffer.toString()
@@ -1290,7 +1267,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
             onReasoningContent: (value) {
               if (mounted) {
                 setState(() {
-                  // value 是当前轮的累积思考，拼接之前轮次的
+                  _aiStatusText = '思考中...';
                   _streamingReasoningText = accumulatedReasoning.isEmpty
                       ? value
                       : '${accumulatedReasoning.toString()}\n\n$value';
@@ -1344,6 +1321,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                 createdRecipeIds: createdRecipeIds.isNotEmpty ? createdRecipeIds : null,
               );
               _isLoading = false;
+              _aiStatusText = null;
               _streamingReasoningText = '';
             });
             break;
@@ -1362,23 +1340,14 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
             if (accumulatedReasoning.isNotEmpty) accumulatedReasoning.write('\n\n');
             accumulatedReasoning.write(response.reasoningContent);
           }
-          // 更新 UI 显示工具调用状态（保留前置文本）
-          setState(() {
-            final lastIndex = _messages.length - 1;
-            final statusText = accumulatedText.isEmpty
-                ? 'AI 正在调用工具查询数据...'
-                : '${accumulatedText.toString()}\n\nAI 正在调用工具查询数据...';
-            _messages[lastIndex] = ChatMessage(
-              id: tempAssistantMessage.id,
-              role: MessageRole.assistant,
-              content: [MessageContent.text(text: statusText)],
-              timestamp: tempAssistantMessage.timestamp,
-            );
-          });          final toolResults = <MessageContent>[];
+          final toolResults = <MessageContent>[];
 
           for (final content in response.content) {
             if (content is ToolUseContent) {
               debugPrint('Executing tool: ${content.name}');
+              setState(() {
+                _aiStatusText = _toolStatusText(content.name);
+              });
 
               try {
                 // 执行 MCP 工具
@@ -1448,6 +1417,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
               createdRecipeIds: createdRecipeIds.isNotEmpty ? createdRecipeIds : null,
             );
             _isLoading = false;
+            _aiStatusText = null;
             _streamingReasoningText = '';
           });
         }
@@ -1460,7 +1430,6 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
           // 使用流式响应
           debugPrint('Using streaming response (streaming enabled)');
 
-          // 开启流式显示状态
           setState(() {
             _isStreaming = true;
             _streamingText = '';
@@ -1473,8 +1442,8 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
             messages: history,
             onReasoningContent: (value) {
               reasoningContent = value;
-              // 更新流式思考内容（实时显示）
               setState(() {
+                _aiStatusText = '思考中...';
                 _streamingReasoningText = value;
               });
             },
@@ -1494,8 +1463,8 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
             chunkCount++;
             responseBuffer.write(chunk);
 
-            // 更新流式文本状态（用于MessageBubble显示）
             setState(() {
+              _aiStatusText = null;
               _streamingText = responseBuffer.toString();
             });
           }
@@ -1525,6 +1494,9 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
               final toolArgs = toolCall['arguments'] as Map<String, dynamic>;
 
               debugPrint('🔧 Executing XML tool: $toolName (id: $toolUseId)');
+              setState(() {
+                _aiStatusText = _toolStatusText(toolName);
+              });
               try {
                 final result = await _executeMCPTool(toolName, toolArgs);
                 toolResultsXml.writeln(_formatToolResultAsXml(toolUseId, toolName, result));
@@ -1573,6 +1545,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
 
             setState(() {
               _isStreaming = true;
+              _aiStatusText = '回复中...';
               _streamingText = cleanResponseText.isNotEmpty ? '$cleanResponseText\n\n' : '';
               _streamingReasoningText = '';
             });
@@ -1582,6 +1555,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
               onReasoningContent: (value) {
                 nextReasoningContent = value;
                 setState(() {
+                  _aiStatusText = '思考中...';
                   _streamingReasoningText = value;
                 });
               },
@@ -1591,6 +1565,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
               if (_shouldStopStreaming) break;
               nextResponseBuffer.write(chunk);
               setState(() {
+                _aiStatusText = null;
                 _streamingText = cleanResponseText.isNotEmpty
                     ? '$cleanResponseText\n\n${nextResponseBuffer.toString()}'
                     : nextResponseBuffer.toString();
@@ -1605,6 +1580,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
             setState(() {
               _isStreaming = false;
               _isLoading = false;
+              _aiStatusText = null;
               final lastIndex = _messages.length - 1;
               _messages[lastIndex] = ChatMessage(
                 id: tempAssistantMessage.id,
@@ -1621,6 +1597,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
             setState(() {
               _isStreaming = false;
               _isLoading = false;
+              _aiStatusText = null;
               final lastIndex = _messages.length - 1;
               _messages[lastIndex] = ChatMessage(
                 id: tempAssistantMessage.id,
@@ -1645,6 +1622,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
           // 更新最终消息（使用响应中的reasoning内容）
           setState(() {
             _isLoading = false;
+            _aiStatusText = null;
             final lastIndex = _messages.length - 1;
             _messages[lastIndex] = ChatMessage(
               id: tempAssistantMessage.id,
@@ -1669,6 +1647,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
         // 重置流式状态
         _isStreaming = false;
         _isLoading = false;
+        _aiStatusText = null;
 
         // 移除临时消息并添加错误消息
         if (_messages.isNotEmpty && _messages.last.id == tempAssistantMessage.id) {
@@ -2145,6 +2124,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
     setState(() {
       _shouldStopStreaming = true;
       _isLoading = false;
+      _aiStatusText = null;
       _isStreaming = false;
     });
     debugPrint('User stopped streaming');
@@ -2336,6 +2316,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
       _streamingReasoningText = '';
       _isStreaming = false;
       _isLoading = false;
+      _aiStatusText = null;
     });
 
     await _loadConversationData(conversationId);

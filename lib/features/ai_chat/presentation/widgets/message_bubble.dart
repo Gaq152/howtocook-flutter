@@ -32,6 +32,7 @@ class MessageBubble extends StatefulWidget {
   final bool isStreaming;
   final String? streamingText;
   final String? streamingReasoningText; // 流式思考内容
+  final String? aiStatusText;
   final RecipeRecognizer? recipeRecognizer;
   final TipRecognizer? tipRecognizer;
   final Function(String recipeId)? onRecipeTap;
@@ -49,6 +50,7 @@ class MessageBubble extends StatefulWidget {
     this.isStreaming = false,
     this.streamingText,
     this.streamingReasoningText,
+    this.aiStatusText,
     this.recipeRecognizer,
     this.tipRecognizer,
     this.onRecipeTap,
@@ -200,6 +202,10 @@ class _MessageBubbleState extends State<MessageBubble> {
               child: Column(
                 crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                 children: [
+                  // AI 状态标签（头像右侧内联显示）
+                  if (!isUser && widget.aiStatusText != null)
+                    _buildAiStatusLabel(widget.aiStatusText!),
+
                   // 思考过程展示（仅AI消息，显示在消息之前）
                   if (!isUser) _buildReasoningBlock(),
 
@@ -631,6 +637,38 @@ class _MessageBubbleState extends State<MessageBubble> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildAiStatusLabel(String statusText) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(
+              strokeWidth: 1.5,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            statusText,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.primary,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
