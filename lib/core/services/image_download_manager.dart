@@ -1,32 +1,34 @@
 import 'dart:io';
+import 'package:background_downloader/background_downloader.dart'
+    hide DownloadTask;
+import 'package:background_downloader/background_downloader.dart'
+    as bd show DownloadTask;
 import 'package:flutter/foundation.dart';
-import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'app_notification_service.dart';
 
 part 'image_download_manager.g.dart';
 part 'image_download_manager.freezed.dart';
 
-/// 下载状态枚举
 enum DownloadStatus {
-  idle,          // 空闲
-  downloading,   // 下载中
-  paused,        // 已暂停
-  completed,     // 已完成
-  error,         // 出错
+  idle,
+  downloading,
+  paused,
+  completed,
+  error,
 }
 
-/// 下载任务信息
 class DownloadTask {
   final String id;
   final String category;
   final String recipeId;
   final String imageUrl;
   final String localPath;
-  final int priority; // 优先级，数字越小优先级越高
+  final int priority;
   DownloadStatus status;
-  int progress; // 下载进度 0-100
+  int progress;
   String? error;
 
   DownloadTask({
@@ -42,16 +44,14 @@ class DownloadTask {
   });
 }
 
-/// 图片下载管理器
 @riverpod
 class ImageDownloadManager extends _$ImageDownloadManager {
   static const String _cacheDirName = 'recipe_images';
+  static const String _taskGroup = 'howtocook-images';
+  static const String _groupNotifId = 'image-batch';
 
-  final Dio _dio = Dio();
   final Map<String, DownloadTask> _tasks = {};
-  final Map<String, CancelToken> _cancelTokens = {};
-  bool _isDownloading = false;
-  int _currentIndex = 0;
+  bool _isPaused = false;
 
   @override
   ImageDownloadState build() {
@@ -63,218 +63,200 @@ class ImageDownloadManager extends _$ImageDownloadManager {
     );
   }
 
-  /// 添加下载任务
-  void addDownloadTasks(List<DownloadTask> tasks) {
-    debugPrint('📋 添加下载任务: ${tasks.length} 个');
+  /// 配置 background_downloader 组通知：仅 running 状态显示纯文字提示
+  static void configureNotifications() {
+    FileDownloader().configureNotificationForGroup(
+      _taskGroup,
+      running: const TaskNotification(
+        '正在下载详情图',
+        '点击查看下载进度',
+      ),
+      complete: const TaskNotification(
+        '详情图下载完成',
+        '',
+      ),
+      error: const TaskNotification(
+        '部分图片下载失败',
+        '请在应用内重试',
+      ),
+      progressBar: false,
+      groupNotificationId: _groupNotifId,
+    );
 
+    FileDownloader().registerCallbacks(
+      group: _taskGroup,
+      taskNotificationTapCallback: _onNotificationTap,
+    );
+  }
+
+  static void _onNotificationTap(
+      Task task, NotificationType notificationType) {
+    AppNotificationService.instance.handleNotificationTap('data-sync');
+  }
+
+  void addDownloadTasks(List<DownloadTask> tasks) {
     for (final task in tasks) {
       _tasks[task.id] = task;
-      debugPrint('   - ${task.id}: ${task.imageUrl}');
     }
-
-    // 按优先级排序
-    final sortedTasks = _tasks.values.toList()
-      ..sort((a, b) => a.priority.compareTo(b.priority));
-
-    _tasks.clear();
-    for (final task in sortedTasks) {
-      _tasks[task.id] = task;
-    }
-
-    debugPrint('🎯 总下载任务数: ${_tasks.length}');
 
     state = state.copyWith(
       totalTasks: _tasks.length,
       completedTasks: _getCompletedCount(),
     );
 
-    // 如果没有正在下载，开始下载
-    if (!_isDownloading) {
-      debugPrint('🚀 开始下载...');
-      _startDownload();
+    if (!_isPaused) {
+      _startBatchDownload();
     }
   }
 
-  /// 开始下载
-  void _startDownload() async {
-    if (_tasks.isEmpty || _isDownloading) return;
+  Future<void> _startBatchDownload() async {
+    final pendingTasks = _tasks.values
+        .where((t) =>
+            t.status == DownloadStatus.idle ||
+            t.status == DownloadStatus.error)
+        .toList();
 
-    _isDownloading = true;
-    _currentIndex = 0;
-
-    state = state.copyWith(status: DownloadStatus.downloading);
-
-    while (_currentIndex < _tasks.length) {
-      // 检查是否应该停止下载
-      if (!_isDownloading) {
-        debugPrint('⏸️ 下载已被暂停或取消');
-        break;
-      }
-
-      final task = _tasks.values.elementAt(_currentIndex);
-
-      if (task.status == DownloadStatus.completed) {
-        _currentIndex++;
-        continue;
-      }
-
-      // 如果任务是暂停状态，将其重置为 idle 并继续下载
-      if (task.status == DownloadStatus.paused) {
-        debugPrint('🔄 恢复下载暂停的任务: ${task.id}');
-        task.status = DownloadStatus.idle;
-        task.progress = 0;
-        task.error = null;
-      }
-
-      await _downloadSingleTask(task);
-      _currentIndex++;
-
-      // 更新整体进度
-      state = state.copyWith(
-        completedTasks: _getCompletedCount(),
-        progress: ((_currentIndex) / _tasks.length * 100).round(),
-      );
-    }
-
-    _isDownloading = false;
-
-    // 只有在真正完成所有任务时才标记为completed
-    if (_currentIndex >= _tasks.length) {
+    if (pendingTasks.isEmpty) {
       state = state.copyWith(
         status: DownloadStatus.completed,
         progress: 100,
       );
-    }
-  }
-
-  /// 下载单个任务
-  Future<void> _downloadSingleTask(DownloadTask task) async {
-    // 在开始下载前检查是否应该继续
-    if (!_isDownloading) {
-      debugPrint('⏸️ 任务 ${task.id} 被跳过（下载已停止）');
       return;
     }
 
-    task.status = DownloadStatus.downloading;
-    task.progress = 0;
-    task.error = null;
+    state = state.copyWith(status: DownloadStatus.downloading, progress: 0);
+    _isPaused = false;
 
-    debugPrint('📥 开始下载图片:');
-    debugPrint('   - ID: ${task.id}');
-    debugPrint('   - 分类: ${task.category}');
-    debugPrint('   - 食谱ID: ${task.recipeId}');
-    debugPrint('   - URL: ${task.imageUrl}');
-    debugPrint('   - 本地路径: ${task.localPath}');
+    final bdTasks = <bd.DownloadTask>[];
+    for (final task in pendingTasks) {
+      final file = File(task.localPath);
+      final dir = file.parent.path;
+      final filename = file.uri.pathSegments.last;
 
-    state = state.copyWith(); // 触发状态更新
+      bdTasks.add(bd.DownloadTask(
+        url: task.imageUrl,
+        filename: filename,
+        directory: dir,
+        baseDirectory: BaseDirectory.root,
+        group: _taskGroup,
+        updates: Updates.statusAndProgress,
+        retries: 1,
+        priority: task.priority,
+      ));
+
+      task.status = DownloadStatus.downloading;
+    }
+
+    final baseCompleted = _getCompletedCount();
 
     try {
-      final cancelToken = CancelToken();
-      _cancelTokens[task.id] = cancelToken;
+      final batch = await FileDownloader().downloadBatch(
+        bdTasks,
+        batchProgressCallback: (succeeded, failed) {
+          final completed = succeeded + failed;
 
-      // 创建本地目录
-      final file = File(task.localPath);
-      await file.parent.create(recursive: true);
-      debugPrint('   - 目录已创建: ${file.parent.path}');
+          state = state.copyWith(
+            completedTasks: baseCompleted + succeeded,
+            progress: _tasks.isEmpty
+                ? 0
+                : ((baseCompleted + completed) / _tasks.length * 100).round(),
+          );
+        },
+        taskStatusCallback: (update) {
+          final matchingTask = _findTaskByUrl(update.task.url);
+          if (matchingTask == null) return;
 
-      // 下载文件
-      await _dio.download(
-        task.imageUrl,
-        task.localPath,
-        cancelToken: cancelToken,
-        onReceiveProgress: (received, total) {
-          if (total > 0) {
-            task.progress = (received / total * 100).round();
-            state = state.copyWith(); // 触发状态更新
+          switch (update.status) {
+            case TaskStatus.complete:
+              matchingTask.status = DownloadStatus.completed;
+              matchingTask.progress = 100;
+            case TaskStatus.failed:
+            case TaskStatus.notFound:
+              matchingTask.status = DownloadStatus.error;
+              matchingTask.error = update.exception?.description ?? '下载失败';
+            case TaskStatus.canceled:
+              matchingTask.status = DownloadStatus.paused;
+            default:
+              break;
           }
         },
-        options: Options(
-          receiveTimeout: Duration(seconds: 30),
-        ),
       );
 
-      task.status = DownloadStatus.completed;
-      task.progress = 100;
+      final allCompleted =
+          _tasks.values.every((t) => t.status == DownloadStatus.completed);
 
-      // 验证文件是否真的存在
-      final exists = await file.exists();
-      final fileSize = exists ? await file.length() : 0;
+      state = state.copyWith(
+        status: allCompleted ? DownloadStatus.completed : DownloadStatus.error,
+        progress: allCompleted ? 100 : state.progress,
+        completedTasks: _getCompletedCount(),
+        error: batch.numFailed > 0 ? '${batch.numFailed} 张图片下载失败' : null,
+      );
 
-      debugPrint('✅ 图片下载完成:');
-      debugPrint('   - 路径: ${task.localPath}');
-      debugPrint('   - 文件存在: $exists');
-      debugPrint('   - 文件大小: $fileSize 字节');
-
-    } on DioException catch (e) {
-      // 如果是取消操作，不标记为错误
-      if (e.type == DioExceptionType.cancel) {
-        debugPrint('⏸️ 图片下载被取消: ${task.imageUrl}');
-        task.status = DownloadStatus.paused;
-      } else {
-        task.status = DownloadStatus.error;
-        task.error = e.toString();
-        debugPrint('❌ 图片下载失败:');
-        debugPrint('   - URL: ${task.imageUrl}');
-        debugPrint('   - 错误: $e');
+      // 下载结束后由 AppNotificationService 发完成通知（可点击跳转）
+      if (allCompleted) {
+        AppNotificationService.instance.showDownloadComplete(
+          total: _getCompletedCount(),
+        );
+      } else if (batch.numFailed > 0) {
+        AppNotificationService.instance.showDownloadComplete(
+          total: _getCompletedCount(),
+          failed: batch.numFailed,
+        );
       }
     } catch (e) {
-      task.status = DownloadStatus.error;
-      task.error = e.toString();
-      debugPrint('❌ 图片下载失败:');
-      debugPrint('   - URL: ${task.imageUrl}');
-      debugPrint('   - 错误: $e');
+      debugPrint('❌ 批量下载异常: $e');
+      state = state.copyWith(
+        status: DownloadStatus.error,
+        error: e.toString(),
+      );
     }
-
-    _cancelTokens.remove(task.id);
-    state = state.copyWith(); // 触发状态更新
   }
 
-  /// 暂停下载
-  void pauseDownload() {
-    debugPrint('⏸️ 暂停下载请求...');
-    debugPrint('   - 当前正在下载的任务数: ${_cancelTokens.length}');
+  DownloadTask? _findTaskByUrl(String url) {
+    return _tasks.values.where((t) => t.imageUrl == url).firstOrNull;
+  }
 
-    // 先设置标志，防止新任务开始
-    _isDownloading = false;
-
-    // 取消当前正在下载的任务
-    for (final cancelToken in _cancelTokens.values) {
-      cancelToken.cancel();
+  void pauseDownload() async {
+    _isPaused = true;
+    final activeTasks = await FileDownloader().allTasks(group: _taskGroup);
+    if (activeTasks.isNotEmpty) {
+      await FileDownloader().cancelTasksWithIds(
+        activeTasks.map((t) => t.taskId).toList(),
+      );
     }
-    _cancelTokens.clear();
 
-    // 标记当前任务为暂停状态
-    if (_currentIndex < _tasks.length) {
-      final currentTask = _tasks.values.elementAt(_currentIndex);
-      currentTask.status = DownloadStatus.paused;
-      debugPrint('   - 当前任务已标记为暂停: ${currentTask.id}');
+    for (final task in _tasks.values) {
+      if (task.status == DownloadStatus.downloading) {
+        task.status = DownloadStatus.paused;
+      }
     }
 
     state = state.copyWith(status: DownloadStatus.paused);
-    debugPrint('✅ 下载已暂停');
   }
 
-  /// 恢复下载
   void resumeDownload() {
-    debugPrint('▶️ 恢复下载请求...');
-    debugPrint('   - 当前状态: ${state.status}');
-    debugPrint('   - 当前索引: $_currentIndex');
-    debugPrint('   - 总任务数: ${_tasks.length}');
+    if (state.status != DownloadStatus.paused) return;
 
-    if (state.status == DownloadStatus.paused) {
-      debugPrint('🚀 开始恢复下载...');
-      _startDownload();
-    } else {
-      debugPrint('⚠️ 无法恢复：当前状态不是暂停状态');
+    for (final task in _tasks.values) {
+      if (task.status == DownloadStatus.paused) {
+        task.status = DownloadStatus.idle;
+      }
     }
+
+    _isPaused = false;
+    _startBatchDownload();
   }
 
-  /// 取消所有下载
-  void cancelAllDownloads() {
-    pauseDownload();
-    _tasks.clear();
-    _currentIndex = 0;
+  void cancelAllDownloads() async {
+    _isPaused = true;
+    final activeTasks = await FileDownloader().allTasks(group: _taskGroup);
+    if (activeTasks.isNotEmpty) {
+      await FileDownloader().cancelTasksWithIds(
+        activeTasks.map((t) => t.taskId).toList(),
+      );
+    }
 
+    _tasks.clear();
     state = const ImageDownloadState(
       status: DownloadStatus.idle,
       totalTasks: 0,
@@ -283,22 +265,18 @@ class ImageDownloadManager extends _$ImageDownloadManager {
     );
   }
 
-  /// 获取已完成任务数量
   int _getCompletedCount() {
-    return _tasks.values.where((task) => task.status == DownloadStatus.completed).length;
+    return _tasks.values
+        .where((t) => t.status == DownloadStatus.completed)
+        .length;
   }
 
-  /// 获取所有任务状态
-  List<DownloadTask> getAllTasks() {
-    return _tasks.values.toList();
-  }
+  List<DownloadTask> getAllTasks() => _tasks.values.toList();
 
-  /// 获取缓存大小
   Future<int> getCacheSize() async {
     try {
       final cacheDir = await getApplicationDocumentsDirectory();
       final imageCacheDir = Directory('${cacheDir.path}/$_cacheDirName');
-
       if (!await imageCacheDir.exists()) return 0;
 
       int totalSize = 0;
@@ -307,7 +285,6 @@ class ImageDownloadManager extends _$ImageDownloadManager {
           totalSize += await entity.length();
         }
       }
-
       return totalSize;
     } catch (e) {
       debugPrint('❌ 计算缓存大小失败: $e');
@@ -315,15 +292,12 @@ class ImageDownloadManager extends _$ImageDownloadManager {
     }
   }
 
-  /// 清理缓存
   Future<void> clearCache() async {
     try {
       final cacheDir = await getApplicationDocumentsDirectory();
       final imageCacheDir = Directory('${cacheDir.path}/$_cacheDirName');
-
       if (await imageCacheDir.exists()) {
         await imageCacheDir.delete(recursive: true);
-        debugPrint('🗑️ 图片缓存已清理');
       }
     } catch (e) {
       debugPrint('❌ 清理缓存失败: $e');
@@ -331,7 +305,6 @@ class ImageDownloadManager extends _$ImageDownloadManager {
   }
 }
 
-/// 图片下载状态
 @freezed
 class ImageDownloadState with _$ImageDownloadState {
   const factory ImageDownloadState({

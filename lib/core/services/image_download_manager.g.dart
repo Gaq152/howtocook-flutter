@@ -7,9 +7,9 @@ part of 'image_download_manager.dart';
 // **************************************************************************
 
 String _$imageDownloadManagerHash() =>
-    r'b310617c4f58a23444214aee3de7be3f442ebf78';
+    r'2f19a7ea35956fa3c8294e94a087451ced26712e';
 
-/// 图片下载管理器
+/// 图片下载管理器（基于 background_downloader）
 ///
 /// Copied from [ImageDownloadManager].
 @ProviderFor(ImageDownloadManager)

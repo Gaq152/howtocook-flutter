@@ -68,6 +68,7 @@ dependencies:
   mobile_scanner: ^5.2.3  # 二维码扫描（相机实时扫描）
   opencv_dart: ^1.4.3  # OpenCV for Dart（WeChatQRCode 强力扫描）
   image: ^4.3.0  # 图片处理（裁剪、缩放等）
+  flutter_local_notifications: ^20.1.0
 
 dev_dependencies:
   flutter_test:
