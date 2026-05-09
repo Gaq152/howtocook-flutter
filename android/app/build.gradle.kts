@@ -79,17 +79,20 @@ android {
         }
     }
 
-    // 自定义APK文件名 - 使用正确的语法
     applicationVariants.all {
         val variant = this
         variant.outputs.all {
-            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            val output = this as com.android.build.gradle.internal.api.ApkVariantOutputImpl
             if (variant.buildType.name == "release") {
                 val abi = output.filters.find {
                     it.filterType == com.android.build.api.variant.FilterConfiguration.FilterType.ABI.name
                 }?.identifier
                 output.outputFileName = if (abi != null) "howtocook-$abi.apk" else "howtocook.apk"
             } else {
+                // release 用 --split-per-abi 时 arm64 versionCode 会加 2000 前缀，
+                // debug 不分包但需 >= 已安装 release 版，否则触发 INSTALL_FAILED_VERSION_DOWNGRADE
+                val baseCode = variant.mergedFlavor.versionCode ?: 0
+                output.setVersionCodeOverride(2000 + baseCode)
                 output.outputFileName = "howtocook_debug.apk"
             }
         }
