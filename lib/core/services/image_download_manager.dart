@@ -44,7 +44,7 @@ class DownloadTask {
   });
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 class ImageDownloadManager extends _$ImageDownloadManager {
   static const String _cacheDirName = 'recipe_images';
   static const String _taskGroup = 'howtocook-images';

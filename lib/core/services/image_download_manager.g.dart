@@ -7,14 +7,12 @@ part of 'image_download_manager.dart';
 // **************************************************************************
 
 String _$imageDownloadManagerHash() =>
-    r'2f19a7ea35956fa3c8294e94a087451ced26712e';
+    r'3dce6662be5848c615c8f1f00eba16644f158f08';
 
-/// 图片下载管理器（基于 background_downloader）
-///
-/// Copied from [ImageDownloadManager].
+/// See also [ImageDownloadManager].
 @ProviderFor(ImageDownloadManager)
-final imageDownloadManagerProvider = AutoDisposeNotifierProvider<
-    ImageDownloadManager, ImageDownloadState>.internal(
+final imageDownloadManagerProvider =
+    NotifierProvider<ImageDownloadManager, ImageDownloadState>.internal(
   ImageDownloadManager.new,
   name: r'imageDownloadManagerProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -24,6 +22,6 @@ final imageDownloadManagerProvider = AutoDisposeNotifierProvider<
   allTransitiveDependencies: null,
 );
 
-typedef _$ImageDownloadManager = AutoDisposeNotifier<ImageDownloadState>;
+typedef _$ImageDownloadManager = Notifier<ImageDownloadState>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member
