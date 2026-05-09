@@ -161,7 +161,13 @@
 ### 修复
 - 解决 AGP 8 下部分三方插件（如 `install_plugin`）缺失 `namespace` 导致的构建失败。
 
-[Unreleased]: https://github.com/Gaq152/howtocook-flutter/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Gaq152/howtocook-flutter/compare/v0.3.5...HEAD
+[0.3.5]: https://github.com/Gaq152/howtocook-flutter/compare/v0.3.4...v0.3.5
+[0.3.4]: https://github.com/Gaq152/howtocook-flutter/compare/v0.3.3...v0.3.4
+[0.3.3]: https://github.com/Gaq152/howtocook-flutter/compare/v0.3.2...v0.3.3
+[0.3.2]: https://github.com/Gaq152/howtocook-flutter/compare/v0.3.1...v0.3.2
+[0.3.1]: https://github.com/Gaq152/howtocook-flutter/compare/v0.3.0...v0.3.1
+[0.3.0]: https://github.com/Gaq152/howtocook-flutter/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Gaq152/howtocook-flutter/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/Gaq152/howtocook-flutter/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Gaq152/howtocook-flutter/releases/tag/v0.1.0
