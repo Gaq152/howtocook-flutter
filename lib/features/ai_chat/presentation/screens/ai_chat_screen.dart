@@ -1023,7 +1023,8 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                       vertical: 8,
                     ),
                   ),
-                  maxLines: null,
+                  minLines: 1,
+                  maxLines: 6,
                   textInputAction: TextInputAction.send,
                   onSubmitted: (_) => _isLoading ? null : _sendMessage(),
                 ),
@@ -1825,11 +1826,28 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
             break;
           }
 
-          final recipe = await _mcpService.getRecipeById(query);
-          result = {
-            'success': true,
-            'recipe': recipe.toJson(),
-          };
+          final recipeResult = await _mcpService.getRecipeById(query);
+          if (recipeResult is Recipe) {
+            result = {
+              'success': true,
+              'recipe': recipeResult.toJson(),
+            };
+          } else if (recipeResult is Map<String, dynamic>) {
+            if (recipeResult.containsKey('possibleMatches')) {
+              result = {
+                'success': false,
+                'exactMatch': false,
+                ...recipeResult,
+              };
+            } else {
+              result = {
+                'success': false,
+                ...recipeResult,
+              };
+            }
+          } else {
+            result = {'success': false, 'error': recipeResult.toString()};
+          }
           break;
 
         case 'recommendMeals':
