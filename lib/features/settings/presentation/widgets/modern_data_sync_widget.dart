@@ -40,13 +40,43 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
   void initState() {
     super.initState();
     _calculateStorageSize();
-    // 初始化时自动检查各项状态
+    _restoreDownloadState();
     _checkInitialStates();
+  }
+
+  /// 恢复正在进行的下载状态
+  void _restoreDownloadState() {
+    final downloadState = ref.read(imageDownloadManagerProvider);
+    if (downloadState.status == DownloadStatus.downloading ||
+        downloadState.status == DownloadStatus.paused) {
+      _currentImageDownloadType = SyncItemType.fullDetailImages;
+      _currentTotalTasks = downloadState.totalTasks;
+      _itemStates[SyncItemType.fullDetailImages] =
+          _itemStates[SyncItemType.fullDetailImages]!.copyWith(
+        status: downloadState.status == DownloadStatus.paused
+            ? SyncItemStatus.paused
+            : SyncItemStatus.downloading,
+        totalItems: 100,
+        completedItems: downloadState.progress,
+        message: '下载中 ${downloadState.progress}%',
+      );
+    } else if (downloadState.status == DownloadStatus.completed &&
+        downloadState.totalTasks > 0) {
+      _itemStates[SyncItemType.fullDetailImages] =
+          _itemStates[SyncItemType.fullDetailImages]!.copyWith(
+        status: SyncItemStatus.completed,
+        message: '图片下载完成',
+      );
+    }
   }
 
   /// 初始化时检查各项状态
   void _checkInitialStates() {
-    // 自动检查完整详情图下载状态
+    final downloadState = ref.read(imageDownloadManagerProvider);
+    if (downloadState.status == DownloadStatus.downloading ||
+        downloadState.status == DownloadStatus.paused) {
+      return;
+    }
     _handleCheckUpdate(SyncItemType.fullDetailImages);
   }
 

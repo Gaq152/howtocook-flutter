@@ -107,7 +107,7 @@ class ImageDownloadManager extends _$ImageDownloadManager {
         directory: dir,
         baseDirectory: BaseDirectory.root,
         group: _taskGroup,
-        updates: Updates.none,
+        updates: Updates.status,
         retries: 1,
         priority: task.priority,
       ));
