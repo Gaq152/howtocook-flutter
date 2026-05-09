@@ -98,8 +98,9 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
 
         setState(() {
           _itemStates[type] = _itemStates[type]!.copyWith(
-            completedItems: next.completedTasks,
-            message: '已下载 ${next.completedTasks}/$totalTasks 张图片',
+            completedItems: next.progress,
+            totalItems: 100,
+            message: '下载中 ${next.progress}%',
           );
         });
 
@@ -113,6 +114,7 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
             );
             _currentImageDownloadType = null;
           });
+          _calculateStorageSize();
         } else if (next.status == DownloadStatus.error) {
           setState(() {
             _itemStates[type] = _itemStates[type]!.copyWith(
@@ -417,7 +419,7 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
               ),
               const SizedBox(width: 12),
               Text(
-                '${state.completedItems}/${state.totalItems}项',
+                state.message ?? '${state.completedItems}/${state.totalItems}',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: theme.colorScheme.primary,
@@ -823,6 +825,7 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
             message: 'JSON数据下载完成',
           );
         });
+        _calculateStorageSize();
       } else if (type == SyncItemType.coverImages) {
         // 下载封面图
         final imageTasks = <DownloadTask>[];
