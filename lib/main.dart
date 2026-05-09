@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/services/app_notification_service.dart';
 import 'core/services/data_sync_service.dart';
-import 'core/services/image_download_manager.dart';
 import 'core/services/update_download_service.dart';
 import 'core/services/update_service.dart';
 import 'core/storage/hive_service.dart';
@@ -50,7 +49,6 @@ Future<void> _initializeServices() async {
 
     // 初始化 background_downloader（仅 Android）
     await UpdateDownloadNotifier.initialize();
-    ImageDownloadManager.configureNotifications();
 
     // 初始化通知服务并请求权限
     if (!kIsWeb) {

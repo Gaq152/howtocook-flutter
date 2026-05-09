@@ -48,7 +48,6 @@ class DownloadTask {
 class ImageDownloadManager extends _$ImageDownloadManager {
   static const String _cacheDirName = 'recipe_images';
   static const String _taskGroup = 'howtocook-images';
-  static const String _groupNotifId = 'image-batch';
 
   final Map<String, DownloadTask> _tasks = {};
   bool _isPaused = false;
@@ -61,37 +60,6 @@ class ImageDownloadManager extends _$ImageDownloadManager {
       completedTasks: 0,
       progress: 0,
     );
-  }
-
-  /// 配置 background_downloader 组通知：仅 running 状态显示纯文字提示
-  static void configureNotifications() {
-    FileDownloader().configureNotificationForGroup(
-      _taskGroup,
-      running: const TaskNotification(
-        '正在下载详情图',
-        '点击查看下载进度',
-      ),
-      complete: const TaskNotification(
-        '详情图下载完成',
-        '',
-      ),
-      error: const TaskNotification(
-        '部分图片下载失败',
-        '请在应用内重试',
-      ),
-      progressBar: false,
-      groupNotificationId: _groupNotifId,
-    );
-
-    FileDownloader().registerCallbacks(
-      group: _taskGroup,
-      taskNotificationTapCallback: _onNotificationTap,
-    );
-  }
-
-  static void _onNotificationTap(
-      Task task, NotificationType notificationType) {
-    AppNotificationService.instance.handleNotificationTap('data-sync');
   }
 
   void addDownloadTasks(List<DownloadTask> tasks) {
@@ -139,7 +107,7 @@ class ImageDownloadManager extends _$ImageDownloadManager {
         directory: dir,
         baseDirectory: BaseDirectory.root,
         group: _taskGroup,
-        updates: Updates.statusAndProgress,
+        updates: Updates.none,
         retries: 1,
         priority: task.priority,
       ));
@@ -148,18 +116,33 @@ class ImageDownloadManager extends _$ImageDownloadManager {
     }
 
     final baseCompleted = _getCompletedCount();
+    final notif = AppNotificationService.instance;
+
+    notif.showDownloadProgress(
+      completed: baseCompleted,
+      total: _tasks.length,
+      progress: 0,
+    );
 
     try {
       final batch = await FileDownloader().downloadBatch(
         bdTasks,
         batchProgressCallback: (succeeded, failed) {
           final completed = succeeded + failed;
+          final currentCompleted = baseCompleted + succeeded;
+          final currentProgress = _tasks.isEmpty
+              ? 0
+              : ((baseCompleted + completed) / _tasks.length * 100).round();
 
           state = state.copyWith(
-            completedTasks: baseCompleted + succeeded,
-            progress: _tasks.isEmpty
-                ? 0
-                : ((baseCompleted + completed) / _tasks.length * 100).round(),
+            completedTasks: currentCompleted,
+            progress: currentProgress,
+          );
+
+          notif.showDownloadProgress(
+            completed: currentCompleted,
+            total: _tasks.length,
+            progress: currentProgress,
           );
         },
         taskStatusCallback: (update) {
@@ -192,23 +175,17 @@ class ImageDownloadManager extends _$ImageDownloadManager {
         error: batch.numFailed > 0 ? '${batch.numFailed} 张图片下载失败' : null,
       );
 
-      // 下载结束后由 AppNotificationService 发完成通知（可点击跳转）
-      if (allCompleted) {
-        AppNotificationService.instance.showDownloadComplete(
-          total: _getCompletedCount(),
-        );
-      } else if (batch.numFailed > 0) {
-        AppNotificationService.instance.showDownloadComplete(
-          total: _getCompletedCount(),
-          failed: batch.numFailed,
-        );
-      }
+      notif.showDownloadComplete(
+        total: _getCompletedCount(),
+        failed: batch.numFailed,
+      );
     } catch (e) {
       debugPrint('❌ 批量下载异常: $e');
       state = state.copyWith(
         status: DownloadStatus.error,
         error: e.toString(),
       );
+      notif.cancelDownloadNotification();
     }
   }
 
@@ -231,6 +208,7 @@ class ImageDownloadManager extends _$ImageDownloadManager {
       }
     }
 
+    AppNotificationService.instance.cancelDownloadNotification();
     state = state.copyWith(status: DownloadStatus.paused);
   }
 
@@ -257,6 +235,7 @@ class ImageDownloadManager extends _$ImageDownloadManager {
     }
 
     _tasks.clear();
+    AppNotificationService.instance.cancelDownloadNotification();
     state = const ImageDownloadState(
       status: DownloadStatus.idle,
       totalTasks: 0,
