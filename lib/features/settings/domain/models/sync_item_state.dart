@@ -5,21 +5,21 @@ part 'sync_item_state.freezed.dart';
 
 /// 同步项类型
 enum SyncItemType {
-  json,              // JSON数据
-  coverImages,       // 封面图
-  detailImages,      // 详情图（增量更新）
-  fullDetailImages,  // 完整详情图（初始化下载）
+  json, // JSON数据
+  coverImages, // 封面图
+  detailImages, // 详情图（增量更新）
+  fullDetailImages, // 完整详情图（初始化下载）
 }
 
 /// 同步项状态
 enum SyncItemStatus {
-  idle,         // 空闲
-  checking,     // 检查更新中
+  idle, // 空闲
+  checking, // 检查更新中
   updateAvailable, // 有更新可用
-  downloading,  // 下载中
-  paused,       // 已暂停
-  completed,    // 已完成
-  error,        // 错误
+  downloading, // 下载中
+  paused, // 已暂停
+  completed, // 已完成
+  error, // 错误
 }
 
 /// 同步项状态数据
@@ -28,17 +28,15 @@ class SyncItemState with _$SyncItemState {
   const factory SyncItemState({
     required SyncItemType type,
     required SyncItemStatus status,
-    @Default(0) int progress,        // 0-100
-    @Default(0) int totalItems,      // 总数
-    @Default(0) int completedItems,  // 已完成数
-    String? message,                  // 提示信息
-    String? error,                    // 错误信息
+    @Default(0) int progress, // 0-100
+    @Default(0) int totalItems, // 总数
+    @Default(0) int completedItems, // 已完成数
+    String? message, // 提示信息
+    String? error, // 错误信息
   }) = _SyncItemState;
 
-  factory SyncItemState.initial(SyncItemType type) => SyncItemState(
-        type: type,
-        status: SyncItemStatus.idle,
-      );
+  factory SyncItemState.initial(SyncItemType type) =>
+      SyncItemState(type: type, status: SyncItemStatus.idle);
 }
 
 /// 同步项信息
@@ -57,28 +55,16 @@ class SyncItemInfo {
 
   static const items = [
     SyncItemInfo(
-      type: SyncItemType.fullDetailImages,
-      title: '初始化详情图',
-      description: '下载所有食谱的详情图片（首次使用推荐）',
-      icon: Icons.file_download,
-    ),
-    SyncItemInfo(
       type: SyncItemType.json,
-      title: 'JSON数据',
-      description: '食谱数据文件',
+      title: 'V2 菜谱数据',
+      description: '菜谱、教程及旧 ID 迁移数据',
       icon: Icons.description,
     ),
     SyncItemInfo(
-      type: SyncItemType.coverImages,
-      title: '封面图',
-      description: 'AI生成的封面图片（400x400）',
-      icon: Icons.image,
-    ),
-    SyncItemInfo(
-      type: SyncItemType.detailImages,
-      title: '详情图',
-      description: '食谱详细步骤图片（增量更新）',
-      icon: Icons.photo_library,
+      type: SyncItemType.fullDetailImages,
+      title: '离线详情图',
+      description: '可选下载；未下载时使用网络图片',
+      icon: Icons.file_download,
     ),
   ];
 

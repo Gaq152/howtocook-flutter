@@ -6,7 +6,7 @@ part of 'data_sync_service.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$dataSyncServiceHash() => r'738fe2cfb8ed9e2a45be4c453f2e508c3d69a13e';
+String _$dataSyncServiceHash() => r'62f6e03337959e6a8beac6f0496ed60da5711761';
 
 /// 数据同步服务
 ///

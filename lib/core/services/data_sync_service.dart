@@ -83,6 +83,8 @@ class DataSyncService extends _$DataSyncService {
         totalTips: 0,
         downloadedImages: 0,
         totalImages: 0,
+        message: '正在读取 V2 稳定通道...',
+        error: null,
       );
       debugPrint('🔄 开始检查数据更新...');
 
@@ -96,6 +98,7 @@ class DataSyncService extends _$DataSyncService {
       // 2. 检查本地索引
       debugPrint('\n🔍 检查本地索引文件...');
       final localIndex = await loadLocalIndex();
+      state = state.copyWith(message: '正在比较本地与远程数据...');
 
       if (localIndex == null || localIndex.isEmpty) {
         debugPrint('⚠️  本地索引为空，可能是首次同步或数据丢失');
@@ -111,20 +114,34 @@ class DataSyncService extends _$DataSyncService {
         totalRecipes: recipeUpdates.length,
         totalTips: tipUpdates.length,
         totalImages: _estimateImageCount(recipeUpdates),
+        progress: 5,
       );
 
       final totalJsonTasks = recipeUpdates.length + tipUpdates.length;
 
       if (totalJsonTasks == 0) {
         // JSON 无变化时也重试可能曾中断的幂等 ID 迁移。
+        state = state.copyWith(
+          status: SyncStatus.downloading,
+          progress: 95,
+          message: '正在确认本地数据迁移状态...',
+        );
         await _downloadAndMigrateRecipeIds(remoteIndex);
-        state = state.copyWith(status: SyncStatus.completed, progress: 100);
+        state = state.copyWith(
+          status: SyncStatus.completed,
+          progress: 100,
+          message: 'V2 数据已是最新版本',
+        );
         debugPrint('✅ 数据已是最新，无需更新');
         return;
       }
 
       // 4. 开始下载更新的 JSON 文件
-      state = state.copyWith(status: SyncStatus.downloading);
+      state = state.copyWith(
+        status: SyncStatus.downloading,
+        progress: 5,
+        message: '准备下载 $totalJsonTasks 个 JSON 文件...',
+      );
       debugPrint(
         '📥 开始下载 ${recipeUpdates.length} 个食谱与 ${tipUpdates.length} 个教程更新...',
       );
@@ -142,12 +159,12 @@ class DataSyncService extends _$DataSyncService {
           if (success) {
             downloadedRecipes++;
             completedJsonTasks++;
-            final progress = totalJsonTasks == 0
-                ? state.progress
-                : ((completedJsonTasks / totalJsonTasks) * 50).round();
+            final progress =
+                5 + ((completedJsonTasks / totalJsonTasks) * 85).round();
             state = state.copyWith(
               downloadedRecipes: downloadedRecipes,
               progress: progress,
+              message: '正在下载菜谱 $downloadedRecipes/${recipeUpdates.length}',
             );
 
             if (config.downloadCoverImages) {
@@ -173,12 +190,12 @@ class DataSyncService extends _$DataSyncService {
           if (success) {
             downloadedTips++;
             completedJsonTasks++;
-            final progress = totalJsonTasks == 0
-                ? state.progress
-                : ((completedJsonTasks / totalJsonTasks) * 50).round();
+            final progress =
+                5 + ((completedJsonTasks / totalJsonTasks) * 85).round();
             state = state.copyWith(
               downloadedTips: downloadedTips,
               progress: progress,
+              message: '正在下载教程 $downloadedTips/${tipUpdates.length}',
             );
           }
         } catch (e) {
@@ -199,9 +216,11 @@ class DataSyncService extends _$DataSyncService {
       }
 
       // 5. 先原子激活 V2；迁移失败时 legacyIds 仍能兼容旧收藏。
+      state = state.copyWith(progress: 92, message: '正在校验并激活 V2 数据...');
       debugPrint('\n💾 保存更新后的本地索引...');
       await saveLocalIndex(remoteIndex);
       debugPrint('✅ 本地索引保存完成');
+      state = state.copyWith(progress: 96, message: '正在迁移旧版收藏和笔记...');
       await _downloadAndMigrateRecipeIds(remoteIndex);
 
       // 6. 开始下载图片
@@ -217,7 +236,11 @@ class DataSyncService extends _$DataSyncService {
             .addDownloadTasks(allImageTasks);
       }
 
-      state = state.copyWith(status: SyncStatus.completed, progress: 100);
+      state = state.copyWith(
+        status: SyncStatus.completed,
+        progress: 100,
+        message: 'V2 数据已下载、迁移并激活',
+      );
       debugPrint('✅ 数据同步完成');
     } catch (e) {
       state = state.copyWith(status: SyncStatus.error, error: e.toString());
@@ -1135,6 +1158,7 @@ class DataSyncState with _$DataSyncState {
     required int totalTips,
     required int downloadedImages,
     required int totalImages,
+    String? message,
     String? error,
   }) = _DataSyncState;
 }

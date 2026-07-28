@@ -24,6 +24,7 @@ mixin _$DataSyncState {
   int get totalTips => throw _privateConstructorUsedError;
   int get downloadedImages => throw _privateConstructorUsedError;
   int get totalImages => throw _privateConstructorUsedError;
+  String? get message => throw _privateConstructorUsedError;
   String? get error => throw _privateConstructorUsedError;
 
   @JsonKey(ignore: true)
@@ -46,6 +47,7 @@ abstract class $DataSyncStateCopyWith<$Res> {
       int totalTips,
       int downloadedImages,
       int totalImages,
+      String? message,
       String? error});
 }
 
@@ -70,6 +72,7 @@ class _$DataSyncStateCopyWithImpl<$Res, $Val extends DataSyncState>
     Object? totalTips = null,
     Object? downloadedImages = null,
     Object? totalImages = null,
+    Object? message = freezed,
     Object? error = freezed,
   }) {
     return _then(_value.copyWith(
@@ -105,6 +108,10 @@ class _$DataSyncStateCopyWithImpl<$Res, $Val extends DataSyncState>
           ? _value.totalImages
           : totalImages // ignore: cast_nullable_to_non_nullable
               as int,
+      message: freezed == message
+          ? _value.message
+          : message // ignore: cast_nullable_to_non_nullable
+              as String?,
       error: freezed == error
           ? _value.error
           : error // ignore: cast_nullable_to_non_nullable
@@ -130,6 +137,7 @@ abstract class _$$DataSyncStateImplCopyWith<$Res>
       int totalTips,
       int downloadedImages,
       int totalImages,
+      String? message,
       String? error});
 }
 
@@ -152,6 +160,7 @@ class __$$DataSyncStateImplCopyWithImpl<$Res>
     Object? totalTips = null,
     Object? downloadedImages = null,
     Object? totalImages = null,
+    Object? message = freezed,
     Object? error = freezed,
   }) {
     return _then(_$DataSyncStateImpl(
@@ -187,6 +196,10 @@ class __$$DataSyncStateImplCopyWithImpl<$Res>
           ? _value.totalImages
           : totalImages // ignore: cast_nullable_to_non_nullable
               as int,
+      message: freezed == message
+          ? _value.message
+          : message // ignore: cast_nullable_to_non_nullable
+              as String?,
       error: freezed == error
           ? _value.error
           : error // ignore: cast_nullable_to_non_nullable
@@ -209,6 +222,7 @@ class _$DataSyncStateImpl
       required this.totalTips,
       required this.downloadedImages,
       required this.totalImages,
+      this.message,
       this.error});
 
   @override
@@ -228,11 +242,13 @@ class _$DataSyncStateImpl
   @override
   final int totalImages;
   @override
+  final String? message;
+  @override
   final String? error;
 
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) {
-    return 'DataSyncState(status: $status, progress: $progress, downloadedRecipes: $downloadedRecipes, totalRecipes: $totalRecipes, downloadedTips: $downloadedTips, totalTips: $totalTips, downloadedImages: $downloadedImages, totalImages: $totalImages, error: $error)';
+    return 'DataSyncState(status: $status, progress: $progress, downloadedRecipes: $downloadedRecipes, totalRecipes: $totalRecipes, downloadedTips: $downloadedTips, totalTips: $totalTips, downloadedImages: $downloadedImages, totalImages: $totalImages, message: $message, error: $error)';
   }
 
   @override
@@ -248,6 +264,7 @@ class _$DataSyncStateImpl
       ..add(DiagnosticsProperty('totalTips', totalTips))
       ..add(DiagnosticsProperty('downloadedImages', downloadedImages))
       ..add(DiagnosticsProperty('totalImages', totalImages))
+      ..add(DiagnosticsProperty('message', message))
       ..add(DiagnosticsProperty('error', error));
   }
 
@@ -271,6 +288,7 @@ class _$DataSyncStateImpl
                 other.downloadedImages == downloadedImages) &&
             (identical(other.totalImages, totalImages) ||
                 other.totalImages == totalImages) &&
+            (identical(other.message, message) || other.message == message) &&
             (identical(other.error, error) || other.error == error));
   }
 
@@ -285,6 +303,7 @@ class _$DataSyncStateImpl
       totalTips,
       downloadedImages,
       totalImages,
+      message,
       error);
 
   @JsonKey(ignore: true)
@@ -304,6 +323,7 @@ abstract class _DataSyncState implements DataSyncState {
       required final int totalTips,
       required final int downloadedImages,
       required final int totalImages,
+      final String? message,
       final String? error}) = _$DataSyncStateImpl;
 
   @override
@@ -322,6 +342,8 @@ abstract class _DataSyncState implements DataSyncState {
   int get downloadedImages;
   @override
   int get totalImages;
+  @override
+  String? get message;
   @override
   String? get error;
   @override
