@@ -77,13 +77,15 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen>
     if (_pageController == null || !_pageController!.hasClients) return;
     _isProgrammaticScroll = true;
     final nextPage = (_currentPage + 1) % _totalImages;
-    _pageController!.animateToPage(
-      nextPage,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    ).then((_) {
-      _isProgrammaticScroll = false;
-    });
+    _pageController!
+        .animateToPage(
+          nextPage,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        )
+        .then((_) {
+          _isProgrammaticScroll = false;
+        });
   }
 
   void _restartProgress() {
@@ -113,7 +115,9 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen>
     if (path.startsWith('data:image/')) return true;
     if (path.startsWith('http://') || path.startsWith('https://')) return true;
     // assets/images/ 是详情图的占位路径，实际未内置，需走下载缓存逻辑
-    if (path.startsWith('assets/') && !path.startsWith('assets/images/')) return true;
+    if (path.startsWith('assets/') && !path.startsWith('assets/images/')) {
+      return true;
+    }
     if (path.startsWith('/')) return true; // Unix 绝对路径
     // Windows 绝对路径：C:\ 或 C:/
     if (RegExp(r'^[A-Za-z]:[\\/]').hasMatch(path)) return true;
@@ -142,9 +146,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen>
         CustomScrollView(
           slivers: [
             _buildSliverAppBar(context, recipe),
-            SliverToBoxAdapter(
-              child: _buildContentSheet(recipe),
-            ),
+            SliverToBoxAdapter(child: _buildContentSheet(recipe)),
           ],
         ),
         // 底部固定操作栏
@@ -187,9 +189,19 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if ((recipe.description?.trim().isNotEmpty ?? false) ||
+                      recipe.estimatedCaloriesKcal != null) ...[
+                    _buildOverview(recipe),
+                    const SizedBox(height: 24),
+                  ],
+                  if (recipe.requirements.isNotEmpty) ...[
+                    _buildRequirements(recipe),
+                    const SizedBox(height: 24),
+                  ],
                   _buildIngredients(recipe),
                   const SizedBox(height: 24),
-                  if (recipe.tools.isNotEmpty) ...[
+                  if (recipe.tools.isNotEmpty &&
+                      recipe.requirements.isEmpty) ...[
                     _buildTools(recipe),
                     const SizedBox(height: 24),
                   ],
@@ -286,7 +298,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen>
 
   /// 构建沉浸式应用栏
   Widget _buildSliverAppBar(BuildContext context, Recipe recipe) {
-    final isFavoriteAsync = ref.watch(isFavoriteProvider(widget.recipeId));
+    final isFavoriteAsync = ref.watch(isFavoriteProvider(recipe.id));
 
     return SliverAppBar(
       expandedHeight: 380,
@@ -336,7 +348,10 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen>
                 onPressed: null,
               ),
               error: (_, __) => IconButton(
-                icon: const Icon(Icons.favorite_border, color: AppColors.surface),
+                icon: const Icon(
+                  Icons.favorite_border,
+                  color: AppColors.surface,
+                ),
                 onPressed: () => _toggleFavorite(recipe.id),
               ),
             ),
@@ -406,9 +421,11 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen>
                           ),
                         ),
                       _GlassTag(label: recipe.categoryName),
-                      _GlassTag(
-                        label: '★' * recipe.difficulty.clamp(1, 5),
-                      ),
+                      if (recipe.estimatedCaloriesKcal != null)
+                        _GlassTag(
+                          label: '约 ${recipe.estimatedCaloriesKcal} 千卡',
+                        ),
+                      _GlassTag(label: '★' * recipe.difficulty.clamp(1, 5)),
                       _GlassTag(label: '${recipe.steps.length} 步骤'),
                     ],
                   ),
@@ -439,7 +456,10 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen>
                 right: 16,
                 child: IgnorePointer(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(12),
@@ -511,7 +531,9 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen>
         controller: _pageController,
         itemCount: imageCount,
         onPageChanged: (index) {
-          setState(() { _currentPage = index; });
+          setState(() {
+            _currentPage = index;
+          });
           if (_isProgrammaticScroll) {
             _restartProgress();
           }
@@ -609,7 +631,6 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen>
       ),
     );
   }
-
 
   /// 构建图片组件（支持本地、网络、资源、Base64图片）
   Widget _buildImageWidget(String imagePath) {
@@ -817,51 +838,103 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen>
   }
 
   /// 构建食材清单
-  Widget _buildIngredients(Recipe recipe) {
+  Widget _buildOverview(Recipe recipe) {
+    return Card(
+      color: AppColors.primary.withValues(alpha: 0.06),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.menu_book_outlined, color: AppColors.primary),
+                const SizedBox(width: 8),
+                Text('菜谱简介', style: AppTextStyles.h3),
+                const Spacer(),
+                if (recipe.estimatedCaloriesKcal != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      '约 ${recipe.estimatedCaloriesKcal} 千卡',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            if (recipe.description?.trim().isNotEmpty ?? false) ...[
+              const SizedBox(height: 12),
+              Text(
+                recipe.description!.trim(),
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                  height: 1.65,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRequirements(Recipe recipe) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Icon(Icons.restaurant, color: AppColors.primary, size: 24),
+            Icon(Icons.inventory_2_outlined, color: AppColors.secondary),
             const SizedBox(width: 8),
-            Text('食材清单', style: AppTextStyles.h2),
+            Text('必备原料和工具', style: AppTextStyles.h2),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: recipe.ingredients.asMap().entries.map((entry) {
+              children: recipe.requirements.map((item) {
+                final isTool = item.kind == 'tool';
                 return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  padding: const EdgeInsets.symmetric(vertical: 5),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Icon(
-                        Icons.check_circle_outline,
-                        size: 20,
-                        color: AppColors.primary,
+                        isTool ? Icons.kitchen_outlined : Icons.circle,
+                        size: isTool ? 19 : 7,
+                        color: isTool ? AppColors.secondary : AppColors.primary,
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: MarkdownBody(
-                          data: entry.value.text,
+                          data: item.markdown,
                           shrinkWrap: true,
                           selectable: true,
                           fitContent: true,
                           styleSheet: MarkdownStyleSheet(
-                            p: AppTextStyles.ingredient,
+                            p: AppTextStyles.bodyMedium,
                           ),
-                          onTapLink: (text, href, title) {
-                            if (href == null) return;
-                            final uri = Uri.tryParse(href);
-                            if (uri != null) launchUrl(uri, mode: LaunchMode.externalApplication);
-                          },
                         ),
                       ),
+                      if (isTool)
+                        Text(
+                          '工具',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.secondary,
+                          ),
+                        ),
                     ],
                   ),
                 );
@@ -870,6 +943,159 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen>
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildIngredients(Recipe recipe) {
+    final tableIngredients = recipe.ingredients
+        .where((ingredient) => ingredient.table.isNotEmpty)
+        .toList();
+    final listIngredients = recipe.ingredients
+        .where((ingredient) => ingredient.table.isEmpty)
+        .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.restaurant, color: AppColors.primary, size: 24),
+            const SizedBox(width: 8),
+            Text(
+              recipe.schemaVersion >= 2 ? '用量与计算' : '食材清单',
+              style: AppTextStyles.h2,
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (recipe.calculationNotes.isNotEmpty) ...[
+                  ...recipe.calculationNotes.map(
+                    (note) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        note,
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const Divider(height: 20),
+                ],
+                ...listIngredients.map((ingredient) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.check_circle_outline,
+                          size: 20,
+                          color: AppColors.primary,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: MarkdownBody(
+                            data: ingredient.text,
+                            shrinkWrap: true,
+                            selectable: true,
+                            fitContent: true,
+                            styleSheet: MarkdownStyleSheet(
+                              p: AppTextStyles.ingredient,
+                            ),
+                            onTapLink: (text, href, title) {
+                              if (href == null) return;
+                              final uri = Uri.tryParse(href);
+                              if (uri != null) {
+                                launchUrl(
+                                  uri,
+                                  mode: LaunchMode.externalApplication,
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                        if (ingredient.optional)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: Text(
+                              '可选',
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                }),
+                if (tableIngredients.isNotEmpty) ...[
+                  if (listIngredients.isNotEmpty) const Divider(height: 24),
+                  _buildIngredientTable(tableIngredients),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildIngredientTable(List<Ingredient> ingredients) {
+    final headers = <String>[];
+    for (final ingredient in ingredients) {
+      for (final key in ingredient.table.keys) {
+        if (!headers.contains(key)) headers.add(key);
+      }
+    }
+    if (headers.isEmpty) return const SizedBox.shrink();
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        headingRowHeight: 40,
+        dataRowMinHeight: 42,
+        dataRowMaxHeight: 64,
+        horizontalMargin: 8,
+        columnSpacing: 24,
+        columns: headers
+            .map(
+              (header) => DataColumn(
+                label: Text(
+                  header,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            )
+            .toList(),
+        rows: ingredients
+            .map(
+              (ingredient) => DataRow(
+                cells: headers
+                    .map(
+                      (header) => DataCell(
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 220),
+                          child: Text(
+                            ingredient.table[header] ?? '',
+                            softWrap: true,
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            )
+            .toList(),
+      ),
     );
   }
 
@@ -891,12 +1117,15 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen>
           runSpacing: 8,
           children: recipe.tools.map((tool) {
             return Chip(
-              label: Text(tool,
-                  style: TextStyle(
-                      fontSize: 13, color: AppColors.secondary)),
+              label: Text(
+                tool,
+                style: TextStyle(fontSize: 13, color: AppColors.secondary),
+              ),
               avatar: Icon(Icons.check, size: 16, color: AppColors.secondary),
               backgroundColor: AppColors.secondary.withValues(alpha: 0.12),
-              side: BorderSide(color: AppColors.secondary.withValues(alpha: 0.4)),
+              side: BorderSide(
+                color: AppColors.secondary.withValues(alpha: 0.4),
+              ),
             );
           }).toList(),
         ),
@@ -931,28 +1160,52 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen>
     int stepNumber = 0;
     for (final step in steps) {
       final desc = step.description;
-      final headingMatch = RegExp(r'^#{1,4}\s+(.+)$').firstMatch(desc);
-      if (headingMatch != null) {
-        widgets.add(Padding(
-          padding: EdgeInsets.only(
-            top: widgets.isEmpty ? 0 : 12,
-            bottom: 4,
-          ),
-          child: Text(
-            headingMatch.group(1)!,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primary,
+      if (step.kind == 'section') {
+        widgets.add(
+          Padding(
+            padding: EdgeInsets.only(top: widgets.isEmpty ? 0 : 12, bottom: 4),
+            child: Text(
+              step.title?.trim().isNotEmpty == true ? step.title! : desc,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primary,
+              ),
             ),
           ),
-        ));
+        );
+        continue;
+      }
+      if (step.kind == 'note') {
+        widgets.add(
+          Card(
+            color: AppColors.info.withValues(alpha: 0.08),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: MarkdownBody(data: desc, selectable: true),
+            ),
+          ),
+        );
+        continue;
+      }
+      final headingMatch = RegExp(r'^#{1,4}\s+(.+)$').firstMatch(desc);
+      if (headingMatch != null) {
+        widgets.add(
+          Padding(
+            padding: EdgeInsets.only(top: widgets.isEmpty ? 0 : 12, bottom: 4),
+            child: Text(
+              headingMatch.group(1)!,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        );
       } else {
         stepNumber++;
-        widgets.add(_StepCard(
-          stepNumber: stepNumber,
-          description: desc,
-        ));
+        widgets.add(_StepCard(stepNumber: stepNumber, description: desc));
       }
     }
     return widgets;
@@ -987,7 +1240,9 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen>
               onTapLink: (text, href, title) {
                 if (href == null) return;
                 final uri = Uri.tryParse(href);
-                if (uri != null) launchUrl(uri, mode: LaunchMode.externalApplication);
+                if (uri != null) {
+                  launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
               },
             ),
           ],
@@ -1035,7 +1290,12 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen>
                         onTapLink: (text, href, title) {
                           if (href == null) return;
                           final uri = Uri.tryParse(href);
-                          if (uri != null) launchUrl(uri, mode: LaunchMode.externalApplication);
+                          if (uri != null) {
+                            launchUrl(
+                              uri,
+                              mode: LaunchMode.externalApplication,
+                            );
+                          }
                         },
                       ),
                     ),
@@ -1051,7 +1311,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen>
 
   /// 构建用户备注
   Widget _buildUserNote(Recipe recipe) {
-    final noteAsync = ref.watch(userNoteProvider(widget.recipeId));
+    final noteAsync = ref.watch(userNoteProvider(recipe.id));
 
     return Card(
       child: Padding(
@@ -1221,9 +1481,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen>
 
   /// 显示备注编辑对话框
   void _showNoteDialog(Recipe recipe) async {
-    final currentNote = await ref.read(
-      userNoteProvider(widget.recipeId).future,
-    );
+    final currentNote = await ref.read(userNoteProvider(recipe.id).future);
     _noteController.text = currentNote ?? '';
 
     if (!mounted) return;
@@ -1260,13 +1518,10 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen>
       final repository = ref.read(recipeRepositoryProvider);
       final note = _noteController.text.trim();
 
-      await repository.updateUserNote(
-        widget.recipeId,
-        note.isEmpty ? null : note,
-      );
+      await repository.updateUserNote(recipe.id, note.isEmpty ? null : note);
 
       // 刷新备注
-      ref.invalidate(userNoteProvider(widget.recipeId));
+      ref.invalidate(userNoteProvider(recipe.id));
       ref.invalidate(recipeByIdProvider(widget.recipeId));
 
       if (mounted) {
@@ -1324,9 +1579,7 @@ class _GlassTag extends StatelessWidget {
             ? AppColors.primary.withValues(alpha: 0.6)
             : AppColors.textPrimary.withValues(alpha: 0.25),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.surface.withValues(alpha: 0.2),
-        ),
+        border: Border.all(color: AppColors.surface.withValues(alpha: 0.2)),
       ),
       child: Text(
         label,
@@ -1431,13 +1684,13 @@ class _StepCard extends StatelessWidget {
                 shrinkWrap: true,
                 selectable: true,
                 fitContent: true,
-                styleSheet: MarkdownStyleSheet(
-                  p: AppTextStyles.cookingStep,
-                ),
+                styleSheet: MarkdownStyleSheet(p: AppTextStyles.cookingStep),
                 onTapLink: (text, href, title) {
                   if (href == null) return;
                   final uri = Uri.tryParse(href);
-                  if (uri != null) launchUrl(uri, mode: LaunchMode.externalApplication);
+                  if (uri != null) {
+                    launchUrl(uri, mode: LaunchMode.externalApplication);
+                  }
                 },
               ),
             ),

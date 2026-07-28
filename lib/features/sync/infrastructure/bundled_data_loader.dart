@@ -1,138 +1,98 @@
 import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
+
 import '../../recipe/domain/entities/recipe.dart';
 import '../../tips/domain/entities/tip.dart';
 import '../domain/entities/manifest.dart';
 
-/// 内置资源加载器
+/// 菜谱数据加载器。
 ///
-/// 负责从 assets 目录加载打包的菜谱数据和清单文件
+/// 已激活的本地 V2 数据优先；本地数据不存在或不可用时，回退到 APK
+/// 中打包的 V1 数据。类名保留为 [BundledDataLoader]，避免影响现有依赖注入。
 class BundledDataLoader {
-  /// 加载清单文件
-  ///
-  /// 从 manifest.json 加载菜谱索引清单
-  Future<Manifest> loadManifest() async {
-    try {
-      // manifest.json 是单个文件声明，需要完整路径
-      final jsonString = await rootBundle.loadString('assets/manifest.json');
-      final jsonData = jsonDecode(jsonString) as Map<String, dynamic>;
-      return Manifest.fromJson(jsonData);
-    } catch (e) {
-      throw Exception('Failed to load manifest: $e');
-    }
-  }
+  static const String _localDataDirName = 'recipe_data';
+  static const String _remoteBaseUrl =
+      'https://gaq152.github.io/HowToCook-assets';
 
-  /// 加载单个菜谱
-  ///
-  /// 根据菜谱 ID 加载对应的 JSON 文件
-  /// 路径格式: assets/recipes/{category}/{id}.json
-  ///
-  /// 例如: aquatic_17b4109a → assets/recipes/aquatic/aquatic_17b4109a.json
+  _DataContext? _cachedContext;
+
+  /// 同步完成后清理上下文，下次读取会切换到刚激活的数据版本。
+  void clearCache() => _cachedContext = null;
+
+  Future<Manifest> loadManifest() async => (await _loadContext()).manifest;
+
   Future<Recipe> loadRecipe(String recipeId) async {
     try {
-      // 从 ID 提取分类（ID 格式: {category}_{hash}）
-      final category = _extractCategory(recipeId);
-      // 路径必须与 pubspec.yaml 声明一致，包含 assets/ 前缀
-      final path = 'assets/recipes/$category/$recipeId.json';
-
-      final jsonString = await rootBundle.loadString(path);
-      final jsonData = jsonDecode(jsonString) as Map<String, dynamic>;
-
-      // 规范化图片路径（将反斜杠转换为正斜杠，并添加 assets/ 前缀）
-      if (jsonData['images'] is List) {
-        final images = jsonData['images'] as List;
-        jsonData['images'] = images.map((img) {
-          if (img is String) {
-            // 转换反斜杠为正斜杠
-            var path = img.replaceAll('\\', '/');
-            // 添加 assets/ 前缀（如果还没有的话）
-            if (!path.startsWith('assets/')) {
-              path = 'assets/$path';
-            }
-            return path;
-          }
-          return img;
-        }).toList();
+      final context = await _loadContext();
+      final index = _findRecipeIndex(context.manifest, recipeId);
+      if (index == null) {
+        throw ArgumentError('Unknown recipe ID: $recipeId');
       }
 
+      final jsonData = context.isLocalV2
+          ? await _readLocalJson(
+              context,
+              'recipes/${index.category}/${index.id}.json',
+            )
+          : await _readAssetJson(
+              'assets/recipes/${index.category}/${index.id}.json',
+            );
+
+      _normalizeRecipeImages(jsonData, context);
       return Recipe.fromJson(jsonData);
     } catch (e) {
       throw Exception('Failed to load recipe $recipeId: $e');
     }
   }
 
-  /// 批量加载菜谱
-  ///
-  /// 加载多个菜谱，返回成功加载的菜谱列表
-  /// 失败的菜谱会被跳过并记录错误
   Future<List<Recipe>> loadRecipes(List<String> recipeIds) async {
     final recipes = <Recipe>[];
-
     for (final id in recipeIds) {
       try {
-        final recipe = await loadRecipe(id);
-        recipes.add(recipe);
+        recipes.add(await loadRecipe(id));
       } catch (e) {
-        // 记录错误但继续加载其他菜谱
         debugPrint('Warning: Failed to load recipe $id: $e');
       }
     }
-
     return recipes;
   }
 
-  /// 加载所有菜谱
-  ///
-  /// 从 manifest 获取所有菜谱 ID，然后批量加载
   Future<List<Recipe>> loadAllRecipes() async {
     final manifest = await loadManifest();
-    final recipeIds = manifest.recipes.map((r) => r.id).toList();
-    return loadRecipes(recipeIds);
+    return loadRecipes(manifest.recipes.map((recipe) => recipe.id).toList());
   }
 
-  /// 根据分类加载菜谱
-  ///
-  /// 从 manifest 筛选指定分类的菜谱，然后批量加载
   Future<List<Recipe>> loadRecipesByCategory(String category) async {
     final manifest = await loadManifest();
-    final recipeIds = manifest.recipes
-        .where((r) => r.category == category)
-        .map((r) => r.id)
-        .toList();
-    return loadRecipes(recipeIds);
+    return loadRecipes(
+      manifest.recipes
+          .where((recipe) => recipe.category == category)
+          .map((recipe) => recipe.id)
+          .toList(),
+    );
   }
 
-  /// 加载单个教程
-  ///
-  /// 路径格式: assets/tips/{category}/{tipId}.json
   Future<Tip> loadTip(String category, String tipId) async {
     try {
-      final path = getTipPath(category, tipId);
-      final jsonString = await rootBundle.loadString(path);
-      final jsonData = jsonDecode(jsonString) as Map<String, dynamic>;
+      final context = await _loadContext();
+      final jsonData = context.isLocalV2
+          ? await _readLocalJson(context, 'tips/$category/$tipId.json')
+          : await _readAssetJson('assets/tips/$category/$tipId.json');
       return Tip.fromJson(jsonData).copyWith(source: TipSource.bundled);
     } catch (e) {
       throw Exception('Failed to load tip $tipId: $e');
     }
   }
 
-  /// 根据 ID 加载教程（自动匹配分类）
   Future<Tip?> loadTipById(String tipId) async {
     try {
       final manifest = await loadManifest();
-      TipIndex? target;
-      for (final tipIndex in manifest.tips) {
-        if (tipIndex.id == tipId) {
-          target = tipIndex;
-          break;
-        }
-      }
-
-      if (target == null) {
-        return null;
-      }
-
+      final target = manifest.tips.where((tip) => tip.id == tipId).firstOrNull;
+      if (target == null) return null;
       return loadTip(target.category, target.id);
     } catch (e) {
       debugPrint('Warning: Failed to load tip $tipId: $e');
@@ -140,13 +100,11 @@ class BundledDataLoader {
     }
   }
 
-  /// 批量加载教程
   Future<List<Tip>> loadTips(List<TipIndex> indices) async {
     final tips = <Tip>[];
     for (final index in indices) {
       try {
-        final tip = await loadTip(index.category, index.id);
-        tips.add(tip);
+        tips.add(await loadTip(index.category, index.id));
       } catch (e) {
         debugPrint('Warning: Failed to load tip ${index.id}: $e');
       }
@@ -154,56 +112,142 @@ class BundledDataLoader {
     return tips;
   }
 
-  /// 加载全部教程
   Future<List<Tip>> loadAllTips() async {
     final manifest = await loadManifest();
     return loadTips(manifest.tips);
   }
 
-  /// 根据分类加载教程
   Future<List<Tip>> loadTipsByCategory(String category) async {
     final manifest = await loadManifest();
-    final indices = manifest.tips.where((t) => t.category == category).toList();
-    return loadTips(indices);
+    return loadTips(
+      manifest.tips.where((tip) => tip.category == category).toList(),
+    );
   }
 
-  /// 从菜谱 ID 提取分类
-  ///
-  /// ID 格式: {category}_{hash}
-  /// 例如: aquatic_17b4109a → aquatic
-  ///      meat_dish_bc5b39f0 → meat_dish
-  String _extractCategory(String recipeId) {
-    final parts = recipeId.split('_');
-    if (parts.length < 2) {
-      throw ArgumentError('Invalid recipe ID format: $recipeId');
+  Future<_DataContext> _loadContext() async {
+    final cached = _cachedContext;
+    if (cached != null) return cached;
+
+    if (!kIsWeb) {
+      try {
+        final documents = await getApplicationDocumentsDirectory();
+        final dataRoot = Directory('${documents.path}/$_localDataDirName');
+        var manifestFile = File('${dataRoot.path}/manifest.json');
+        final previousManifest = File('${manifestFile.path}.previous');
+        if (!await manifestFile.exists() && await previousManifest.exists()) {
+          manifestFile = previousManifest;
+        }
+        if (await manifestFile.exists()) {
+          final json =
+              jsonDecode(await manifestFile.readAsString())
+                  as Map<String, dynamic>;
+          final manifest = Manifest.fromJson(json);
+          final versionRoot = Directory(
+            '${dataRoot.path}/${manifest.basePath}',
+          );
+          if (manifest.schemaVersion == 2 &&
+              manifest.basePath.isNotEmpty &&
+              await versionRoot.exists()) {
+            return _cachedContext = _DataContext(
+              manifest: manifest,
+              dataRoot: dataRoot,
+              isLocalV2: true,
+            );
+          }
+        }
+      } catch (e) {
+        debugPrint(
+          'Warning: Failed to load active V2 data, using V1 assets: $e',
+        );
+      }
     }
-    // 返回除了最后一部分（hash）之外的所有部分
-    return parts.sublist(0, parts.length - 1).join('_');
+
+    final bundledJson = await _readAssetJson('assets/manifest.json');
+    return _cachedContext = _DataContext(
+      manifest: Manifest.fromJson(bundledJson),
+      isLocalV2: false,
+    );
   }
 
-  /// 获取菜谱资源路径
-  ///
-  /// 根据菜谱 ID 生成完整的资源路径
+  RecipeIndex? _findRecipeIndex(Manifest manifest, String requestedId) {
+    for (final recipe in manifest.recipes) {
+      if (recipe.id == requestedId || recipe.legacyIds.contains(requestedId)) {
+        return recipe;
+      }
+    }
+    return null;
+  }
+
+  Future<Map<String, dynamic>> _readLocalJson(
+    _DataContext context,
+    String relativePath,
+  ) async {
+    final file = File(
+      '${context.dataRoot!.path}/${context.manifest.basePath}/$relativePath',
+    );
+    return jsonDecode(await file.readAsString()) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> _readAssetJson(String path) async {
+    return jsonDecode(await rootBundle.loadString(path))
+        as Map<String, dynamic>;
+  }
+
+  void _normalizeRecipeImages(
+    Map<String, dynamic> jsonData,
+    _DataContext context,
+  ) {
+    final images = jsonData['images'];
+    if (images is! List) return;
+
+    if (context.isLocalV2) {
+      jsonData['images'] = images.map((image) {
+        final path = image.toString().replaceAll('\\', '/');
+        if (path.startsWith('http://') || path.startsWith('https://')) {
+          return path;
+        }
+        return '$_remoteBaseUrl/${context.manifest.basePath}/$path';
+      }).toList();
+      return;
+    }
+
+    jsonData['images'] = images.map((image) {
+      var path = image.toString().replaceAll('\\', '/');
+      if (!path.startsWith('assets/')) path = 'assets/$path';
+      return path;
+    }).toList();
+  }
+
+  /// 保留给仍使用 V1 路径约定的旧调用方。
   String getRecipePath(String recipeId) {
-    final category = _extractCategory(recipeId);
+    final category = _extractLegacyCategory(recipeId);
     return 'assets/recipes/$category/$recipeId.json';
   }
 
-  /// 获取教程资源路径
-  String getTipPath(String category, String tipId) {
-    return 'assets/tips/$category/$tipId.json';
-  }
+  String getTipPath(String category, String tipId) =>
+      'assets/tips/$category/$tipId.json';
 
-  /// 获取图片资源路径
-  ///
-  /// 将相对路径转换为完整的 assets 路径
-  /// 例如: images/aquatic/xxx.webp → assets/images/aquatic/xxx.webp
-  String getImagePath(String relativePath) {
-    // 如果已经有 assets/ 前缀，直接返回
-    if (relativePath.startsWith('assets/')) {
-      return relativePath;
+  String getImagePath(String relativePath) => relativePath.startsWith('assets/')
+      ? relativePath
+      : 'assets/$relativePath';
+
+  String _extractLegacyCategory(String recipeId) {
+    final parts = recipeId.split('_');
+    if (parts.length < 2) {
+      throw ArgumentError('Invalid legacy recipe ID: $recipeId');
     }
-    // 否则添加 assets/ 前缀
-    return 'assets/$relativePath';
+    return parts.sublist(0, parts.length - 1).join('_');
   }
+}
+
+class _DataContext {
+  final Manifest manifest;
+  final Directory? dataRoot;
+  final bool isLocalV2;
+
+  const _DataContext({
+    required this.manifest,
+    this.dataRoot,
+    required this.isLocalV2,
+  });
 }

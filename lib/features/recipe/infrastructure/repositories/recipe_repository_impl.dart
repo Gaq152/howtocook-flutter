@@ -30,10 +30,7 @@ class RecipeRepositoryImpl implements RecipeRepository {
           final isFav = await isFavorite(recipe.id);
           final note = await getUserNote(recipe.id);
 
-          recipes.add(recipe.copyWith(
-            isFavorite: isFav,
-            userNote: note,
-          ));
+          recipes.add(recipe.copyWith(isFavorite: isFav, userNote: note));
           loadedIds.add(id.toString());
         } catch (e) {
           debugPrint('Warning: Failed to load modified recipe $id: $e');
@@ -55,10 +52,7 @@ class RecipeRepositoryImpl implements RecipeRepository {
           final isFav = await isFavorite(recipe.id);
           final note = await getUserNote(recipe.id);
 
-          recipes.add(recipe.copyWith(
-            isFavorite: isFav,
-            userNote: note,
-          ));
+          recipes.add(recipe.copyWith(isFavorite: isFav, userNote: note));
         } catch (e) {
           // 跳过加载失败的菜谱
           debugPrint('Warning: Failed to load recipe ${recipeIndex.id}: $e');
@@ -86,10 +80,7 @@ class RecipeRepositoryImpl implements RecipeRepository {
         final isFav = await isFavorite(id);
         final note = await getUserNote(id);
 
-        return recipe.copyWith(
-          isFavorite: isFav,
-          userNote: note,
-        );
+        return recipe.copyWith(isFavorite: isFav, userNote: note);
       }
 
       // 3. 否则从内置数据加载
@@ -100,10 +91,7 @@ class RecipeRepositoryImpl implements RecipeRepository {
         final isFav = await isFavorite(id);
         final note = await getUserNote(id);
 
-        return recipe.copyWith(
-          isFavorite: isFav,
-          userNote: note,
-        );
+        return recipe.copyWith(isFavorite: isFav, userNote: note);
       } catch (_) {
         return null;
       }
@@ -153,10 +141,7 @@ class RecipeRepositoryImpl implements RecipeRepository {
         final isFav = await isFavorite(recipe.id);
         final note = await getUserNote(recipe.id);
 
-        result.add(recipe.copyWith(
-          isFavorite: isFav,
-          userNote: note,
-        ));
+        result.add(recipe.copyWith(isFavorite: isFav, userNote: note));
       }
 
       return result;
@@ -235,22 +220,55 @@ class RecipeRepositoryImpl implements RecipeRepository {
 
       // 手动构建Map，确保所有值都是基本类型
       final recipeMap = <String, dynamic>{
+        'schemaVersion': recipe.schemaVersion,
         'id': recipe.id,
+        'legacyIds': recipe.legacyIds,
         'name': recipe.name,
+        'description': recipe.description,
         'category': recipe.category,
         'categoryName': recipe.categoryName,
         'difficulty': recipe.difficulty,
+        'estimatedCaloriesKcal': recipe.estimatedCaloriesKcal,
         'images': recipe.images,
-        'ingredients': recipe.ingredients.map((i) => {
-          'name': i.name,
-          'text': i.text,
-        }).toList(),
+        'externalImages': recipe.externalImages,
+        'requirements': recipe.requirements
+            .map(
+              (item) => {
+                'text': item.text,
+                'markdown': item.markdown,
+                'group': item.group,
+                'kind': item.kind,
+              },
+            )
+            .toList(),
+        'requirementsMarkdown': recipe.requirementsMarkdown,
+        'ingredients': recipe.ingredients
+            .map(
+              (i) => {
+                'name': i.name,
+                'text': i.text,
+                'optional': i.optional,
+                'source': i.source,
+                'table': i.table,
+              },
+            )
+            .toList(),
         'tools': recipe.tools,
-        'steps': recipe.steps.map((s) => {
-          'description': s.description,
-        }).toList(),
+        'calculationMarkdown': recipe.calculationMarkdown,
+        'calculationNotes': recipe.calculationNotes,
+        'steps': recipe.steps
+            .map(
+              (s) => {
+                'kind': s.kind,
+                'title': s.title,
+                'description': s.description,
+              },
+            )
+            .toList(),
+        'operationMarkdown': recipe.operationMarkdown,
         'tips': recipe.tips,
         'warnings': recipe.warnings,
+        'additionalMarkdown': recipe.additionalMarkdown,
         'hash': recipe.hash,
         'source': recipe.source.name,
         'isFavorite': recipe.isFavorite,

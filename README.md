@@ -21,7 +21,7 @@
 - **AI 生成菜谱**：通过 MCP `create_recipe` 工具，AI 在对话里直接生成菜谱卡片并一键入库。
 - **二维码分享**：扫码导入朋友分享的菜谱，或把自己的菜谱生成二维码分享出去。
 - **教程体系**：基础、进阶、学习三档烹饪教程，可自创。
-- **离线优先**：内置资源打包进 APK，首次启动即可用；云端增量同步按需下载。
+- **离线优先**：V1 资源随 APK 提供兜底；云端 V2 按不可变版本同步并原子激活。
 - **应用内更新**：启动 3 秒后静默检查 GitHub Releases；发现新版本弹窗展示 Markdown 更新日志，一键下载+安装，自带 SHA256 校验与镜像回退。
 
 ### 给开发者
@@ -82,6 +82,9 @@ dart run build_runner build --delete-conflicting-outputs
 
 # 4) 运行
 flutter run
+
+# 可选：验证一个静态 V2 版本与当前 App 模型兼容
+dart run tool/verify_v2_compatibility.dart <version-directory>
 ```
 
 > Web 平台仅部分功能可用（Sqflite / 自动更新 / install_plugin 不支持 Web）。

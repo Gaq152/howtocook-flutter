@@ -7,6 +7,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:howtocook/core/services/image_download_manager.dart';
+import 'package:howtocook/core/services/recipe_id_migration_service.dart';
+import 'package:howtocook/core/storage/hive_service.dart';
 
 part 'data_sync_service.g.dart';
 part 'data_sync_service.freezed.dart';
@@ -39,13 +41,16 @@ class SyncConfig {
 @riverpod
 class DataSyncService extends _$DataSyncService {
   late String _remoteBaseUrl;
+  String _remoteDataBasePath = '';
+  String _localDataBasePath = '';
+  int _remoteSchemaVersion = 1;
   static const String _localDataDirName = 'recipe_data';
 
   static const List<String> _candidateBaseUrls = [
+    'https://gaq152.github.io/HowToCook-assets',
     'https://cdn.jsdelivr.net/gh/Gaq152/HowToCook-assets@main',
     'https://fastly.jsdelivr.net/gh/Gaq152/HowToCook-assets@main',
     'https://ghfast.top/https://raw.githubusercontent.com/Gaq152/HowToCook-assets/refs/heads/main',
-    'https://gaq152.github.io/HowToCook-assets',
   ];
 
   final Dio _dio = Dio();
@@ -111,6 +116,8 @@ class DataSyncService extends _$DataSyncService {
       final totalJsonTasks = recipeUpdates.length + tipUpdates.length;
 
       if (totalJsonTasks == 0) {
+        // JSON 无变化时也重试可能曾中断的幂等 ID 迁移。
+        await _downloadAndMigrateRecipeIds(remoteIndex);
         state = state.copyWith(status: SyncStatus.completed, progress: 100);
         debugPrint('✅ 数据已是最新，无需更新');
         return;
@@ -125,6 +132,7 @@ class DataSyncService extends _$DataSyncService {
       int downloadedRecipes = 0;
       int downloadedTips = 0;
       int completedJsonTasks = 0;
+      int failedJsonTasks = 0;
       final coverImageTasks = <DownloadTask>[];
       final detailImageTasks = <DownloadTask>[];
 
@@ -174,14 +182,27 @@ class DataSyncService extends _$DataSyncService {
             );
           }
         } catch (e) {
-          debugPrint('❌ 下载教程失败: ${tipUpdate.category}/${tipUpdate.tipId}, 错误: $e');
+          debugPrint(
+            '❌ 下载教程失败: ${tipUpdate.category}/${tipUpdate.tipId}, 错误: $e',
+          );
         }
       }
 
-      // 5. 保存更新后的索引
+      failedJsonTasks += recipeUpdates.length - downloadedRecipes;
+      failedJsonTasks += tipUpdates.length - downloadedTips;
+      if (failedJsonTasks > 0 || completedJsonTasks != totalJsonTasks) {
+        state = state.copyWith(
+          status: SyncStatus.error,
+          error: '有 $failedJsonTasks 个数据文件下载失败，已保留当前数据版本',
+        );
+        return;
+      }
+
+      // 5. 先原子激活 V2；迁移失败时 legacyIds 仍能兼容旧收藏。
       debugPrint('\n💾 保存更新后的本地索引...');
       await saveLocalIndex(remoteIndex);
       debugPrint('✅ 本地索引保存完成');
+      await _downloadAndMigrateRecipeIds(remoteIndex);
 
       // 6. 开始下载图片
       final allImageTasks = [...coverImageTasks, ...detailImageTasks];
@@ -207,43 +228,46 @@ class DataSyncService extends _$DataSyncService {
   /// 下载远程清单文件
   Future<Map<String, dynamic>?> downloadRemoteIndex() async {
     for (final baseUrl in _candidateBaseUrls) {
-      final url = '$baseUrl/manifest.json';
       try {
-        debugPrint('🌐 正在下载远程清单: $url');
-        final response = await _dio.get(
-          url,
+        final nonce = DateTime.now().millisecondsSinceEpoch;
+        final channelUrl = '$baseUrl/channels/v2-stable.json?t=$nonce';
+        debugPrint('🌐 正在下载 V2 稳定通道: $channelUrl');
+        final channelResponse = await _dio.get(
+          channelUrl,
           options: Options(receiveTimeout: const Duration(seconds: 10)),
         );
+        if (channelResponse.statusCode != 200) continue;
 
-        if (response.statusCode == 200) {
-          String responseData;
-          if (response.data is String) {
-            responseData = response.data;
-          } else {
-            responseData = jsonEncode(response.data);
-          }
-
-          final data = jsonDecode(responseData) as Map<String, dynamic>;
-
-          _remoteBaseUrl = baseUrl;
-          debugPrint('✅ 远程清单下载成功 (源: $baseUrl):');
-          debugPrint('   - 版本: ${data['version']}');
-          debugPrint('   - 生成时间: ${data['generatedAt']}');
-          debugPrint('   - 总食谱数: ${data['totalRecipes']}');
-          debugPrint(
-            '   - 实际食谱数组长度: ${(data['recipes'] as List<dynamic>?)?.length ?? 0}',
-          );
-
-          if (data['recipes'] is List && (data['recipes'] as List).isNotEmpty) {
-            final firstRecipe = (data['recipes'] as List)[0];
-            if (firstRecipe is Map) {
-              debugPrint('   - 示例食谱结构: ${firstRecipe.keys.toList()}');
-              debugPrint('   - 示例食谱: ${firstRecipe['name']} (${firstRecipe['id']})');
-            }
-          }
-
-          return data;
+        final channel = _asJsonMap(channelResponse.data);
+        if (channel['schemaVersion'] != 2 || channel['channel'] != 'stable') {
+          throw const FormatException('不受支持的 V2 通道格式');
         }
+        final manifestPath = channel['manifestPath'] as String?;
+        if (manifestPath == null || manifestPath.isEmpty) {
+          throw const FormatException('V2 通道缺少 manifestPath');
+        }
+
+        final manifestUrl = '$baseUrl/$manifestPath';
+        debugPrint('🌐 正在下载 V2 清单: $manifestUrl');
+        final manifestResponse = await _dio.get(
+          manifestUrl,
+          options: Options(receiveTimeout: const Duration(seconds: 15)),
+        );
+        if (manifestResponse.statusCode != 200) continue;
+
+        final data = _asJsonMap(manifestResponse.data);
+        if (data['schemaVersion'] != 2 || data['basePath'] == null) {
+          throw const FormatException('远程清单不是有效的 V2 manifest');
+        }
+
+        _remoteBaseUrl = baseUrl;
+        _remoteDataBasePath = data['basePath'] as String;
+        _remoteSchemaVersion = 2;
+        debugPrint('✅ V2 远程清单下载成功 (源: $baseUrl):');
+        debugPrint('   - 数据版本: ${data['dataVersion']}');
+        debugPrint('   - 资源路径: $_remoteDataBasePath');
+        debugPrint('   - 总食谱数: ${data['totalRecipes']}');
+        return data;
       } on DioException catch (e) {
         debugPrint('⚠️ 源 $baseUrl 失败: ${e.type} - ${e.message}');
         continue;
@@ -255,6 +279,15 @@ class DataSyncService extends _$DataSyncService {
 
     debugPrint('❌ 所有数据源均无法连接');
     return null;
+  }
+
+  Map<String, dynamic> _asJsonMap(dynamic data) {
+    if (data is Map<String, dynamic>) return data;
+    if (data is Map) return Map<String, dynamic>.from(data);
+    if (data is String) {
+      return jsonDecode(data) as Map<String, dynamic>;
+    }
+    throw FormatException('响应不是 JSON 对象: ${data.runtimeType}');
   }
 
   /// 加载本地清单文件
@@ -291,7 +324,13 @@ class DataSyncService extends _$DataSyncService {
       final cacheDir = await getApplicationDocumentsDirectory();
       final dataDir = Directory('${cacheDir.path}/$_localDataDirName');
       final manifestPath = '${cacheDir.path}/$_localDataDirName/manifest.json';
-      final file = File(manifestPath);
+      var file = File(manifestPath);
+
+      // 上次切换若中断在 rename 之间，使用保留的旧 manifest 恢复。
+      final previousFile = File('$manifestPath.previous');
+      if (!await file.exists() && await previousFile.exists()) {
+        file = await previousFile.rename(manifestPath);
+      }
 
       debugPrint('📁 尝试从文档目录加载索引: $manifestPath');
 
@@ -327,6 +366,11 @@ class DataSyncService extends _$DataSyncService {
       }
 
       final data = jsonDecode(content) as Map<String, dynamic>;
+
+      if (data['schemaVersion'] == 2 && data['basePath'] is String) {
+        _remoteSchemaVersion = 2;
+        _localDataBasePath = data['basePath'] as String;
+      }
 
       debugPrint('✅ 文档目录索引加载成功:');
       debugPrint('   - 版本: ${data['version']}');
@@ -372,7 +416,9 @@ class DataSyncService extends _$DataSyncService {
       if (data['recipes'] is List && (data['recipes'] as List).isNotEmpty) {
         final firstRecipe = (data['recipes'] as List)[0];
         if (firstRecipe is Map) {
-          debugPrint('   - 示例食谱: ${firstRecipe['name']} (${firstRecipe['id']})');
+          debugPrint(
+            '   - 示例食谱: ${firstRecipe['name']} (${firstRecipe['id']})',
+          );
         }
       }
 
@@ -396,6 +442,12 @@ class DataSyncService extends _$DataSyncService {
 
     // 本地索引格式：{recipes: []}
     final localRecipes = localIndex?['recipes'] as List<dynamic>? ?? [];
+    final remoteVersion = remoteIndex['dataVersion'] ?? remoteIndex['version'];
+    final localVersion = localIndex?['dataVersion'] ?? localIndex?['version'];
+    final versionChanged =
+        remoteIndex['schemaVersion'] == 2 &&
+        remoteVersion != null &&
+        remoteVersion != localVersion;
 
     debugPrint('📊 数据统计:');
     debugPrint('   - 远程食谱数量: ${remoteRecipes.length}');
@@ -425,11 +477,13 @@ class DataSyncService extends _$DataSyncService {
       final category = remoteRecipe['category'] as String;
       final recipeHash = remoteRecipe['hash'] as String;
 
-      final localRecipe = localRecipeMap[recipeId];
+      final localRecipe = versionChanged ? null : localRecipeMap[recipeId];
 
       if (localRecipe == null) {
         if (sampleCount < 3) {
-          debugPrint('   - 示例$sampleCount: $recipeName ($recipeId) - ❌ 不存在 (新增)');
+          debugPrint(
+            '   - 示例$sampleCount: $recipeName ($recipeId) - ❌ 不存在 (新增)',
+          );
           sampleCount++;
         }
         updates.add(
@@ -495,6 +549,12 @@ class DataSyncService extends _$DataSyncService {
     final updates = <TipUpdate>[];
     final remoteTips = remoteIndex['tips'] as List<dynamic>? ?? [];
     final localTips = localIndex?['tips'] as List<dynamic>? ?? [];
+    final remoteVersion = remoteIndex['dataVersion'] ?? remoteIndex['version'];
+    final localVersion = localIndex?['dataVersion'] ?? localIndex?['version'];
+    final versionChanged =
+        remoteIndex['schemaVersion'] == 2 &&
+        remoteVersion != null &&
+        remoteVersion != localVersion;
 
     debugPrint('📊 教程数据统计:');
     debugPrint('   - 远程教程数量: ${remoteTips.length}');
@@ -525,7 +585,7 @@ class DataSyncService extends _$DataSyncService {
       final title = remoteTip['title'] as String? ?? '未知';
       final remoteHash = remoteTip['hash'] as String? ?? '';
 
-      final localTip = localTipMap[tipId];
+      final localTip = versionChanged ? null : localTipMap[tipId];
       final localHash = localTip?['hash'] as String? ?? '';
 
       if (localTip == null) {
@@ -578,10 +638,10 @@ class DataSyncService extends _$DataSyncService {
   Future<bool> downloadRecipeJson(RecipeUpdate update) async {
     try {
       final url =
-          '$_remoteBaseUrl/recipes/${update.category}/${update.recipeId}.json';
+          '$_remoteBaseUrl/$_remoteDataBasePath/recipes/${update.category}/${update.recipeId}.json';
       final cacheDir = await getApplicationDocumentsDirectory();
       final localPath =
-          '${cacheDir.path}/$_localDataDirName/recipes/${update.category}/${update.recipeId}.json';
+          '${cacheDir.path}/$_localDataDirName/$_remoteDataBasePath/recipes/${update.category}/${update.recipeId}.json';
 
       final file = File(localPath);
       await file.parent.create(recursive: true);
@@ -605,10 +665,10 @@ class DataSyncService extends _$DataSyncService {
   Future<bool> downloadTipJson(TipUpdate update) async {
     try {
       final url =
-          '$_remoteBaseUrl/tips/${update.category}/${update.tipId}.json';
+          '$_remoteBaseUrl/$_remoteDataBasePath/tips/${update.category}/${update.tipId}.json';
       final cacheDir = await getApplicationDocumentsDirectory();
       final localPath =
-          '${cacheDir.path}/$_localDataDirName/tips/${update.category}/${update.tipId}.json';
+          '${cacheDir.path}/$_localDataDirName/$_remoteDataBasePath/tips/${update.category}/${update.tipId}.json';
 
       final file = File(localPath);
       await file.parent.create(recursive: true);
@@ -631,6 +691,9 @@ class DataSyncService extends _$DataSyncService {
   /// 提取封面图下载任务（按菜名）
   Future<DownloadTask?> extractCoverImageTask(RecipeUpdate update) async {
     try {
+      // V2 本轮不发布 AI 封面，仅使用菜谱正文中的真实图片。
+      if (_remoteSchemaVersion == 2) return null;
+
       final cacheDir = await getApplicationDocumentsDirectory();
       final jsonPath =
           '${cacheDir.path}/$_localDataDirName/recipes/${update.category}/${update.recipeId}.json';
@@ -682,6 +745,10 @@ class DataSyncService extends _$DataSyncService {
   Future<List<DownloadTask>> extractDetailImageTasksFromAssets(
     RecipeUpdate update,
   ) async {
+    if (_remoteSchemaVersion == 2) {
+      return _extractV2DetailImageTasks(update);
+    }
+
     final tasks = <DownloadTask>[];
 
     try {
@@ -752,6 +819,10 @@ class DataSyncService extends _$DataSyncService {
   Future<List<DownloadTask>> extractDetailImageTasks(
     RecipeUpdate update,
   ) async {
+    if (_remoteSchemaVersion == 2) {
+      return _extractV2DetailImageTasks(update);
+    }
+
     final tasks = <DownloadTask>[];
 
     try {
@@ -816,6 +887,61 @@ class DataSyncService extends _$DataSyncService {
     return tasks;
   }
 
+  Future<List<DownloadTask>> _extractV2DetailImageTasks(
+    RecipeUpdate update,
+  ) async {
+    final tasks = <DownloadTask>[];
+    try {
+      final documents = await getApplicationDocumentsDirectory();
+      File? recipeFile;
+      String? dataBasePath;
+      final candidatePaths = <String>{
+        if (_remoteDataBasePath.isNotEmpty) _remoteDataBasePath,
+        if (_localDataBasePath.isNotEmpty) _localDataBasePath,
+      };
+      for (final candidate in candidatePaths) {
+        final file = File(
+          '${documents.path}/$_localDataDirName/$candidate/'
+          'recipes/${update.category}/${update.recipeId}.json',
+        );
+        if (await file.exists()) {
+          recipeFile = file;
+          dataBasePath = candidate;
+          break;
+        }
+      }
+      if (recipeFile == null || dataBasePath == null) return tasks;
+
+      final recipe =
+          jsonDecode(await recipeFile.readAsString()) as Map<String, dynamic>;
+      final images = recipe['images'] as List<dynamic>? ?? const [];
+      for (var index = 0; index < images.length; index++) {
+        final relativePath = images[index].toString().replaceAll('\\', '/');
+        final localPath =
+            '${documents.path}/recipe_images/details/${update.category}/'
+            '${update.recipeId}_$index.webp';
+        if (await File(localPath).exists()) continue;
+
+        tasks.add(
+          DownloadTask(
+            id: 'detail_${update.category}_${update.recipeId}_$index',
+            category: update.category,
+            recipeId: update.recipeId,
+            imageUrl: '$_remoteBaseUrl/$dataBasePath/$relativePath',
+            localPath: localPath,
+            priority: 1,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint(
+        '❌ 提取 V2 详情图任务失败: '
+        '${update.category}/${update.recipeId}, 错误: $e',
+      );
+    }
+    return tasks;
+  }
+
   /// 保存本地清单文件
   Future<void> saveLocalIndex(Map<String, dynamic> index) async {
     try {
@@ -823,6 +949,14 @@ class DataSyncService extends _$DataSyncService {
       final dataDir = Directory('${cacheDir.path}/$_localDataDirName');
       final manifestPath = '${cacheDir.path}/$_localDataDirName/manifest.json';
       final file = File(manifestPath);
+      final nextFile = File('$manifestPath.next');
+      final previousFile = File('$manifestPath.previous');
+
+      if (index['schemaVersion'] == 2 && index['basePath'] is String) {
+        _remoteSchemaVersion = 2;
+        _remoteDataBasePath = index['basePath'] as String;
+        _localDataBasePath = _remoteDataBasePath;
+      }
 
       debugPrint('💾 保存本地索引文件:');
       debugPrint('   - 缓存目录: ${cacheDir.path}');
@@ -843,7 +977,28 @@ class DataSyncService extends _$DataSyncService {
       final jsonContent = jsonEncode(index);
       debugPrint('   - JSON内容长度: ${jsonContent.length} 字符');
 
-      await file.writeAsString(jsonContent);
+      // 版本目录保留一份 manifest；根 manifest 仅作为当前激活指针。
+      if (_remoteSchemaVersion == 2 && _remoteDataBasePath.isNotEmpty) {
+        final versionManifest = File(
+          '${dataDir.path}/$_remoteDataBasePath/manifest.json',
+        );
+        await versionManifest.parent.create(recursive: true);
+        await versionManifest.writeAsString(jsonContent, flush: true);
+      }
+
+      await nextFile.writeAsString(jsonContent, flush: true);
+      // 先完整写入临时文件；切换失败时自动恢复上一版 manifest。
+      if (await previousFile.exists()) await previousFile.delete();
+      if (await file.exists()) await file.rename(previousFile.path);
+      try {
+        await nextFile.rename(file.path);
+        if (await previousFile.exists()) await previousFile.delete();
+      } catch (_) {
+        if (!await file.exists() && await previousFile.exists()) {
+          await previousFile.rename(file.path);
+        }
+        rethrow;
+      }
 
       // 验证写入结果
       final writtenSize = await file.length();
@@ -852,7 +1007,41 @@ class DataSyncService extends _$DataSyncService {
     } catch (e) {
       debugPrint('❌ 保存本地清单失败: $e');
       debugPrint('   - 错误类型: ${e.runtimeType}');
+      rethrow;
     }
+  }
+
+  Future<void> _downloadAndMigrateRecipeIds(
+    Map<String, dynamic> remoteIndex,
+  ) async {
+    if (remoteIndex['schemaVersion'] != 2) return;
+    final migrations = remoteIndex['migrations'];
+    if (migrations is! Map) {
+      throw const FormatException('V2 manifest 缺少 migrations');
+    }
+    final relativePath = migrations['recipeIdsV1ToV2'] as String?;
+    if (relativePath == null || relativePath.isEmpty) {
+      throw const FormatException('V2 manifest 缺少 V1→V2 ID 映射');
+    }
+
+    final url = '$_remoteBaseUrl/$_remoteDataBasePath/$relativePath';
+    final response = await _dio.get(
+      url,
+      options: Options(receiveTimeout: const Duration(seconds: 15)),
+    );
+    if (response.statusCode != 200) {
+      throw StateError('ID 映射下载失败: HTTP ${response.statusCode}');
+    }
+    final migration = _asJsonMap(response.data);
+
+    final documents = await getApplicationDocumentsDirectory();
+    final migrationFile = File(
+      '${documents.path}/$_localDataDirName/$_remoteDataBasePath/$relativePath',
+    );
+    await migrationFile.parent.create(recursive: true);
+    await migrationFile.writeAsString(jsonEncode(migration), flush: true);
+
+    await RecipeIdMigrationService().migrate(migration);
   }
 
   /// 估算图片数量
@@ -893,6 +1082,9 @@ class DataSyncService extends _$DataSyncService {
         await dataDir.delete(recursive: true);
         debugPrint('🗑️ 本地数据已清理');
       }
+      final settings = HiveService.getSettingsBox();
+      await settings.delete(RecipeIdMigrationService.activeDataVersionKey);
+      await settings.delete(RecipeIdMigrationService.activeDataSchemaKey);
     } catch (e) {
       debugPrint('❌ 清理本地数据失败: $e');
     }

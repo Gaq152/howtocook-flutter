@@ -8,10 +8,13 @@ part of 'manifest.dart';
 
 _$ManifestImpl _$$ManifestImplFromJson(Map<String, dynamic> json) =>
     _$ManifestImpl(
-      version: json['version'] as String,
+      version: _readManifestVersion(json, 'version') as String,
+      schemaVersion: (json['schemaVersion'] as num?)?.toInt() ?? 1,
+      basePath: json['basePath'] as String? ?? '',
       generatedAt: json['generatedAt'] as String,
       totalRecipes: (json['totalRecipes'] as num).toInt(),
       totalTips: (json['totalTips'] as num).toInt(),
+      totalImages: (json['totalImages'] as num?)?.toInt() ?? 0,
       categories: (json['categories'] as Map<String, dynamic>).map(
         (k, e) => MapEntry(k, CategoryInfo.fromJson(e as Map<String, dynamic>)),
       ),
@@ -30,9 +33,12 @@ _$ManifestImpl _$$ManifestImplFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$$ManifestImplToJson(_$ManifestImpl instance) =>
     <String, dynamic>{
       'version': instance.version,
+      'schemaVersion': instance.schemaVersion,
+      'basePath': instance.basePath,
       'generatedAt': instance.generatedAt,
       'totalRecipes': instance.totalRecipes,
       'totalTips': instance.totalTips,
+      'totalImages': instance.totalImages,
       'categories': instance.categories,
       'tipsCategories': instance.tipsCategories,
       'recipes': instance.recipes,
@@ -54,22 +60,33 @@ Map<String, dynamic> _$$CategoryInfoImplToJson(_$CategoryInfoImpl instance) =>
 _$RecipeIndexImpl _$$RecipeIndexImplFromJson(Map<String, dynamic> json) =>
     _$RecipeIndexImpl(
       id: json['id'] as String,
+      legacyIds: (json['legacyIds'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
       name: json['name'] as String,
+      description: json['description'] as String?,
       category: json['category'] as String,
       categoryName: json['categoryName'] as String,
       difficulty: (json['difficulty'] as num).toInt(),
+      estimatedCaloriesKcal: (json['estimatedCaloriesKcal'] as num?)?.toInt(),
       hash: json['hash'] as String,
-      hasImages: json['hasImages'] as bool? ?? false,
+      imageCount: (json['imageCount'] as num?)?.toInt() ?? 0,
+      hasImages: _readHasImages(json, 'hasImages') as bool? ?? false,
     );
 
 Map<String, dynamic> _$$RecipeIndexImplToJson(_$RecipeIndexImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
+      'legacyIds': instance.legacyIds,
       'name': instance.name,
+      'description': instance.description,
       'category': instance.category,
       'categoryName': instance.categoryName,
       'difficulty': instance.difficulty,
+      'estimatedCaloriesKcal': instance.estimatedCaloriesKcal,
       'hash': instance.hash,
+      'imageCount': instance.imageCount,
       'hasImages': instance.hasImages,
     };
 

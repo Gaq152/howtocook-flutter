@@ -20,10 +20,15 @@ Manifest _$ManifestFromJson(Map<String, dynamic> json) {
 
 /// @nodoc
 mixin _$Manifest {
-  String get version => throw _privateConstructorUsedError; // 版本号
+  @JsonKey(readValue: _readManifestVersion)
+  String get version =>
+      throw _privateConstructorUsedError; // V1 version / V2 dataVersion
+  int get schemaVersion => throw _privateConstructorUsedError;
+  String get basePath => throw _privateConstructorUsedError;
   String get generatedAt => throw _privateConstructorUsedError; // 生成时间
   int get totalRecipes => throw _privateConstructorUsedError; // 菜谱总数
   int get totalTips => throw _privateConstructorUsedError; // 技巧总数
+  int get totalImages => throw _privateConstructorUsedError;
   Map<String, CategoryInfo> get categories =>
       throw _privateConstructorUsedError; // 菜谱分类信息
   Map<String, CategoryInfo> get tipsCategories =>
@@ -43,10 +48,13 @@ abstract class $ManifestCopyWith<$Res> {
       _$ManifestCopyWithImpl<$Res, Manifest>;
   @useResult
   $Res call(
-      {String version,
+      {@JsonKey(readValue: _readManifestVersion) String version,
+      int schemaVersion,
+      String basePath,
       String generatedAt,
       int totalRecipes,
       int totalTips,
+      int totalImages,
       Map<String, CategoryInfo> categories,
       Map<String, CategoryInfo> tipsCategories,
       List<RecipeIndex> recipes,
@@ -67,9 +75,12 @@ class _$ManifestCopyWithImpl<$Res, $Val extends Manifest>
   @override
   $Res call({
     Object? version = null,
+    Object? schemaVersion = null,
+    Object? basePath = null,
     Object? generatedAt = null,
     Object? totalRecipes = null,
     Object? totalTips = null,
+    Object? totalImages = null,
     Object? categories = null,
     Object? tipsCategories = null,
     Object? recipes = null,
@@ -79,6 +90,14 @@ class _$ManifestCopyWithImpl<$Res, $Val extends Manifest>
       version: null == version
           ? _value.version
           : version // ignore: cast_nullable_to_non_nullable
+              as String,
+      schemaVersion: null == schemaVersion
+          ? _value.schemaVersion
+          : schemaVersion // ignore: cast_nullable_to_non_nullable
+              as int,
+      basePath: null == basePath
+          ? _value.basePath
+          : basePath // ignore: cast_nullable_to_non_nullable
               as String,
       generatedAt: null == generatedAt
           ? _value.generatedAt
@@ -91,6 +110,10 @@ class _$ManifestCopyWithImpl<$Res, $Val extends Manifest>
       totalTips: null == totalTips
           ? _value.totalTips
           : totalTips // ignore: cast_nullable_to_non_nullable
+              as int,
+      totalImages: null == totalImages
+          ? _value.totalImages
+          : totalImages // ignore: cast_nullable_to_non_nullable
               as int,
       categories: null == categories
           ? _value.categories
@@ -121,10 +144,13 @@ abstract class _$$ManifestImplCopyWith<$Res>
   @override
   @useResult
   $Res call(
-      {String version,
+      {@JsonKey(readValue: _readManifestVersion) String version,
+      int schemaVersion,
+      String basePath,
       String generatedAt,
       int totalRecipes,
       int totalTips,
+      int totalImages,
       Map<String, CategoryInfo> categories,
       Map<String, CategoryInfo> tipsCategories,
       List<RecipeIndex> recipes,
@@ -143,9 +169,12 @@ class __$$ManifestImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? version = null,
+    Object? schemaVersion = null,
+    Object? basePath = null,
     Object? generatedAt = null,
     Object? totalRecipes = null,
     Object? totalTips = null,
+    Object? totalImages = null,
     Object? categories = null,
     Object? tipsCategories = null,
     Object? recipes = null,
@@ -155,6 +184,14 @@ class __$$ManifestImplCopyWithImpl<$Res>
       version: null == version
           ? _value.version
           : version // ignore: cast_nullable_to_non_nullable
+              as String,
+      schemaVersion: null == schemaVersion
+          ? _value.schemaVersion
+          : schemaVersion // ignore: cast_nullable_to_non_nullable
+              as int,
+      basePath: null == basePath
+          ? _value.basePath
+          : basePath // ignore: cast_nullable_to_non_nullable
               as String,
       generatedAt: null == generatedAt
           ? _value.generatedAt
@@ -167,6 +204,10 @@ class __$$ManifestImplCopyWithImpl<$Res>
       totalTips: null == totalTips
           ? _value.totalTips
           : totalTips // ignore: cast_nullable_to_non_nullable
+              as int,
+      totalImages: null == totalImages
+          ? _value.totalImages
+          : totalImages // ignore: cast_nullable_to_non_nullable
               as int,
       categories: null == categories
           ? _value._categories
@@ -192,10 +233,13 @@ class __$$ManifestImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$ManifestImpl implements _Manifest {
   const _$ManifestImpl(
-      {required this.version,
+      {@JsonKey(readValue: _readManifestVersion) required this.version,
+      this.schemaVersion = 1,
+      this.basePath = '',
       required this.generatedAt,
       required this.totalRecipes,
       required this.totalTips,
+      this.totalImages = 0,
       required final Map<String, CategoryInfo> categories,
       required final Map<String, CategoryInfo> tipsCategories,
       required final List<RecipeIndex> recipes,
@@ -209,8 +253,15 @@ class _$ManifestImpl implements _Manifest {
       _$$ManifestImplFromJson(json);
 
   @override
+  @JsonKey(readValue: _readManifestVersion)
   final String version;
-// 版本号
+// V1 version / V2 dataVersion
+  @override
+  @JsonKey()
+  final int schemaVersion;
+  @override
+  @JsonKey()
+  final String basePath;
   @override
   final String generatedAt;
 // 生成时间
@@ -220,8 +271,10 @@ class _$ManifestImpl implements _Manifest {
   @override
   final int totalTips;
 // 技巧总数
+  @override
+  @JsonKey()
+  final int totalImages;
   final Map<String, CategoryInfo> _categories;
-// 技巧总数
   @override
   Map<String, CategoryInfo> get categories {
     if (_categories is EqualUnmodifiableMapView) return _categories;
@@ -262,7 +315,7 @@ class _$ManifestImpl implements _Manifest {
 
   @override
   String toString() {
-    return 'Manifest(version: $version, generatedAt: $generatedAt, totalRecipes: $totalRecipes, totalTips: $totalTips, categories: $categories, tipsCategories: $tipsCategories, recipes: $recipes, tips: $tips)';
+    return 'Manifest(version: $version, schemaVersion: $schemaVersion, basePath: $basePath, generatedAt: $generatedAt, totalRecipes: $totalRecipes, totalTips: $totalTips, totalImages: $totalImages, categories: $categories, tipsCategories: $tipsCategories, recipes: $recipes, tips: $tips)';
   }
 
   @override
@@ -271,12 +324,18 @@ class _$ManifestImpl implements _Manifest {
         (other.runtimeType == runtimeType &&
             other is _$ManifestImpl &&
             (identical(other.version, version) || other.version == version) &&
+            (identical(other.schemaVersion, schemaVersion) ||
+                other.schemaVersion == schemaVersion) &&
+            (identical(other.basePath, basePath) ||
+                other.basePath == basePath) &&
             (identical(other.generatedAt, generatedAt) ||
                 other.generatedAt == generatedAt) &&
             (identical(other.totalRecipes, totalRecipes) ||
                 other.totalRecipes == totalRecipes) &&
             (identical(other.totalTips, totalTips) ||
                 other.totalTips == totalTips) &&
+            (identical(other.totalImages, totalImages) ||
+                other.totalImages == totalImages) &&
             const DeepCollectionEquality()
                 .equals(other._categories, _categories) &&
             const DeepCollectionEquality()
@@ -290,9 +349,12 @@ class _$ManifestImpl implements _Manifest {
   int get hashCode => Object.hash(
       runtimeType,
       version,
+      schemaVersion,
+      basePath,
       generatedAt,
       totalRecipes,
       totalTips,
+      totalImages,
       const DeepCollectionEquality().hash(_categories),
       const DeepCollectionEquality().hash(_tipsCategories),
       const DeepCollectionEquality().hash(_recipes),
@@ -314,10 +376,13 @@ class _$ManifestImpl implements _Manifest {
 
 abstract class _Manifest implements Manifest {
   const factory _Manifest(
-      {required final String version,
+      {@JsonKey(readValue: _readManifestVersion) required final String version,
+      final int schemaVersion,
+      final String basePath,
       required final String generatedAt,
       required final int totalRecipes,
       required final int totalTips,
+      final int totalImages,
       required final Map<String, CategoryInfo> categories,
       required final Map<String, CategoryInfo> tipsCategories,
       required final List<RecipeIndex> recipes,
@@ -327,14 +392,21 @@ abstract class _Manifest implements Manifest {
       _$ManifestImpl.fromJson;
 
   @override
+  @JsonKey(readValue: _readManifestVersion)
   String get version;
-  @override // 版本号
+  @override // V1 version / V2 dataVersion
+  int get schemaVersion;
+  @override
+  String get basePath;
+  @override
   String get generatedAt;
   @override // 生成时间
   int get totalRecipes;
   @override // 菜谱总数
   int get totalTips;
   @override // 技巧总数
+  int get totalImages;
+  @override
   Map<String, CategoryInfo> get categories;
   @override // 菜谱分类信息
   Map<String, CategoryInfo> get tipsCategories;
@@ -510,11 +582,16 @@ RecipeIndex _$RecipeIndexFromJson(Map<String, dynamic> json) {
 /// @nodoc
 mixin _$RecipeIndex {
   String get id => throw _privateConstructorUsedError; // 菜谱 ID
+  List<String> get legacyIds => throw _privateConstructorUsedError;
   String get name => throw _privateConstructorUsedError; // 菜谱名称
+  String? get description => throw _privateConstructorUsedError;
   String get category => throw _privateConstructorUsedError; // 分类 ID
   String get categoryName => throw _privateConstructorUsedError; // 分类名称
   int get difficulty => throw _privateConstructorUsedError; // 难度等级 1-5
+  int? get estimatedCaloriesKcal => throw _privateConstructorUsedError;
   String get hash => throw _privateConstructorUsedError; // 文件 hash，用于检测变化
+  int get imageCount => throw _privateConstructorUsedError;
+  @JsonKey(readValue: _readHasImages)
   bool get hasImages => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -531,12 +608,16 @@ abstract class $RecipeIndexCopyWith<$Res> {
   @useResult
   $Res call(
       {String id,
+      List<String> legacyIds,
       String name,
+      String? description,
       String category,
       String categoryName,
       int difficulty,
+      int? estimatedCaloriesKcal,
       String hash,
-      bool hasImages});
+      int imageCount,
+      @JsonKey(readValue: _readHasImages) bool hasImages});
 }
 
 /// @nodoc
@@ -553,11 +634,15 @@ class _$RecipeIndexCopyWithImpl<$Res, $Val extends RecipeIndex>
   @override
   $Res call({
     Object? id = null,
+    Object? legacyIds = null,
     Object? name = null,
+    Object? description = freezed,
     Object? category = null,
     Object? categoryName = null,
     Object? difficulty = null,
+    Object? estimatedCaloriesKcal = freezed,
     Object? hash = null,
+    Object? imageCount = null,
     Object? hasImages = null,
   }) {
     return _then(_value.copyWith(
@@ -565,10 +650,18 @@ class _$RecipeIndexCopyWithImpl<$Res, $Val extends RecipeIndex>
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
               as String,
+      legacyIds: null == legacyIds
+          ? _value.legacyIds
+          : legacyIds // ignore: cast_nullable_to_non_nullable
+              as List<String>,
       name: null == name
           ? _value.name
           : name // ignore: cast_nullable_to_non_nullable
               as String,
+      description: freezed == description
+          ? _value.description
+          : description // ignore: cast_nullable_to_non_nullable
+              as String?,
       category: null == category
           ? _value.category
           : category // ignore: cast_nullable_to_non_nullable
@@ -581,10 +674,18 @@ class _$RecipeIndexCopyWithImpl<$Res, $Val extends RecipeIndex>
           ? _value.difficulty
           : difficulty // ignore: cast_nullable_to_non_nullable
               as int,
+      estimatedCaloriesKcal: freezed == estimatedCaloriesKcal
+          ? _value.estimatedCaloriesKcal
+          : estimatedCaloriesKcal // ignore: cast_nullable_to_non_nullable
+              as int?,
       hash: null == hash
           ? _value.hash
           : hash // ignore: cast_nullable_to_non_nullable
               as String,
+      imageCount: null == imageCount
+          ? _value.imageCount
+          : imageCount // ignore: cast_nullable_to_non_nullable
+              as int,
       hasImages: null == hasImages
           ? _value.hasImages
           : hasImages // ignore: cast_nullable_to_non_nullable
@@ -603,12 +704,16 @@ abstract class _$$RecipeIndexImplCopyWith<$Res>
   @useResult
   $Res call(
       {String id,
+      List<String> legacyIds,
       String name,
+      String? description,
       String category,
       String categoryName,
       int difficulty,
+      int? estimatedCaloriesKcal,
       String hash,
-      bool hasImages});
+      int imageCount,
+      @JsonKey(readValue: _readHasImages) bool hasImages});
 }
 
 /// @nodoc
@@ -623,11 +728,15 @@ class __$$RecipeIndexImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? legacyIds = null,
     Object? name = null,
+    Object? description = freezed,
     Object? category = null,
     Object? categoryName = null,
     Object? difficulty = null,
+    Object? estimatedCaloriesKcal = freezed,
     Object? hash = null,
+    Object? imageCount = null,
     Object? hasImages = null,
   }) {
     return _then(_$RecipeIndexImpl(
@@ -635,10 +744,18 @@ class __$$RecipeIndexImplCopyWithImpl<$Res>
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
               as String,
+      legacyIds: null == legacyIds
+          ? _value._legacyIds
+          : legacyIds // ignore: cast_nullable_to_non_nullable
+              as List<String>,
       name: null == name
           ? _value.name
           : name // ignore: cast_nullable_to_non_nullable
               as String,
+      description: freezed == description
+          ? _value.description
+          : description // ignore: cast_nullable_to_non_nullable
+              as String?,
       category: null == category
           ? _value.category
           : category // ignore: cast_nullable_to_non_nullable
@@ -651,10 +768,18 @@ class __$$RecipeIndexImplCopyWithImpl<$Res>
           ? _value.difficulty
           : difficulty // ignore: cast_nullable_to_non_nullable
               as int,
+      estimatedCaloriesKcal: freezed == estimatedCaloriesKcal
+          ? _value.estimatedCaloriesKcal
+          : estimatedCaloriesKcal // ignore: cast_nullable_to_non_nullable
+              as int?,
       hash: null == hash
           ? _value.hash
           : hash // ignore: cast_nullable_to_non_nullable
               as String,
+      imageCount: null == imageCount
+          ? _value.imageCount
+          : imageCount // ignore: cast_nullable_to_non_nullable
+              as int,
       hasImages: null == hasImages
           ? _value.hasImages
           : hasImages // ignore: cast_nullable_to_non_nullable
@@ -668,12 +793,17 @@ class __$$RecipeIndexImplCopyWithImpl<$Res>
 class _$RecipeIndexImpl implements _RecipeIndex {
   const _$RecipeIndexImpl(
       {required this.id,
+      final List<String> legacyIds = const [],
       required this.name,
+      this.description,
       required this.category,
       required this.categoryName,
       required this.difficulty,
+      this.estimatedCaloriesKcal,
       required this.hash,
-      this.hasImages = false});
+      this.imageCount = 0,
+      @JsonKey(readValue: _readHasImages) this.hasImages = false})
+      : _legacyIds = legacyIds;
 
   factory _$RecipeIndexImpl.fromJson(Map<String, dynamic> json) =>
       _$$RecipeIndexImplFromJson(json);
@@ -681,9 +811,21 @@ class _$RecipeIndexImpl implements _RecipeIndex {
   @override
   final String id;
 // 菜谱 ID
+  final List<String> _legacyIds;
+// 菜谱 ID
+  @override
+  @JsonKey()
+  List<String> get legacyIds {
+    if (_legacyIds is EqualUnmodifiableListView) return _legacyIds;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_legacyIds);
+  }
+
   @override
   final String name;
 // 菜谱名称
+  @override
+  final String? description;
   @override
   final String category;
 // 分类 ID
@@ -694,15 +836,20 @@ class _$RecipeIndexImpl implements _RecipeIndex {
   final int difficulty;
 // 难度等级 1-5
   @override
+  final int? estimatedCaloriesKcal;
+  @override
   final String hash;
 // 文件 hash，用于检测变化
   @override
   @JsonKey()
+  final int imageCount;
+  @override
+  @JsonKey(readValue: _readHasImages)
   final bool hasImages;
 
   @override
   String toString() {
-    return 'RecipeIndex(id: $id, name: $name, category: $category, categoryName: $categoryName, difficulty: $difficulty, hash: $hash, hasImages: $hasImages)';
+    return 'RecipeIndex(id: $id, legacyIds: $legacyIds, name: $name, description: $description, category: $category, categoryName: $categoryName, difficulty: $difficulty, estimatedCaloriesKcal: $estimatedCaloriesKcal, hash: $hash, imageCount: $imageCount, hasImages: $hasImages)';
   }
 
   @override
@@ -711,22 +858,41 @@ class _$RecipeIndexImpl implements _RecipeIndex {
         (other.runtimeType == runtimeType &&
             other is _$RecipeIndexImpl &&
             (identical(other.id, id) || other.id == id) &&
+            const DeepCollectionEquality()
+                .equals(other._legacyIds, _legacyIds) &&
             (identical(other.name, name) || other.name == name) &&
+            (identical(other.description, description) ||
+                other.description == description) &&
             (identical(other.category, category) ||
                 other.category == category) &&
             (identical(other.categoryName, categoryName) ||
                 other.categoryName == categoryName) &&
             (identical(other.difficulty, difficulty) ||
                 other.difficulty == difficulty) &&
+            (identical(other.estimatedCaloriesKcal, estimatedCaloriesKcal) ||
+                other.estimatedCaloriesKcal == estimatedCaloriesKcal) &&
             (identical(other.hash, hash) || other.hash == hash) &&
+            (identical(other.imageCount, imageCount) ||
+                other.imageCount == imageCount) &&
             (identical(other.hasImages, hasImages) ||
                 other.hasImages == hasImages));
   }
 
   @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(runtimeType, id, name, category, categoryName,
-      difficulty, hash, hasImages);
+  int get hashCode => Object.hash(
+      runtimeType,
+      id,
+      const DeepCollectionEquality().hash(_legacyIds),
+      name,
+      description,
+      category,
+      categoryName,
+      difficulty,
+      estimatedCaloriesKcal,
+      hash,
+      imageCount,
+      hasImages);
 
   @JsonKey(ignore: true)
   @override
@@ -744,13 +910,18 @@ class _$RecipeIndexImpl implements _RecipeIndex {
 
 abstract class _RecipeIndex implements RecipeIndex {
   const factory _RecipeIndex(
-      {required final String id,
-      required final String name,
-      required final String category,
-      required final String categoryName,
-      required final int difficulty,
-      required final String hash,
-      final bool hasImages}) = _$RecipeIndexImpl;
+          {required final String id,
+          final List<String> legacyIds,
+          required final String name,
+          final String? description,
+          required final String category,
+          required final String categoryName,
+          required final int difficulty,
+          final int? estimatedCaloriesKcal,
+          required final String hash,
+          final int imageCount,
+          @JsonKey(readValue: _readHasImages) final bool hasImages}) =
+      _$RecipeIndexImpl;
 
   factory _RecipeIndex.fromJson(Map<String, dynamic> json) =
       _$RecipeIndexImpl.fromJson;
@@ -758,16 +929,25 @@ abstract class _RecipeIndex implements RecipeIndex {
   @override
   String get id;
   @override // 菜谱 ID
+  List<String> get legacyIds;
+  @override
   String get name;
   @override // 菜谱名称
+  String? get description;
+  @override
   String get category;
   @override // 分类 ID
   String get categoryName;
   @override // 分类名称
   int get difficulty;
   @override // 难度等级 1-5
+  int? get estimatedCaloriesKcal;
+  @override
   String get hash;
   @override // 文件 hash，用于检测变化
+  int get imageCount;
+  @override
+  @JsonKey(readValue: _readHasImages)
   bool get hasImages;
   @override
   @JsonKey(ignore: true)
