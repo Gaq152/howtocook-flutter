@@ -203,6 +203,11 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
         if (converted.containsKey('inputSchema')) {
           converted['input_schema'] = converted.remove('inputSchema');
         }
+        if (converted['name'] == 'mcp_howtocook_createRecipe') {
+          converted['description'] =
+              '创建完整的 HowToCook V2 菜谱，保留简介、热量、必备项、用量与计算、表格和无自带序号的操作。';
+          converted['input_schema'] = _v2CreateRecipeInputSchema;
+        }
         return converted;
       }).toList();
 
@@ -215,6 +220,108 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
       // MCP 工具加载失败不影响基本聊天功能
     }
   }
+
+  static const Map<String, dynamic> _v2CreateRecipeInputSchema = {
+    'type': 'object',
+    'properties': {
+      'recipe': {
+        'type': 'object',
+        'description': 'V2 结构化菜谱',
+        'properties': {
+          'name': {'type': 'string'},
+          'description': {'type': 'string'},
+          'category': {'type': 'string'},
+          'categoryName': {'type': 'string'},
+          'difficulty': {'type': 'integer', 'minimum': 1, 'maximum': 5},
+          'estimatedCaloriesKcal': {'type': 'integer', 'minimum': 1},
+          'requirements': {
+            'type': 'array',
+            'items': {
+              'oneOf': [
+                {'type': 'string'},
+                {
+                  'type': 'object',
+                  'properties': {
+                    'text': {'type': 'string'},
+                    'kind': {
+                      'type': 'string',
+                      'enum': ['ingredient', 'tool', 'unknown'],
+                    },
+                    'group': {'type': 'string'},
+                  },
+                  'required': ['text'],
+                },
+              ],
+            },
+          },
+          'ingredients': {
+            'type': 'array',
+            'items': {
+              'oneOf': [
+                {'type': 'string'},
+                {
+                  'type': 'object',
+                  'properties': {
+                    'name': {'type': 'string'},
+                    'text': {'type': 'string'},
+                    'optional': {'type': 'boolean'},
+                    'source': {'type': 'string'},
+                    'table': {
+                      'type': 'object',
+                      'additionalProperties': {'type': 'string'},
+                    },
+                  },
+                  'required': ['name', 'text'],
+                },
+              ],
+            },
+          },
+          'tools': {
+            'type': 'array',
+            'items': {'type': 'string'},
+          },
+          'calculationNotes': {
+            'type': 'array',
+            'items': {'type': 'string'},
+          },
+          'steps': {
+            'type': 'array',
+            'items': {
+              'oneOf': [
+                {'type': 'string'},
+                {
+                  'type': 'object',
+                  'properties': {
+                    'kind': {
+                      'type': 'string',
+                      'enum': ['step', 'heading'],
+                    },
+                    'title': {'type': 'string'},
+                    'description': {'type': 'string'},
+                  },
+                  'required': ['description'],
+                },
+              ],
+            },
+          },
+          'tips': {'type': 'string'},
+          'warnings': {
+            'type': 'array',
+            'items': {'type': 'string'},
+          },
+        },
+        'required': ['name', 'ingredients', 'steps'],
+      },
+      'checkDuplicate': {'type': 'boolean', 'default': true},
+      'similarityThreshold': {
+        'type': 'number',
+        'minimum': 0,
+        'maximum': 1,
+        'default': 0.75,
+      },
+    },
+    'required': ['recipe'],
+  };
 
   @override
   void dispose() {
@@ -1949,8 +2056,14 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
           final checkDuplicate = input['checkDuplicate'] as bool? ?? true;
           final similarityThreshold =
               (input['similarityThreshold'] as num?)?.toDouble() ?? 0.75;
+          final compatibilityRecipeText =
+              recipeText ??
+              (structuredRecipe == null
+                  ? null
+                  : _legacyCompatibleRecipeText(structuredRecipe));
           final createResult = await _mcpService.createRecipe(
-            recipeText: recipeText,
+            // 旧线上 MCP 只接受 recipeText；新 MCP 优先使用 recipe。
+            recipeText: compatibilityRecipeText,
             recipe: structuredRecipe,
             checkDuplicate: checkDuplicate,
             similarityThreshold: similarityThreshold,
@@ -1959,6 +2072,10 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
             final recipeData = Map<String, dynamic>.from(
               createResult['recipe'] as Map,
             );
+            if (structuredRecipe != null) {
+              // 旧 MCP 会丢弃 V2 字段，以模型的原始结构化输入补回。
+              recipeData.addAll(structuredRecipe);
+            }
             final rawId = recipeData['id']?.toString() ?? '';
             final isUuid = RegExp(
               r'^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
@@ -2091,6 +2208,39 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   }
 
   /// 解析整数参数（容错处理）
+  String _legacyCompatibleRecipeText(Map<String, dynamic> recipe) {
+    String itemText(dynamic item) {
+      if (item is Map) {
+        return (item['text'] ?? item['description'] ?? item['name'] ?? '')
+            .toString();
+      }
+      return item.toString();
+    }
+
+    final ingredients = (recipe['ingredients'] as List? ?? [])
+        .map(itemText)
+        .where((item) => item.isNotEmpty)
+        .toList();
+    final steps = (recipe['steps'] as List? ?? [])
+        .map(itemText)
+        .map((item) => item.replaceFirst(RegExp(r'^[\d①-⑳]+[.、：:\s]+'), ''))
+        .where((item) => item.isNotEmpty)
+        .toList();
+    return jsonEncode({
+      'name': recipe['name'],
+      'description': recipe['description'],
+      'category': recipe['category'],
+      'categoryName': recipe['categoryName'],
+      'difficulty': recipe['difficulty'],
+      'estimatedCaloriesKcal': recipe['estimatedCaloriesKcal'],
+      'ingredients': ingredients,
+      'tools': recipe['tools'] ?? const [],
+      'steps': steps,
+      'tips': recipe['tips'],
+      'warnings': recipe['warnings'] ?? const [],
+    });
+  }
+
   String _normalizeRecipeCategory(Map<String, dynamic> data) {
     const ids = {
       'aquatic',
