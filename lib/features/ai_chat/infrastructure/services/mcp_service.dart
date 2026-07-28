@@ -27,7 +27,10 @@ class MCPService {
   ///
   /// [toolName] 工具名称（带 mcp_howtocook_ 前缀）
   /// [arguments] 工具参数
-  Future<dynamic> _callTool(String toolName, Map<String, dynamic> arguments) async {
+  Future<dynamic> _callTool(
+    String toolName,
+    Map<String, dynamic> arguments,
+  ) async {
     try {
       _requestId++;
 
@@ -42,10 +45,7 @@ class MCPService {
         },
       };
 
-      final response = await _dio.post(
-        '/mcp',
-        data: requestData,
-      );
+      final response = await _dio.post('/mcp', data: requestData);
 
       // 解析 SSE 响应
       return _parseSSEResponse(response.data);
@@ -130,14 +130,12 @@ class MCPService {
   /// MCP 返回的数据格式与 Recipe 实体不完全匹配，需要进行字段映射和补充
   Recipe _mcpToRecipe(Map<String, dynamic> mcpData) {
     try {
-      final name = mcpData['name'] as String? ?? '未知菜谱';
-      final id = mcpData['id'] as String? ??
-                 'recipe_${name.hashCode.abs()}';
-      final idParts = id.split('-');
-      final category = idParts.length > 1 ? idParts[1] : 'unknown';
-
-      // 分类名称映射（与 manifest.json 保持一致）
-      final categoryNameMap = {
+      final name = (mcpData['name'] as String? ?? '未知菜谱').replaceFirst(
+        RegExp(r'的做法$'),
+        '',
+      );
+      final id = mcpData['id'] as String? ?? 'recipe_${name.hashCode.abs()}';
+      const categoryNameMap = {
         'meat_dish': '荤菜',
         'vegetable_dish': '素菜',
         'breakfast': '早餐',
@@ -149,84 +147,95 @@ class MCPService {
         'condiment': '调料',
         'aquatic': '水产',
       };
+      const categoryIdMap = {
+        '水产': 'aquatic',
+        '早餐': 'breakfast',
+        '调料': 'condiment',
+        '甜品': 'dessert',
+        '饮料': 'drink',
+        '饮品': 'drink',
+        '荤菜': 'meat_dish',
+        '半成品': 'semi-finished',
+        '半成品加工': 'semi-finished',
+        '汤': 'soup',
+        '汤粥': 'soup',
+        '汤羹': 'soup',
+        '主食': 'staple',
+        '素菜': 'vegetable_dish',
+      };
+      final rawCategory = mcpData['category']?.toString() ?? 'other';
+      final category = categoryNameMap.containsKey(rawCategory)
+          ? rawCategory
+          : (categoryIdMap[rawCategory] ?? 'other');
 
-      // 处理食材列表：MCP 使用 text_quantity，Recipe 期望 text
-      final mcpIngredients = mcpData['ingredients'] as List<dynamic>? ?? [];
-      final ingredients = mcpIngredients.map((item) {
-        if (item is Map<String, dynamic>) {
+      final ingredients = (mcpData['ingredients'] as List<dynamic>? ?? []).map((
+        item,
+      ) {
+        if (item is Map) {
+          final map = Map<String, dynamic>.from(item);
+          final text =
+              (map['text'] ?? map['text_quantity'] ?? map['name'] ?? '')
+                  .toString();
           return {
-            'name': item['name'] ?? '',
-            'text': item['text_quantity'] ?? item['text'] ?? '',
+            'name': (map['name'] ?? text.split(RegExp(r'\s+')).first)
+                .toString(),
+            'text': text,
+            'optional': map['optional'] == true,
+            if (map['source'] != null) 'source': map['source'],
+            if (map['table'] is Map) 'table': map['table'],
           };
         }
-        return {'name': '', 'text': item.toString()};
+        final text = item.toString();
+        return {'name': text.split(RegExp(r'\s+')).first, 'text': text};
       }).toList();
 
-      // 优先使用 MCP 返回的 steps 字段，fallback 到 description 解析
-      final mcpSteps = mcpData['steps'] as List<dynamic>?;
-      final description = mcpData['description'] as String? ?? '';
-      List<String> steps;
+      final steps = (mcpData['steps'] as List<dynamic>? ?? []).map((item) {
+        if (item is Map) {
+          final map = Map<String, dynamic>.from(item);
+          return {
+            'kind': map['kind'] ?? 'step',
+            if (map['title'] != null) 'title': map['title'],
+            'description':
+                (map['description'] ?? map['text'] ?? map['content'] ?? '')
+                    .toString(),
+          };
+        }
+        return {'kind': 'step', 'description': item.toString()};
+      }).toList();
 
-      if (mcpSteps != null && mcpSteps.isNotEmpty) {
-        steps = mcpSteps.map((step) {
-          if (step is Map<String, dynamic>) {
-            // MCP 步骤格式: { step: number, description: string }
-            return (step['description'] ?? step['text'] ?? step['content'] ?? step.values.last)
-                .toString();
-          }
-          return step.toString();
-        }).toList();
-      } else if (description.isNotEmpty) {
-        final lines = description.split('\n').where((line) {
-          final trimmed = line.trim();
-          return trimmed.isNotEmpty &&
-                 !trimmed.startsWith('#') &&
-                 !trimmed.startsWith('!') &&
-                 !trimmed.startsWith('预估烹饪难度') &&
-                 !trimmed.startsWith('预计制作');
-        }).toList();
-        steps = lines.isEmpty ? ['请参考菜谱详情'] : lines.map((l) => l.trim()).toList();
-      } else {
-        steps = ['请参考菜谱详情'];
-      }
-
-      // 优先使用 MCP 返回的 difficulty，fallback 到 description 解析
-      final mcpDifficulty = mcpData['difficulty'];
-      int difficulty;
-      if (mcpDifficulty is int) {
-        difficulty = mcpDifficulty;
-      } else if (mcpDifficulty is String) {
-        difficulty = mcpDifficulty.replaceAll(RegExp(r'[^★]'), '').length;
-        if (difficulty == 0) difficulty = int.tryParse(mcpDifficulty) ?? 3;
-      } else {
-        final difficultyMatch = RegExp(r'预估烹饪难度：(★+)').firstMatch(description);
-        difficulty = difficultyMatch != null ? difficultyMatch.group(1)!.length : 3;
-      }
-
-      // 提取 tools、tips、warnings
-      final mcpTools = mcpData['tools'] as List<dynamic>?;
-      final tools = mcpTools?.map((t) => t.toString()).toList() ?? <String>[];
-
-      final tips = mcpData['tips'] as String?;
-
-      final mcpWarnings = mcpData['warnings'] as List<dynamic>?;
-      final warnings = mcpWarnings?.map((w) => w.toString()).toList() ?? <String>[];
-
-      var recipeName = name.replaceFirst(RegExp(r'的做法$'), '');
+      final additionalNotes = mcpData['additional_notes'];
+      final tips =
+          mcpData['tips'] ??
+          (additionalNotes is List
+              ? additionalNotes.join('\n')
+              : additionalNotes);
 
       final recipeJson = {
+        'schemaVersion': mcpData['schemaVersion'] ?? 2,
         'id': id,
-        'name': recipeName,
+        'legacyIds': mcpData['legacyIds'] ?? const <String>[],
+        'name': name,
+        'description': mcpData['description'],
         'category': category,
-        'categoryName': categoryNameMap[category] ?? '其他',
-        'difficulty': difficulty,
+        'categoryName':
+            mcpData['categoryName'] ?? categoryNameMap[category] ?? '其他',
+        'difficulty': mcpData['difficulty'] ?? 3,
+        'estimatedCaloriesKcal': mcpData['estimatedCaloriesKcal'],
         'images': mcpData['images'] as List<dynamic>? ?? [],
+        'externalImages': mcpData['externalImages'] as List<dynamic>? ?? [],
+        'requirements': mcpData['requirements'] as List<dynamic>? ?? [],
+        'requirementsMarkdown': mcpData['requirementsMarkdown'],
         'ingredients': ingredients,
-        'tools': tools,
+        'tools': mcpData['tools'] as List<dynamic>? ?? [],
+        'calculationMarkdown': mcpData['calculationMarkdown'],
+        'calculationNotes': mcpData['calculationNotes'] as List<dynamic>? ?? [],
         'steps': steps,
-        'tips': tips,
-        'warnings': warnings,
+        'operationMarkdown': mcpData['operationMarkdown'],
+        'tips': tips?.toString(),
+        'warnings': mcpData['warnings'] as List<dynamic>? ?? [],
+        'additionalMarkdown': mcpData['additionalMarkdown'],
         'hash': mcpData['hash'] as String? ?? id.hashCode.toString(),
+        'source': mcpData['source'] ?? 'cloud',
       };
 
       return Recipe.fromJson(recipeJson);
@@ -245,7 +254,9 @@ class MCPService {
       });
 
       if (result is List) {
-        return result.map((json) => _mcpToRecipe(json as Map<String, dynamic>)).toList();
+        return result
+            .map((json) => _mcpToRecipe(json as Map<String, dynamic>))
+            .toList();
       }
 
       throw Exception('Invalid getAllRecipes result format');
@@ -265,7 +276,9 @@ class MCPService {
       });
 
       if (result is List) {
-        return result.map((json) => _mcpToRecipe(json as Map<String, dynamic>)).toList();
+        return result
+            .map((json) => _mcpToRecipe(json as Map<String, dynamic>))
+            .toList();
       }
 
       throw Exception('Invalid getRecipesByCategory result format');
@@ -282,9 +295,7 @@ class MCPService {
   /// 返回 [Recipe]（精确匹配）或 [Map]（模糊匹配/错误建议，直接透传给 AI）
   Future<dynamic> getRecipeById(String query) async {
     try {
-      final result = await _callTool('getRecipeById', {
-        'query': query,
-      });
+      final result = await _callTool('getRecipeById', {'query': query});
 
       if (result is Map<String, dynamic>) {
         // 精确匹配：MCP 直接返回完整菜谱数据（含 name 字段）
@@ -298,7 +309,9 @@ class MCPService {
             result.containsKey('suggestion')) {
           return result;
         }
-      } else if (result is List && result.isNotEmpty && result[0] is Map<String, dynamic>) {
+      } else if (result is List &&
+          result.isNotEmpty &&
+          result[0] is Map<String, dynamic>) {
         return _mcpToRecipe(result[0] as Map<String, dynamic>);
       }
 
@@ -320,9 +333,7 @@ class MCPService {
     List<String>? avoidItems,
   }) async {
     try {
-      final arguments = <String, dynamic>{
-        'peopleCount': peopleCount,
-      };
+      final arguments = <String, dynamic>{'peopleCount': peopleCount};
 
       if (allergies != null && allergies.isNotEmpty) {
         arguments['allergies'] = allergies;
@@ -351,9 +362,7 @@ class MCPService {
   /// 返回格式: { peopleCount, meatDishCount, vegetableDishCount, dishes: [...], message }
   Future<List<Recipe>> whatToEat({required int peopleCount}) async {
     try {
-      final result = await _callTool('whatToEat', {
-        'peopleCount': peopleCount,
-      });
+      final result = await _callTool('whatToEat', {'peopleCount': peopleCount});
 
       if (result is Map<String, dynamic>) {
         // 提取 dishes 数组
@@ -363,7 +372,9 @@ class MCPService {
         }
 
         // 使用 _mcpToRecipe 转换 MCP 数据为 Recipe 实体
-        return dishes.map((json) => _mcpToRecipe(json as Map<String, dynamic>)).toList();
+        return dishes
+            .map((json) => _mcpToRecipe(json as Map<String, dynamic>))
+            .toList();
       }
 
       throw Exception('Invalid whatToEat result format');
@@ -382,8 +393,8 @@ class MCPService {
       // 本地过滤
       final results = allRecipes.where((recipe) {
         return recipe.name.contains(query) ||
-               recipe.categoryName.contains(query) ||
-               (recipe.tips?.contains(query) ?? false);
+            recipe.categoryName.contains(query) ||
+            (recipe.tips?.contains(query) ?? false);
       }).toList();
 
       return results;
@@ -459,7 +470,8 @@ class MCPService {
 
   /// 6. 创建新食谱
   ///
-  /// [recipeText] 自然语言格式的食谱文本
+  /// [recipe] 推荐的 V2 结构化食谱
+  /// [recipeText] 兼容旧版的自然语言食谱文本
   /// [checkDuplicate] 是否检查重复（默认 true）
   /// [similarityThreshold] 相似度检测阈值（0-1，默认 0.75）
   /// 对应 MCP 工具: mcp_howtocook_createRecipe
@@ -469,16 +481,22 @@ class MCPService {
   ///   warnings: [...] // 警告信息（如相似度检测结果）
   /// }
   Future<Map<String, dynamic>> createRecipe({
-    required String recipeText,
+    String? recipeText,
+    Map<String, dynamic>? recipe,
     bool checkDuplicate = true,
     double similarityThreshold = 0.75,
   }) async {
     try {
       final arguments = <String, dynamic>{
-        'recipeText': recipeText,
+        if (recipeText != null && recipeText.trim().isNotEmpty)
+          'recipeText': recipeText,
+        if (recipe != null) 'recipe': recipe,
         'checkDuplicate': checkDuplicate,
         'similarityThreshold': similarityThreshold,
       };
+      if (!arguments.containsKey('recipeText') && recipe == null) {
+        throw ArgumentError('recipe 和 recipeText 至少需要一个');
+      }
 
       final result = await _callTool('createRecipe', arguments);
 
@@ -508,10 +526,7 @@ class MCPService {
         'method': 'tools/list',
       };
 
-      final response = await _dio.post(
-        '/mcp',
-        data: requestData,
-      );
+      final response = await _dio.post('/mcp', data: requestData);
 
       // tools/list 返回格式特殊，需要单独解析
       final data = response.data as String;

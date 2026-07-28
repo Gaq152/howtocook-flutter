@@ -168,7 +168,10 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
               left: 24,
               right: 24,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.7),
                   borderRadius: BorderRadius.circular(20),
@@ -176,10 +179,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
                 child: Text(
                   _scanStatus,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
                 ),
               ),
             ),
@@ -254,7 +254,8 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
     File? tempFile;
     try {
       final tempDir = await getTemporaryDirectory();
-      final tempPath = '${tempDir.path}/qr_frame_${now.millisecondsSinceEpoch}.jpg';
+      final tempPath =
+          '${tempDir.path}/qr_frame_${now.millisecondsSinceEpoch}.jpg';
       tempFile = File(tempPath);
       await tempFile.writeAsBytes(image);
       final results = await _wechatScanner.detectAndDecode(tempPath);
@@ -262,7 +263,9 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
     } catch (_) {
     } finally {
       _isWechatDecoding = false;
-      try { await tempFile?.delete(); } catch (_) {}
+      try {
+        await tempFile?.delete();
+      } catch (_) {}
     }
   }
 
@@ -284,7 +287,8 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
       if (byteData == null) return;
 
       final tempDir = await getTemporaryDirectory();
-      final tempPath = '${tempDir.path}/periodic_qr_${DateTime.now().millisecondsSinceEpoch}.png';
+      final tempPath =
+          '${tempDir.path}/periodic_qr_${DateTime.now().millisecondsSinceEpoch}.png';
       tempFile = File(tempPath);
       await tempFile.writeAsBytes(byteData.buffer.asUint8List());
 
@@ -298,7 +302,9 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
       debugPrint('定时扫描异常: $e');
     } finally {
       _isWechatDecoding = false;
-      try { await tempFile?.delete(); } catch (_) {}
+      try {
+        await tempFile?.delete();
+      } catch (_) {}
     }
   }
 
@@ -454,11 +460,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
       debugPrint('解析二维码失败: $e');
 
       if (mounted) {
-        AppSnackBar.show(
-          context,
-          '解析失败: $e',
-          backgroundColor: AppColors.error,
-        );
+        AppSnackBar.show(context, '解析失败: $e', backgroundColor: AppColors.error);
       }
 
       if (mounted) {
@@ -671,6 +673,14 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
         return null;
       }
 
+      // V2 静态菜谱使用极短的 UUID 引用码，避免将整份菜谱塞进二维码。
+      if (uri.queryParameters['v'] == '2' &&
+          uri.queryParameters['ref']?.isNotEmpty == true) {
+        final recipeId = uri.queryParameters['ref']!;
+        if (mounted) context.push('/recipe/$recipeId');
+        return null;
+      }
+
       // 优先处理未压缩的 Base64URL 格式
 
       if (uri.queryParameters.containsKey('raw')) {
@@ -802,6 +812,10 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
 
     debugPrint('JSON keys: ${json.keys.toList()}');
 
+    if (json['v'] == 2 || json['schemaVersion'] == 2) {
+      return _buildV2RecipeFromJson(json);
+    }
+
     // 1. 读取来源类型标记
 
     final String? sourceType = json['src'] as String?;
@@ -885,7 +899,8 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
 
     final category = json['c'] as String;
     final categoryMap = ref.read(categoryNameMapProvider).valueOrNull ?? {};
-    final categoryName = json['cn'] as String? ?? categoryMap[category] ?? category;
+    final categoryName =
+        json['cn'] as String? ?? categoryMap[category] ?? category;
 
     // 兼容新旧格式：新格式用 \n 分隔字符串，旧格式是 List
     final rawIngredients = json['i'];
@@ -902,15 +917,15 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
     final warnings = rawWarnings == null
         ? <String>[]
         : rawWarnings is String
-            ? rawWarnings.split('\n')
-            : List<String>.from(rawWarnings as List<dynamic>);
+        ? rawWarnings.split('\n')
+        : List<String>.from(rawWarnings as List<dynamic>);
 
     final rawTools = json['tl'];
     final tools = rawTools == null
         ? <String>[]
         : rawTools is String
-            ? rawTools.split('\n').where((t) => t.isNotEmpty).toList()
-            : List<String>.from(rawTools as List<dynamic>);
+        ? rawTools.split('\n').where((t) => t.isNotEmpty).toList()
+        : List<String>.from(rawTools as List<dynamic>);
 
     final recipe = Recipe(
       id: recipeId,
@@ -925,7 +940,8 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
             : textStr;
         return Ingredient(name: name, text: textStr);
       }).toList(),
-      steps: stepTexts.where((d) => d.isNotEmpty)
+      steps: stepTexts
+          .where((d) => d.isNotEmpty)
           .map((desc) => CookingStep(description: desc))
           .toList(),
       tips: json['t'] as String?,
@@ -951,6 +967,126 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
     return recipe;
   }
 
+  Recipe _buildV2RecipeFromJson(Map<String, dynamic> json) {
+    final sourceType = json['src']?.toString();
+    final rawId = json['id']?.toString() ?? '';
+    final recipeId = rawId.isNotEmpty
+        ? rawId
+        : 'preview_${DateTime.now().millisecondsSinceEpoch}';
+    final category = json['c']?.toString() ?? 'vegetable_dish';
+    final categoryMap = ref.read(categoryNameMapProvider).valueOrNull ?? {};
+    final categoryName =
+        json['cn']?.toString() ?? categoryMap[category] ?? category;
+
+    final requirements = (json['r'] as List<dynamic>? ?? []).map((item) {
+      if (item is Map) {
+        final value = Map<String, dynamic>.from(item);
+        final text = (value['t'] ?? value['text'] ?? '').toString();
+        return RecipeRequirement(
+          text: text,
+          markdown: (value['m'] ?? value['markdown'] ?? text).toString(),
+          group: value['g']?.toString(),
+          kind: (value['k'] ?? value['kind'] ?? 'unknown').toString(),
+        );
+      }
+      return RecipeRequirement(
+        text: item.toString(),
+        markdown: item.toString(),
+      );
+    }).toList();
+
+    final ingredients = (json['i'] as List<dynamic>? ?? []).map((item) {
+      if (item is Map) {
+        final value = Map<String, dynamic>.from(item);
+        final text =
+            (value['t'] ?? value['text'] ?? value['n'] ?? value['name'] ?? '')
+                .toString();
+        final rawTable = value['b'] ?? value['table'];
+        return Ingredient(
+          name:
+              (value['n'] ?? value['name'] ?? text.split(RegExp(r'\s+')).first)
+                  .toString(),
+          text: text,
+          optional: value['o'] == true || value['optional'] == true,
+          source: (value['x'] ?? value['source'])?.toString(),
+          table: rawTable is Map
+              ? rawTable.map(
+                  (key, value) => MapEntry(key.toString(), value.toString()),
+                )
+              : const {},
+        );
+      }
+      final text = item.toString();
+      return Ingredient(name: text.split(RegExp(r'\s+')).first, text: text);
+    }).toList();
+
+    final steps = (json['s'] as List<dynamic>? ?? []).map((item) {
+      if (item is Map) {
+        final value = Map<String, dynamic>.from(item);
+        return CookingStep(
+          kind: (value['k'] ?? value['kind'] ?? 'step').toString(),
+          title: (value['t'] ?? value['title'])?.toString(),
+          description: (value['d'] ?? value['description'] ?? '').toString(),
+        );
+      }
+      return CookingStep(description: item.toString());
+    }).toList();
+
+    List<String> strings(dynamic value) {
+      if (value == null) return [];
+      if (value is List) return value.map((item) => item.toString()).toList();
+      return value
+          .toString()
+          .split('\n')
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+
+    final tools = strings(json['tl']);
+    final calculationNotes = strings(json['cl']);
+    final warnings = strings(json['w']);
+    final isPartial = json['p'] == true || sourceType == 'p';
+    if (isPartial && !warnings.any((warning) => warning.contains('只包含摘要'))) {
+      warnings.add('该二维码只包含菜谱摘要，完整内容请查看分享图或分享文本。');
+    }
+
+    final source = switch (sourceType) {
+      'm' => RecipeSource.userModified,
+      'a' => RecipeSource.aiGenerated,
+      'u' => RecipeSource.userCreated,
+      _ => RecipeSource.scanned,
+    };
+
+    return Recipe(
+      schemaVersion: 2,
+      id: recipeId,
+      name: json['n']?.toString() ?? '未命名菜谱',
+      description: json['ds']?.toString(),
+      category: category,
+      categoryName: categoryName,
+      difficulty: (json['d'] as num?)?.toInt() ?? 3,
+      estimatedCaloriesKcal: (json['k'] as num?)?.toInt(),
+      requirements: requirements,
+      requirementsMarkdown: requirements.isEmpty
+          ? null
+          : requirements.map((item) => '* ${item.text}').join('\n'),
+      ingredients: ingredients,
+      tools: tools,
+      calculationNotes: calculationNotes,
+      calculationMarkdown: [
+        ...calculationNotes,
+        ...ingredients.map((item) => '* ${item.text}'),
+      ].join('\n'),
+      steps: steps,
+      operationMarkdown: steps.map((step) => step.description).join('\n'),
+      tips: json['t']?.toString(),
+      warnings: warnings,
+      additionalMarkdown: isPartial ? '注：二维码因容量限制仅传输摘要。' : null,
+      images: const [],
+      hash: '',
+      source: source,
+    );
+  }
 }
 
 /// 扫描框遮罩绘制器

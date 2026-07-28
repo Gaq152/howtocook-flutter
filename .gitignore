@@ -82,3 +82,4 @@ scripts/
 
 # 本地静态数据仓库（独立 Git 仓库）
 /HowToCook-assets/
+/HowToCook-mcp/

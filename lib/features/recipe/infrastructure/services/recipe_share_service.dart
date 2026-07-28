@@ -18,9 +18,21 @@ final recipeShareServiceProvider = Provider<RecipeShareService>((ref) {
 
 /// 分享结果枚举
 enum RecipeShareResult {
-  success,      // 成功
-  cancelled,    // 用户取消
-  failed,       // 失败
+  success, // 成功
+  cancelled, // 用户取消
+  failed, // 失败
+}
+
+class RecipeQrPayload {
+  final String data;
+  final bool isComplete;
+  final String note;
+
+  const RecipeQrPayload({
+    required this.data,
+    required this.isComplete,
+    required this.note,
+  });
 }
 
 /// 菜谱分享服务
@@ -28,7 +40,6 @@ enum RecipeShareResult {
 /// 1. 纯文本分享(复制到剪贴板)
 /// 2. 图片分享(生成菜谱卡片图片并分享,底部内嵌App专用二维码)
 class RecipeShareService {
-
   /// 分享为纯文本(复制到剪贴板)
   ///
   /// 将菜谱格式化为美观的纯文本格式,并复制到剪贴板
@@ -58,28 +69,48 @@ class RecipeShareService {
 
     // 分类
     buffer.writeln('📂 分类: ${recipe.categoryName}');
-    buffer.writeln();
-
-    // 食材
-    buffer.writeln('📝 食材:');
-    for (final ingredient in recipe.ingredients) {
-      buffer.writeln('• ${ingredient.text}');
+    if (recipe.estimatedCaloriesKcal != null) {
+      buffer.writeln('🔥 估算总热量: ${recipe.estimatedCaloriesKcal} kcal');
     }
     buffer.writeln();
 
-    // 工具(如果有)
-    if (recipe.tools.isNotEmpty) {
-      buffer.writeln('🔧 所需工具:');
-      for (final tool in recipe.tools) {
+    if (recipe.description?.trim().isNotEmpty == true) {
+      buffer.writeln('📖 菜谱简介:');
+      buffer.writeln(recipe.description!.trim());
+      buffer.writeln();
+    }
+
+    if (recipe.requirements.isNotEmpty || recipe.tools.isNotEmpty) {
+      buffer.writeln('🧺 必备原料和工具:');
+      for (final requirement in recipe.requirements) {
+        buffer.writeln('• ${requirement.text}');
+      }
+      for (final tool in recipe.tools.where(
+        (tool) => !recipe.requirements.any((item) => item.text == tool),
+      )) {
         buffer.writeln('• $tool');
       }
       buffer.writeln();
     }
 
-    // 步骤
-    buffer.writeln('👨‍🍳 制作步骤:');
-    for (int i = 0; i < recipe.steps.length; i++) {
-      buffer.writeln('${i + 1}. ${recipe.steps[i].description}');
+    buffer.writeln('🧮 用量与计算:');
+    for (final note in recipe.calculationNotes) {
+      buffer.writeln(note);
+    }
+    for (final ingredient in recipe.ingredients) {
+      buffer.writeln('• ${ingredient.text}');
+      if (ingredient.table.isNotEmpty) {
+        buffer.writeln(
+          '  ${ingredient.table.entries.map((e) => '${e.key}: ${e.value}').join(' | ')}',
+        );
+      }
+    }
+    buffer.writeln();
+
+    buffer.writeln('👨‍🍳 操作:');
+    for (final step in recipe.steps) {
+      if (step.title?.isNotEmpty == true) buffer.writeln(step.title);
+      buffer.writeln('• ${step.description}');
     }
     buffer.writeln();
 
@@ -118,13 +149,14 @@ class RecipeShareService {
   }) async {
     try {
       // 1. 生成二维码数据
-      final qrData = _generateCustomScheme(recipe);
+      final qrPayload = generateQRPayload(recipe);
       debugPrint('🔄 开始生成分享图片（Overlay方案）...');
 
       // 2. 使用 Overlay + RepaintBoundary + toImage() 捕获完整长截图
       final Uint8List? imageBytes = await _captureWidgetAsImage(
         recipe: recipe,
-        qrData: qrData,
+        qrData: qrPayload.data,
+        qrNote: qrPayload.note,
         context: context,
       );
 
@@ -141,7 +173,8 @@ class RecipeShareService {
         try {
           await Gal.putImageBytes(
             imageBytes,
-            name: 'recipe_${recipe.id}_${DateTime.now().millisecondsSinceEpoch}', // gal 会自动添加 .png
+            name:
+                'recipe_${recipe.id}_${DateTime.now().millisecondsSinceEpoch}', // gal 会自动添加 .png
           );
           debugPrint('图片已保存到相册');
           return RecipeShareResult.success;
@@ -159,10 +192,9 @@ class RecipeShareService {
         await file.writeAsBytes(imageBytes);
 
         // 使用 share_plus 分享
-        final result = await Share.shareXFiles(
-          [XFile(file.path)],
-          text: '分享食谱：${recipe.name}',
-        );
+        final result = await Share.shareXFiles([
+          XFile(file.path),
+        ], text: '分享食谱：${recipe.name}');
 
         // 清理临时文件
         try {
@@ -187,7 +219,7 @@ class RecipeShareService {
   /// 返回包含菜谱完整信息的 Custom Scheme 格式数据
   /// 格式: howtocook://recipe?data=BASE64URL(GZIP(JSON))
   String generateQRData(Recipe recipe) {
-    return _generateCustomScheme(recipe);
+    return generateQRPayload(recipe).data;
   }
 
   /// 生成菜谱卡片图片字节（公共方法供预览使用）
@@ -198,10 +230,11 @@ class RecipeShareService {
     Recipe recipe,
     BuildContext context,
   ) async {
-    final qrData = _generateCustomScheme(recipe);
+    final qrPayload = generateQRPayload(recipe);
     return await _captureWidgetAsImage(
       recipe: recipe,
-      qrData: qrData,
+      qrData: qrPayload.data,
+      qrNote: qrPayload.note,
       context: context,
     );
   }
@@ -221,95 +254,162 @@ class RecipeShareService {
   /// - 大数据（≥1000字节）：GZIP + Base64URL（减小二维码复杂度）
   ///
   /// 注意：增加 800ms 渲染延迟可彻底解决二维码乱码问题
-  String _generateCustomScheme(Recipe recipe) {
+  static const int maxReliableQrCharacters = 2400;
+
+  RecipeQrPayload generateQRPayload(Recipe recipe) {
     try {
-      // 1. 根据食谱来源构建不同格式的 JSON 数据
-      final Map<String, dynamic> payload;
-
-      switch (recipe.source) {
-        case RecipeSource.bundled:
-          // 内置食谱：只包含 ID
-          payload = {
-            'src': 'b',
-            'id': recipe.id,
-            'n': recipe.name,
-          };
-          debugPrint('📦 生成内置食谱二维码: ${recipe.name}');
-          break;
-
-        case RecipeSource.userModified:
-          // 修改的内置食谱：包含 ID + 所有字段
-          payload = {
-            'src': 'm',
-            'id': recipe.id,
-            'n': recipe.name,
-            'd': recipe.difficulty,
-            'c': recipe.category,
-            'i': recipe.ingredients.map((ing) => ing.text).join('\n'),
-            's': recipe.steps.map((step) => step.description).join('\n'),
-            if (recipe.tools.isNotEmpty) 'tl': recipe.tools.join('\n'),
-            if (recipe.tips != null && recipe.tips!.isNotEmpty) 't': recipe.tips,
-            if (recipe.warnings.isNotEmpty) 'w': recipe.warnings.join('\n'),
-          };
-          debugPrint('✏️  生成修改版食谱二维码: ${recipe.name}');
-          break;
-
-        case RecipeSource.userCreated:
-        case RecipeSource.aiGenerated:
-        case RecipeSource.scanned:
-        case RecipeSource.cloud:
-          // 用户创建/AI/扫码/云端：完整信息（不传 id，接收方生成新 ID）
-          payload = {
-            'src': recipe.source == RecipeSource.aiGenerated ? 'a' : 'u',
-            'n': recipe.name,
-            'd': recipe.difficulty,
-            'c': recipe.category,
-            'i': recipe.ingredients.map((ing) => ing.text).join('\n'),
-            's': recipe.steps.map((step) => step.description).join('\n'),
-            if (recipe.tools.isNotEmpty) 'tl': recipe.tools.join('\n'),
-            if (recipe.tips != null && recipe.tips!.isNotEmpty) 't': recipe.tips,
-            if (recipe.warnings.isNotEmpty) 'w': recipe.warnings.join('\n'),
-          };
-          debugPrint('👤 生成食谱二维码: ${recipe.name}');
+      if (recipe.source == RecipeSource.bundled ||
+          recipe.source == RecipeSource.cloud) {
+        return RecipeQrPayload(
+          data:
+              'howtocook://recipe?v=2&ref=${Uri.encodeQueryComponent(recipe.id)}',
+          isComplete: true,
+          note: '扫码打开完整云端菜谱',
+        );
       }
 
-      // 2. 转为 JSON 字符串
-      final jsonString = jsonEncode(payload);
-      final utf8Bytes = utf8.encode(jsonString);
-
-      // 3. 智能选择压缩策略（提高阈值到 1000 字节）
-      if (utf8Bytes.length < 1000) {
-        // 小数据：不压缩，直接 Base64URL 编码
-        final base64String = base64Url.encode(utf8Bytes).replaceAll('=', '');
-        final scheme = 'howtocook://recipe?raw=$base64String';
-
-        debugPrint('📦 二维码数据（未压缩）: ${scheme.length} 字节 (JSON: ${utf8Bytes.length} 字节)');
-        return scheme;
-      } else {
-        // 大数据：GZIP 压缩后 Base64URL 编码
-        final gzipBytes = GZipEncoder().encode(utf8Bytes);
-
-        if (gzipBytes == null || gzipBytes.length >= utf8Bytes.length * 0.9) {
-          // 压缩效果不明显（节省<10%），使用未压缩
-          final base64String = base64Url.encode(utf8Bytes).replaceAll('=', '');
-          final scheme = 'howtocook://recipe?raw=$base64String';
-
-          debugPrint('⚠️  GZIP 压缩效果不佳，使用未压缩: ${scheme.length} 字节');
-          return scheme;
-        }
-
-        final base64String = base64Url.encode(gzipBytes).replaceAll('=', '');
-        final scheme = 'howtocook://recipe?data=$base64String';
-
-        debugPrint('📦 二维码数据（GZIP 压缩）: ${scheme.length} 字节');
-        debugPrint('   压缩前: ${utf8Bytes.length} 字节 → 压缩后: ${gzipBytes.length} 字节 (节省 ${((1 - gzipBytes.length / utf8Bytes.length) * 100).toStringAsFixed(1)}%)');
-
-        return scheme;
+      final fullScheme = _encodeQrPayload(_buildV2Payload(recipe));
+      if (fullScheme.length <= maxReliableQrCharacters) {
+        return RecipeQrPayload(
+          data: fullScheme,
+          isComplete: true,
+          note: '扫码导入完整 V2 菜谱',
+        );
       }
+
+      if (recipe.source == RecipeSource.userModified) {
+        return RecipeQrPayload(
+          data:
+              'howtocook://recipe?v=2&ref=${Uri.encodeQueryComponent(recipe.id)}',
+          isComplete: false,
+          note: '内容过长，二维码打开原菜谱；修改内容以分享图为准',
+        );
+      }
+
+      var summaryScheme = _encodeQrPayload(_buildSummaryPayload(recipe));
+      if (summaryScheme.length > maxReliableQrCharacters) {
+        summaryScheme = _encodeQrPayload({
+          'v': 2,
+          'src': 'p',
+          'p': true,
+          'id': recipe.id,
+          'n': _truncate(recipe.name, 80),
+          'c': recipe.category,
+          'cn': _truncate(recipe.categoryName, 30),
+          'd': recipe.difficulty,
+          if (recipe.estimatedCaloriesKcal != null)
+            'k': recipe.estimatedCaloriesKcal,
+          'w': const ['二维码仅含基础摘要，完整内容以分享图/文本为准。'],
+        });
+      }
+      return RecipeQrPayload(
+        data: summaryScheme,
+        isComplete: false,
+        note: '内容过长，二维码仅含摘要；完整内容以分享图/文本为准',
+      );
     } catch (e) {
       debugPrint('生成 Custom Scheme 失败: $e');
-      return _fallbackScheme(recipe);
+      return RecipeQrPayload(
+        data: _fallbackScheme(recipe),
+        isComplete: false,
+        note: '二维码仅含基础摘要',
+      );
     }
+  }
+
+  Map<String, dynamic> _buildV2Payload(Recipe recipe) => {
+    'v': 2,
+    'src': recipe.source == RecipeSource.aiGenerated
+        ? 'a'
+        : recipe.source == RecipeSource.userModified
+        ? 'm'
+        : 'u',
+    'id': recipe.id,
+    'n': recipe.name,
+    if (recipe.description?.isNotEmpty == true) 'ds': recipe.description,
+    'd': recipe.difficulty,
+    'c': recipe.category,
+    'cn': recipe.categoryName,
+    if (recipe.estimatedCaloriesKcal != null) 'k': recipe.estimatedCaloriesKcal,
+    if (recipe.requirements.isNotEmpty)
+      'r': recipe.requirements
+          .map(
+            (item) => item.kind == 'unknown' && item.group == null
+                ? item.text
+                : {
+                    't': item.text,
+                    if (item.kind != 'unknown') 'k': item.kind,
+                    if (item.group != null) 'g': item.group,
+                  },
+          )
+          .toList(),
+    'i': recipe.ingredients
+        .map(
+          (item) => !item.optional && item.source == null && item.table.isEmpty
+              ? item.text
+              : {
+                  'n': item.name,
+                  't': item.text,
+                  if (item.optional) 'o': true,
+                  if (item.source != null) 'x': item.source,
+                  if (item.table.isNotEmpty) 'b': item.table,
+                },
+        )
+        .toList(),
+    if (recipe.tools.isNotEmpty) 'tl': recipe.tools,
+    if (recipe.calculationNotes.isNotEmpty) 'cl': recipe.calculationNotes,
+    's': recipe.steps
+        .map(
+          (step) => step.kind == 'step' && step.title == null
+              ? step.description
+              : {
+                  'k': step.kind,
+                  if (step.title != null) 't': step.title,
+                  'd': step.description,
+                },
+        )
+        .toList(),
+    if (recipe.tips?.isNotEmpty == true) 't': recipe.tips,
+    if (recipe.warnings.isNotEmpty) 'w': recipe.warnings,
+  };
+
+  Map<String, dynamic> _buildSummaryPayload(Recipe recipe) => {
+    'v': 2,
+    'src': 'p',
+    'p': true,
+    'id': recipe.id,
+    'n': _truncate(recipe.name, 80),
+    if (recipe.description?.isNotEmpty == true)
+      'ds': _truncate(recipe.description!, 80),
+    'd': recipe.difficulty,
+    'c': recipe.category,
+    'cn': recipe.categoryName,
+    if (recipe.estimatedCaloriesKcal != null) 'k': recipe.estimatedCaloriesKcal,
+    'r': recipe.requirements
+        .take(5)
+        .map((item) => _truncate(item.text, 40))
+        .toList(),
+    'i': recipe.ingredients
+        .take(6)
+        .map((item) => _truncate(item.text, 60))
+        .toList(),
+    's': recipe.steps
+        .take(2)
+        .map((step) => _truncate(step.description, 100))
+        .toList(),
+    'w': const ['该菜谱的二维码只包含摘要，完整内容请查看分享图或分享文本。'],
+  };
+
+  String _truncate(String value, int maxLength) =>
+      value.length <= maxLength ? value : '${value.substring(0, maxLength)}…';
+
+  String _encodeQrPayload(Map<String, dynamic> payload) {
+    final rawBytes = utf8.encode(jsonEncode(payload));
+    final gzipBytes = GZipEncoder().encode(rawBytes);
+    if (gzipBytes != null && gzipBytes.length < rawBytes.length) {
+      return 'howtocook://recipe?data=${base64Url.encode(gzipBytes).replaceAll('=', '')}';
+    }
+    return 'howtocook://recipe?raw=${base64Url.encode(rawBytes).replaceAll('=', '')}';
   }
 
   /// 使用 Overlay + RepaintBoundary 捕获 Widget 为图片（真正的长截图）
@@ -319,6 +419,7 @@ class RecipeShareService {
   Future<Uint8List?> _captureWidgetAsImage({
     required Recipe recipe,
     required String qrData,
+    required String qrNote,
     required BuildContext context,
   }) async {
     try {
@@ -348,6 +449,7 @@ class RecipeShareService {
                     child: RecipeShareCard(
                       recipe: recipe,
                       qrData: qrData,
+                      qrNote: qrNote,
                     ),
                   ),
                 ),
@@ -366,11 +468,13 @@ class RecipeShareService {
       await Future.delayed(const Duration(milliseconds: 1000));
 
       // 获取 RenderRepaintBoundary
-      final RenderObject? renderObject =
-          repaintBoundaryKey.currentContext?.findRenderObject();
+      final RenderObject? renderObject = repaintBoundaryKey.currentContext
+          ?.findRenderObject();
 
       if (renderObject is! RenderRepaintBoundary) {
-        debugPrint('❌ 无法获取 RenderRepaintBoundary，类型: ${renderObject.runtimeType}');
+        debugPrint(
+          '❌ 无法获取 RenderRepaintBoundary，类型: ${renderObject.runtimeType}',
+        );
         overlayEntry.remove();
         return null;
       }
@@ -391,7 +495,9 @@ class RecipeShareService {
       }
 
       final bytes = byteData.buffer.asUint8List();
-      debugPrint('✅ Overlay截图成功: ${bytes.length} 字节, 图片尺寸: ${image.width}x${image.height}');
+      debugPrint(
+        '✅ Overlay截图成功: ${bytes.length} 字节, 图片尺寸: ${image.width}x${image.height}',
+      );
 
       return bytes;
     } catch (e, stackTrace) {

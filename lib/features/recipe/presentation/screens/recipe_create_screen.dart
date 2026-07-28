@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:uuid/uuid.dart';
 import '../../domain/entities/recipe.dart';
 import '../../application/providers/recipe_providers.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -30,6 +31,8 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
   // 表单控制器
   late TextEditingController _nameController;
   late TextEditingController _pasteController;
+  late TextEditingController _descriptionController;
+  late TextEditingController _caloriesController;
 
   // 数据
   bool _isSaving = false;
@@ -39,7 +42,9 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
   // 编辑状态
   String _selectedCategory = 'meat_dish'; // 默认分类
   int _selectedDifficulty = 1; // 默认难度
+  List<String> _requirementTexts = [];
   List<String> _ingredientTexts = [];
+  List<String> _calculationNotes = [];
   List<String> _stepDescriptions = [];
   List<String> _tools = [];
   String? _tips;
@@ -51,12 +56,16 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
     super.initState();
     _nameController = TextEditingController();
     _pasteController = TextEditingController();
+    _descriptionController = TextEditingController();
+    _caloriesController = TextEditingController();
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _pasteController.dispose();
+    _descriptionController.dispose();
+    _caloriesController.dispose();
     super.dispose();
   }
 
@@ -88,11 +97,15 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
             const SizedBox(height: 24),
             _buildBasicInfoSection(),
             const SizedBox(height: 24),
-            _buildIngredientsSection(),
-            const SizedBox(height: 24),
-            _buildStepsSection(),
+            _buildRequirementsSection(),
             const SizedBox(height: 24),
             _buildToolsSection(),
+            const SizedBox(height: 24),
+            _buildIngredientsSection(),
+            const SizedBox(height: 24),
+            _buildCalculationNotesSection(),
+            const SizedBox(height: 24),
+            _buildStepsSection(),
             const SizedBox(height: 24),
             _buildTipsSection(),
             const SizedBox(height: 24),
@@ -124,24 +137,24 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
                 const SizedBox(width: 8),
                 Text(
                   '智能导入',
-                  style: AppTextStyles.h3.copyWith(color: AppColors.primaryDark),
+                  style: AppTextStyles.h3.copyWith(
+                    color: AppColors.primaryDark,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
             Text(
               '粘贴菜谱内容，AI 将自动解析并填充表单',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.primary,
-              ),
+              style: TextStyle(fontSize: 14, color: AppColors.primary),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _pasteController,
               maxLines: 6,
               decoration: InputDecoration(
-                hintText: '粘贴菜谱内容...\n例如：\n菜名：红烧肉\n食材：五花肉 500g、生抽 2勺...\n步骤：1. 五花肉切块...',
+                hintText:
+                    '粘贴 V2 菜谱内容...\n例如：\n菜名：红烧肉\n菜谱简介：...\n必备原料和工具：...\n用量与计算：...\n操作：...',
                 border: const OutlineInputBorder(),
                 filled: true,
                 fillColor: AppColors.surface,
@@ -165,6 +178,29 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
                 ),
               ),
               onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 16),
+
+            TextFormField(
+              controller: _descriptionController,
+              decoration: const InputDecoration(
+                labelText: '菜谱简介（可选）',
+                hintText: '简要介绍风味、营养、难度和预计耗时',
+                border: OutlineInputBorder(),
+              ),
+              minLines: 2,
+              maxLines: 5,
+            ),
+            const SizedBox(height: 16),
+
+            TextFormField(
+              controller: _caloriesController,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: const InputDecoration(
+                labelText: '估算总热量（kcal，可选）',
+                border: OutlineInputBorder(),
+              ),
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -196,6 +232,17 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
     );
   }
 
+  Widget _buildRequirementsSection() {
+    return _buildListSection(
+      title: '必备原料',
+      items: _requirementTexts,
+      onAdd: () => _addListItem(_requirementTexts, '新必备原料'),
+      onEdit: (index) => _editListItem(_requirementTexts, index, '编辑必备原料'),
+      onDelete: (index) => _deleteListItem(_requirementTexts, index),
+      onClear: () => _confirmAndClearList(_requirementTexts, '必备原料'),
+    );
+  }
+
   /// 基本信息部分
   Widget _buildBasicInfoSection() {
     return Card(
@@ -224,28 +271,30 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
             const SizedBox(height: 16),
 
             // 分类选择
-            ref.watch(categoryNameMapProvider).when(
-              data: (categoryMap) => DropdownButtonFormField<String>(
-                initialValue: _selectedCategory,
-                decoration: const InputDecoration(
-                  labelText: '分类',
-                  border: OutlineInputBorder(),
+            ref
+                .watch(categoryNameMapProvider)
+                .when(
+                  data: (categoryMap) => DropdownButtonFormField<String>(
+                    initialValue: _selectedCategory,
+                    decoration: const InputDecoration(
+                      labelText: '分类',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: categoryMap.entries.map((entry) {
+                      return DropdownMenuItem(
+                        value: entry.key,
+                        child: Text(entry.value),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => _selectedCategory = value);
+                      }
+                    },
+                  ),
+                  loading: () => const LinearProgressIndicator(),
+                  error: (_, __) => const Text('分类加载失败'),
                 ),
-                items: categoryMap.entries.map((entry) {
-                  return DropdownMenuItem(
-                    value: entry.key,
-                    child: Text(entry.value),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() => _selectedCategory = value);
-                  }
-                },
-              ),
-              loading: () => const LinearProgressIndicator(),
-              error: (_, __) => const Text('分类加载失败'),
-            ),
             const SizedBox(height: 16),
 
             // 难度选择 - 五颗星
@@ -287,12 +336,23 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
   /// 食材部分
   Widget _buildIngredientsSection() {
     return _buildListSection(
-      title: '食材',
+      title: '用量与计算（食材用量）',
       items: _ingredientTexts,
       onAdd: () => _addListItem(_ingredientTexts, '新食材'),
       onEdit: (index) => _editListItem(_ingredientTexts, index, '编辑食材'),
       onDelete: (index) => _deleteListItem(_ingredientTexts, index),
       onClear: () => _confirmAndClearList(_ingredientTexts, '食材'),
+    );
+  }
+
+  Widget _buildCalculationNotesSection() {
+    return _buildListSection(
+      title: '用量计算说明（可选）',
+      items: _calculationNotes,
+      onAdd: () => _addListItem(_calculationNotes, '例如：每人每顿 200 g'),
+      onEdit: (index) => _editListItem(_calculationNotes, index, '编辑计算说明'),
+      onDelete: (index) => _deleteListItem(_calculationNotes, index),
+      onClear: () => _confirmAndClearList(_calculationNotes, '用量计算说明'),
     );
   }
 
@@ -306,11 +366,12 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
           children: [
             Row(
               children: [
-                Text('制作步骤', style: AppTextStyles.h3),
+                Text('操作', style: AppTextStyles.h3),
                 const Spacer(),
                 if (_stepDescriptions.isNotEmpty)
                   IconButton(
-                    onPressed: () => _confirmAndClearList(_stepDescriptions, '制作步骤'),
+                    onPressed: () =>
+                        _confirmAndClearList(_stepDescriptions, '操作'),
                     icon: const Icon(Icons.clear_all, size: 20),
                     color: AppColors.error,
                     tooltip: '清空',
@@ -327,7 +388,10 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
               const Padding(
                 padding: EdgeInsets.all(16),
                 child: Center(
-                  child: Text('暂无制作步骤', style: TextStyle(color: AppColors.textDisabled)),
+                  child: Text(
+                    '暂无操作内容',
+                    style: TextStyle(color: AppColors.textDisabled),
+                  ),
                 ),
               )
             else
@@ -361,15 +425,13 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
                           children: [
                             ReorderableDragStartListener(
                               index: index,
-                              child: const Icon(Icons.drag_handle, color: AppColors.textDisabled, size: 20),
+                              child: const Icon(
+                                Icons.drag_handle,
+                                color: AppColors.textDisabled,
+                                size: 20,
+                              ),
                             ),
                             const SizedBox(width: 8),
-                            CircleAvatar(
-                              radius: 14,
-                              backgroundColor: AppColors.primary,
-                              child: Text('${index + 1}', style: const TextStyle(fontSize: 12, color: AppColors.surface)),
-                            ),
-                            const SizedBox(width: 12),
                             Expanded(child: Text(step)),
                           ],
                         ),
@@ -382,14 +444,19 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
                           children: [
                             IconButton(
                               icon: const Icon(Icons.edit, size: 16),
-                              onPressed: () => _editListItem(_stepDescriptions, index, '编辑步骤'),
+                              onPressed: () => _editListItem(
+                                _stepDescriptions,
+                                index,
+                                '编辑步骤',
+                              ),
                               padding: const EdgeInsets.all(6),
                               constraints: const BoxConstraints(),
                             ),
                             IconButton(
                               icon: const Icon(Icons.close, size: 16),
                               color: AppColors.error,
-                              onPressed: () => _deleteListItem(_stepDescriptions, index),
+                              onPressed: () =>
+                                  _deleteListItem(_stepDescriptions, index),
                               padding: const EdgeInsets.all(6),
                               constraints: const BoxConstraints(),
                             ),
@@ -409,7 +476,7 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
   /// 工具部分
   Widget _buildToolsSection() {
     return _buildListSection(
-      title: '所需工具（可选）',
+      title: '必备工具（可选）',
       items: _tools,
       onAdd: () => _addListItem(_tools, '新工具'),
       onEdit: (index) => _editListItem(_tools, index, '编辑工具'),
@@ -456,7 +523,12 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
   }
 
   /// 构建图片预览组件
-  Widget _buildImagePreview(String imagePath, {double? width, double? height, BoxFit fit = BoxFit.cover}) {
+  Widget _buildImagePreview(
+    String imagePath, {
+    double? width,
+    double? height,
+    BoxFit fit = BoxFit.cover,
+  }) {
     final isBase64 = imagePath.startsWith('data:image/');
     final isUrl = imagePath.startsWith('http');
     final isAsset = imagePath.startsWith('assets/');
@@ -466,19 +538,39 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
       try {
         final base64String = imagePath.split(',')[1];
         final bytes = base64Decode(base64String);
-        return Image.memory(bytes, width: width, height: height, fit: fit,
-          errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 48));
+        return Image.memory(
+          bytes,
+          width: width,
+          height: height,
+          fit: fit,
+          errorBuilder: (_, __, ___) =>
+              const Icon(Icons.broken_image, size: 48),
+        );
       } catch (_) {
         return const Icon(Icons.broken_image, size: 48);
       }
     } else if (isLocalFile && !kIsWeb && File(imagePath).existsSync()) {
-      return Image.file(File(imagePath), width: width, height: height, fit: fit,
-        errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 48));
+      return Image.file(
+        File(imagePath),
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 48),
+      );
     } else if (isUrl) {
-      return Image.network(imagePath, width: width, height: height, fit: fit,
-        errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 48));
+      return Image.network(
+        imagePath,
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 48),
+      );
     }
-    return Icon(Icons.image, size: height != null ? height * 0.4 : 48, color: AppColors.textDisabled);
+    return Icon(
+      Icons.image,
+      size: height != null ? height * 0.4 : 48,
+      color: AppColors.textDisabled,
+    );
   }
 
   /// 封面图片部分
@@ -544,14 +636,24 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
                   decoration: BoxDecoration(
                     color: AppColors.surfaceAlt,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.textDisabled.withValues(alpha: 0.3), width: 1),
+                    border: Border.all(
+                      color: AppColors.textDisabled.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
                   ),
                   child: const Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.add_photo_alternate, size: 48, color: AppColors.textDisabled),
+                      Icon(
+                        Icons.add_photo_alternate,
+                        size: 48,
+                        color: AppColors.textDisabled,
+                      ),
                       SizedBox(height: 8),
-                      Text('点击添加封面图片', style: TextStyle(color: AppColors.textDisabled)),
+                      Text(
+                        '点击添加封面图片',
+                        style: TextStyle(color: AppColors.textDisabled),
+                      ),
                     ],
                   ),
                 ),
@@ -626,7 +728,13 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
               children: [
                 Text('详情图片', style: AppTextStyles.h3),
                 const SizedBox(width: 8),
-                Text('(${detailImages.length})', style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                Text(
+                  '(${detailImages.length})',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
+                  ),
+                ),
                 const Spacer(),
                 IconButton(
                   onPressed: () => _addImageUrl(isCover: false),
@@ -645,7 +753,10 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
               const Padding(
                 padding: EdgeInsets.all(16),
                 child: Center(
-                  child: Text('暂无详情图片', style: TextStyle(color: AppColors.textDisabled)),
+                  child: Text(
+                    '暂无详情图片',
+                    style: TextStyle(color: AppColors.textDisabled),
+                  ),
                 ),
               )
             else
@@ -677,10 +788,18 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
                     child: SizedBox(
                       width: 40,
                       height: 40,
-                      child: _buildImagePreview(imagePath, width: 40, height: 40),
+                      child: _buildImagePreview(
+                        imagePath,
+                        width: 40,
+                        height: 40,
+                      ),
                     ),
                   ),
-                  title: Text(displayText, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  title: Text(
+                    displayText,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   subtitle: subtitle != null
                       ? Text(subtitle, style: const TextStyle(fontSize: 12))
                       : null,
@@ -744,7 +863,10 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Center(
-                  child: Text('暂无$title', style: const TextStyle(color: AppColors.textDisabled)),
+                  child: Text(
+                    '暂无$title',
+                    style: const TextStyle(color: AppColors.textDisabled),
+                  ),
                 ),
               )
             else
@@ -753,14 +875,21 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
                 final item = entry.value;
                 return Container(
                   margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.surfaceAlt,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.circle, size: 8, color: AppColors.textSecondary),
+                      const Icon(
+                        Icons.circle,
+                        size: 8,
+                        color: AppColors.textSecondary,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(child: Text(item)),
                       IconButton(
@@ -825,7 +954,9 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.5),
             ),
             border: const OutlineInputBorder(),
           ),
@@ -909,9 +1040,7 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.error,
-            ),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('清空'),
           ),
         ],
@@ -959,7 +1088,9 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
           decoration: InputDecoration(
             hintText: '输入图片URL地址',
             hintStyle: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.5),
             ),
             border: const OutlineInputBorder(),
           ),
@@ -1029,7 +1160,9 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
       );
 
       final originalSizeKB = (bytes.length / 1024).toStringAsFixed(1);
-      final compressedSizeKB = (compressedBytes.length / 1024).toStringAsFixed(1);
+      final compressedSizeKB = (compressedBytes.length / 1024).toStringAsFixed(
+        1,
+      );
 
       String imagePath;
 
@@ -1156,16 +1289,25 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
   String _removeEmoji(String text) {
     // 移除所有 emoji 和特殊符号（保留中文、英文、数字、标点）
     return text
-        .replaceAll(RegExp(r'[\u{1F300}-\u{1F9FF}]', unicode: true), '') // Emoji 表情
-        .replaceAll(RegExp(r'[\u{2600}-\u{26FF}]', unicode: true), '')  // 杂项符号
-        .replaceAll(RegExp(r'[\u{2700}-\u{27BF}]', unicode: true), '')  // 装饰符号
-        .replaceAll(RegExp(r'[\u{FE00}-\u{FE0F}]', unicode: true), '')  // 变体选择符
+        .replaceAll(
+          RegExp(r'[\u{1F300}-\u{1F9FF}]', unicode: true),
+          '',
+        ) // Emoji 表情
+        .replaceAll(RegExp(r'[\u{2600}-\u{26FF}]', unicode: true), '') // 杂项符号
+        .replaceAll(RegExp(r'[\u{2700}-\u{27BF}]', unicode: true), '') // 装饰符号
+        .replaceAll(RegExp(r'[\u{FE00}-\u{FE0F}]', unicode: true), '') // 变体选择符
         .replaceAll(RegExp(r'[\u{1F600}-\u{1F64F}]', unicode: true), '') // 表情符号
-        .replaceAll(RegExp(r'[\u{1F680}-\u{1F6FF}]', unicode: true), '') // 交通和地图符号
+        .replaceAll(
+          RegExp(r'[\u{1F680}-\u{1F6FF}]', unicode: true),
+          '',
+        ) // 交通和地图符号
         .replaceAll(RegExp(r'[\u{1F1E0}-\u{1F1FF}]', unicode: true), '') // 国旗
-        .replaceAll(RegExp(r'[\u{200D}]', unicode: true), '')  // 零宽连字符 (ZWJ)
-        .replaceAll(RegExp(r'[\u{200C}-\u{200F}]', unicode: true), '')  // 零宽字符
-        .replaceAll(RegExp(r'^[\s\u{200B}\u{FEFF}]+', unicode: true), '') // 开头的空白和零宽字符
+        .replaceAll(RegExp(r'[\u{200D}]', unicode: true), '') // 零宽连字符 (ZWJ)
+        .replaceAll(RegExp(r'[\u{200C}-\u{200F}]', unicode: true), '') // 零宽字符
+        .replaceAll(
+          RegExp(r'^[\s\u{200B}\u{FEFF}]+', unicode: true),
+          '',
+        ) // 开头的空白和零宽字符
         .trim();
   }
 
@@ -1214,10 +1356,17 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
 
     try {
       // 本地简单解析逻辑
-      final lines = content.split('\n').where((l) => l.trim().isNotEmpty).toList();
+      final lines = content
+          .split('\n')
+          .where((l) => l.trim().isNotEmpty)
+          .toList();
 
       String? name;
+      String? description;
+      int? estimatedCaloriesKcal;
+      List<String> requirements = [];
       List<String> ingredients = [];
+      List<String> calculationNotes = [];
       List<String> steps = [];
       List<String> tools = [];
       List<String> warnings = [];
@@ -1230,7 +1379,9 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
 
       for (var i = 0; i < lines.length; i++) {
         final line = lines[i].trim();
-        final cleanLine = _removeEmoji(line); // 移除 emoji 后的文本
+        final cleanLine = _removeEmoji(
+          line,
+        ).replaceFirst(RegExp(r'^#{1,6}\s*'), '').trim(); // 同时兼容 Markdown 标题
         final lowerLine = cleanLine.toLowerCase();
 
         debugPrint('\n--- 第 ${i + 1} 行 ---');
@@ -1247,15 +1398,29 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
           }
         }
 
+        if (name == null &&
+            line.trimLeft().startsWith('# ') &&
+            !lowerLine.contains('简介') &&
+            !lowerLine.contains('操作')) {
+          name = cleanLine.replaceFirst(RegExp(r'的做法$'), '').trim();
+          continue;
+        }
+
         // 解析菜名（标准格式）
-        if (lowerLine.startsWith('菜名：') || lowerLine.startsWith('菜名:') ||
-            lowerLine.startsWith('名称：') || lowerLine.startsWith('名称:')) {
+        if (lowerLine.startsWith('菜名：') ||
+            lowerLine.startsWith('菜名:') ||
+            lowerLine.startsWith('名称：') ||
+            lowerLine.startsWith('名称:')) {
           name = cleanLine.split(RegExp(r'[：:]'))[1].trim();
         }
         // 解析分类
-        else if (lowerLine.startsWith('分类：') || lowerLine.startsWith('分类:') ||
-                 lowerLine.startsWith('类别：') || lowerLine.startsWith('类别:')) {
-          final categoryText = _removeEmoji(cleanLine.split(RegExp(r'[：:]'))[1].trim());
+        else if (lowerLine.startsWith('分类：') ||
+            lowerLine.startsWith('分类:') ||
+            lowerLine.startsWith('类别：') ||
+            lowerLine.startsWith('类别:')) {
+          final categoryText = _removeEmoji(
+            cleanLine.split(RegExp(r'[：:]'))[1].trim(),
+          );
           category = _matchCategory(categoryText);
         }
         // 解析难度（支持星号 ⭐）
@@ -1269,7 +1434,9 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
             difficulty = 1;
           } else if (diffText.contains('中等') || diffText.contains('2')) {
             difficulty = 2;
-          } else if (diffText.contains('困难') || diffText.contains('3') || diffText.contains('难')) {
+          } else if (diffText.contains('困难') ||
+              diffText.contains('3') ||
+              diffText.contains('难')) {
             difficulty = 3;
           } else if (diffText.contains('4')) {
             difficulty = 4;
@@ -1277,17 +1444,122 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
             difficulty = 5;
           }
         }
+        // 解析简介（兼容 Markdown 独立板块）
+        else if (lowerLine.startsWith('菜谱简介') ||
+            lowerLine == '简介' ||
+            lowerLine.startsWith('简介：') ||
+            lowerLine.startsWith('简介:')) {
+          final parts = cleanLine.split(RegExp(r'[：:]'));
+          final paragraphs = <String>[];
+          if (parts.length > 1 &&
+              parts.sublist(1).join(':').trim().isNotEmpty) {
+            paragraphs.add(parts.sublist(1).join(':').trim());
+          }
+          for (var j = i + 1; j < lines.length; j++) {
+            final rawNext = lines[j].trim();
+            if (rawNext.startsWith('#')) break;
+            final next = _removeEmoji(rawNext).trim();
+            if (next.isNotEmpty) {
+              paragraphs.add(next);
+              i = j;
+            }
+          }
+          if (paragraphs.isNotEmpty) description = paragraphs.join('\n');
+        }
+        // 解析热量
+        else if (lowerLine.contains('卡路里') || lowerLine.contains('热量')) {
+          final match = RegExp(
+            r'(\d+)\s*(?:kcal|千卡|大卡)?',
+            caseSensitive: false,
+          ).firstMatch(cleanLine);
+          estimatedCaloriesKcal = match == null
+              ? null
+              : int.tryParse(match.group(1)!);
+        }
+        // 解析 V2 “必备原料和工具”
+        else if (lowerLine.startsWith('必备原料和工具') ||
+            lowerLine.startsWith('必备原料与工具')) {
+          for (var j = i + 1; j < lines.length; j++) {
+            final rawNext = lines[j].trim();
+            if (rawNext.startsWith('#')) break;
+            final next = _removeEmoji(
+              rawNext,
+            ).replaceFirst(RegExp(r'^[*•-]\s*'), '').trim();
+            if (next.isEmpty) continue;
+            const toolWords = [
+              '锅',
+              '刀',
+              '砧板',
+              '烤箱',
+              '微波炉',
+              '打蛋器',
+              '电饭煲',
+              '料理机',
+              '容器',
+            ];
+            if (toolWords.any(next.contains)) {
+              tools.add(next);
+            } else {
+              requirements.add(next);
+            }
+            i = j;
+          }
+        }
+        // 解析 V2 “用量与计算”，列表和 Markdown 表格均可识别
+        else if (lowerLine == '计算' ||
+            lowerLine.startsWith('用量与计算') ||
+            lowerLine.startsWith('用量和计算')) {
+          for (var j = i + 1; j < lines.length; j++) {
+            final rawNext = lines[j].trim();
+            if (rawNext.startsWith('#')) break;
+            var next = _removeEmoji(rawNext).trim();
+            if (RegExp(r'^\|?\s*:?-{3,}').hasMatch(next)) {
+              i = j;
+              continue;
+            }
+            if (next.contains('|')) {
+              final cells = next
+                  .split('|')
+                  .map((e) => e.trim())
+                  .where((e) => e.isNotEmpty)
+                  .toList();
+              if (cells.isNotEmpty &&
+                  !cells.every(
+                    (e) =>
+                        e.contains('原料') ||
+                        e.contains('用量') ||
+                        e.contains('备注'),
+                  )) {
+                ingredients.add(cells.join(' '));
+              }
+            } else if (RegExp(r'^[*•-]').hasMatch(next)) {
+              next = next.replaceFirst(RegExp(r'^[*•-]\s*'), '').trim();
+              if (next.isNotEmpty) ingredients.add(next);
+            } else if (next.isNotEmpty) {
+              calculationNotes.add(next);
+            }
+            i = j;
+          }
+        }
         // 解析食材
-        else if (lowerLine.startsWith('食材：') || lowerLine.startsWith('食材:') ||
-                 lowerLine.startsWith('配料：') || lowerLine.startsWith('配料:') ||
-                 lowerLine.startsWith('原料：') || lowerLine.startsWith('原料:')) {
+        else if (lowerLine.startsWith('食材：') ||
+            lowerLine.startsWith('食材:') ||
+            lowerLine.startsWith('配料：') ||
+            lowerLine.startsWith('配料:') ||
+            lowerLine.startsWith('原料：') ||
+            lowerLine.startsWith('原料:')) {
           // 食材可能在同一行或多行
           final parts = cleanLine.split(RegExp(r'[：:]'));
           if (parts.length > 1) {
             var ingText = parts[1].trim();
             if (ingText.isNotEmpty) {
               // 同一行有多个食材，用逗号、顿号、分号分隔
-              ingredients.addAll(ingText.split(RegExp(r'[,，、;；]')).map((e) => e.trim()).where((e) => e.isNotEmpty));
+              ingredients.addAll(
+                ingText
+                    .split(RegExp(r'[,，、;；]'))
+                    .map((e) => e.trim())
+                    .where((e) => e.isNotEmpty),
+              );
             }
           }
 
@@ -1305,7 +1577,12 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
             if (nextClean.startsWith('•')) {
               String itemText = nextClean.substring(1).trim();
               if (itemText.isNotEmpty) {
-                ingredients.addAll(itemText.split(RegExp(r'[,，、;；]')).map((e) => e.trim()).where((e) => e.isNotEmpty));
+                ingredients.addAll(
+                  itemText
+                      .split(RegExp(r'[,，、;；]'))
+                      .map((e) => e.trim())
+                      .where((e) => e.isNotEmpty),
+                );
                 i = j;
               } else {
                 break;
@@ -1317,8 +1594,9 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
           }
         }
         // 解析工具
-        else if (lowerLine.startsWith('所需工具') || lowerLine.startsWith('工具：') ||
-                 lowerLine.startsWith('工具:')) {
+        else if (lowerLine.startsWith('所需工具') ||
+            lowerLine.startsWith('工具：') ||
+            lowerLine.startsWith('工具:')) {
           // 读取工具列表
           for (var j = i + 1; j < lines.length; j++) {
             final toolLine = lines[j].trim();
@@ -1326,9 +1604,12 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
             final toolLower = toolClean.toLowerCase();
 
             // 遇到其他标题，停止
-            if (toolLower.startsWith('步骤') || toolLower.startsWith('做法') ||
-                toolLower.startsWith('制作') || toolLower.startsWith('小贴士') ||
-                toolLower.startsWith('注意') || toolClean.contains('---')) {
+            if (toolLower.startsWith('步骤') ||
+                toolLower.startsWith('做法') ||
+                toolLower.startsWith('制作') ||
+                toolLower.startsWith('小贴士') ||
+                toolLower.startsWith('注意') ||
+                toolClean.contains('---')) {
               break;
             }
 
@@ -1348,10 +1629,16 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
           }
         }
         // 解析步骤
-        else if (lowerLine.startsWith('步骤：') || lowerLine.startsWith('步骤:') ||
-                 lowerLine.startsWith('做法：') || lowerLine.startsWith('做法:') ||
-                 lowerLine.startsWith('制作步骤') || lowerLine.startsWith('制作：') ||
-                 lowerLine.startsWith('制作:')) {
+        else if (lowerLine.startsWith('步骤：') ||
+            lowerLine.startsWith('步骤:') ||
+            lowerLine.startsWith('做法：') ||
+            lowerLine.startsWith('做法:') ||
+            lowerLine.startsWith('制作步骤') ||
+            lowerLine.startsWith('制作：') ||
+            lowerLine.startsWith('制作:') ||
+            lowerLine == '操作' ||
+            lowerLine.startsWith('操作：') ||
+            lowerLine.startsWith('操作:')) {
           debugPrint('✅ 检测到步骤标题！开始解析步骤...');
 
           // 步骤通常是多行
@@ -1363,11 +1650,16 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
             debugPrint('  步骤行 ${j + 1}: 原始="$stepLine", 清理后="$stepClean"');
 
             // 遇到小贴士或其他标题，停止 - 扩展停止条件
-            if (stepLower.startsWith('小贴士') || stepLower.startsWith('提示') ||
-                stepLower.startsWith('注意') || stepLower.startsWith('tips') ||
-                stepLower.startsWith('所需工具') || stepLower.startsWith('工具') ||
-                stepLower.startsWith('食材') || stepLower.startsWith('配料') ||
-                stepLower.contains('---') || stepLower.startsWith('分享自')) {
+            if (stepLower.startsWith('小贴士') ||
+                stepLower.startsWith('提示') ||
+                stepLower.startsWith('注意') ||
+                stepLower.startsWith('tips') ||
+                stepLower.startsWith('所需工具') ||
+                stepLower.startsWith('工具') ||
+                stepLower.startsWith('食材') ||
+                stepLower.startsWith('配料') ||
+                stepLower.contains('---') ||
+                stepLower.startsWith('分享自')) {
               debugPrint('  ⚠️ 遇到停止条件，停止解析步骤');
               break;
             }
@@ -1379,7 +1671,9 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
             }
 
             // 移除步骤编号（如 "1. " 或 "1、" 或 "①"） - 改进正则表达式
-            var step = stepClean.replaceFirst(RegExp(r'^[\d①②③④⑤⑥⑦⑧⑨⑩]+[.、:：\s]+'), '').trim();
+            var step = stepClean
+                .replaceFirst(RegExp(r'^[\d①②③④⑤⑥⑦⑧⑨⑩]+[.、:：\s]+'), '')
+                .trim();
 
             debugPrint('  处理后步骤内容: "$step"');
 
@@ -1388,7 +1682,9 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
               steps.add(step);
               debugPrint('  ✅ 添加步骤 ${steps.length}: $step');
               i = j;
-            } else if (stepClean.contains(RegExp(r'^[\d①②③④⑤⑥⑦⑧⑨⑩]+[.、:：\s]+'))) {
+            } else if (stepClean.contains(
+              RegExp(r'^[\d①②③④⑤⑥⑦⑧⑨⑩]+[.、:：\s]+'),
+            )) {
               // 如果这行只有编号没有内容，跳过但继续解析
               debugPrint('  ⏭️ 只有编号，跳过');
               continue;
@@ -1402,9 +1698,12 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
           debugPrint('📊 步骤解析完成，共 ${steps.length} 个步骤');
         }
         // 解析小贴士
-        else if (lowerLine.startsWith('小贴士：') || lowerLine.startsWith('小贴士:') ||
-                 lowerLine.startsWith('提示：') || lowerLine.startsWith('提示:') ||
-                 lowerLine.startsWith('tips：') || lowerLine.startsWith('tips:')) {
+        else if (lowerLine.startsWith('小贴士：') ||
+            lowerLine.startsWith('小贴士:') ||
+            lowerLine.startsWith('提示：') ||
+            lowerLine.startsWith('提示:') ||
+            lowerLine.startsWith('tips：') ||
+            lowerLine.startsWith('tips:')) {
           final parts = cleanLine.split(RegExp(r'[：:]'));
           if (parts.length > 1) {
             tips = parts[1].trim();
@@ -1419,8 +1718,10 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
             final tipsLower = tipsClean.toLowerCase();
 
             // 遇到其他标题或分隔符，停止
-            if (tipsLower.startsWith('注意') || tipsLower.startsWith('warning') ||
-                tipsClean.contains('---') || tipsLower.startsWith('分享自')) {
+            if (tipsLower.startsWith('注意') ||
+                tipsLower.startsWith('warning') ||
+                tipsClean.contains('---') ||
+                tipsLower.startsWith('分享自')) {
               break;
             }
 
@@ -1431,9 +1732,11 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
           }
         }
         // 解析注意事项
-        else if (lowerLine.startsWith('注意事项') || lowerLine.startsWith('注意：') ||
-                 lowerLine.startsWith('注意:') || lowerLine.startsWith('警告') ||
-                 lowerLine.startsWith('warning')) {
+        else if (lowerLine.startsWith('注意事项') ||
+            lowerLine.startsWith('注意：') ||
+            lowerLine.startsWith('注意:') ||
+            lowerLine.startsWith('警告') ||
+            lowerLine.startsWith('warning')) {
           // 读取注意事项列表
           for (var j = i + 1; j < lines.length; j++) {
             final warnLine = lines[j].trim();
@@ -1492,6 +1795,10 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
       if (name != null && name.isNotEmpty) {
         _nameController.text = name;
       }
+      if (description != null) _descriptionController.text = description;
+      if (estimatedCaloriesKcal != null) {
+        _caloriesController.text = estimatedCaloriesKcal.toString();
+      }
 
       if (category != null) {
         setState(() => _selectedCategory = category!);
@@ -1499,7 +1806,9 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
 
       setState(() {
         _selectedDifficulty = difficulty;
+        if (requirements.isNotEmpty) _requirementTexts = requirements;
         if (ingredients.isNotEmpty) _ingredientTexts = ingredients;
+        if (calculationNotes.isNotEmpty) _calculationNotes = calculationNotes;
         if (steps.isNotEmpty) _stepDescriptions = steps;
         if (tools.isNotEmpty) _tools = tools;
         if (warnings.isNotEmpty) _warnings = warnings;
@@ -1515,6 +1824,9 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
         if (name != null) summary.add('菜名');
         if (category != null) summary.add('分类');
         if (difficulty > 1) summary.add('难度');
+        if (description != null) summary.add('简介');
+        if (estimatedCaloriesKcal != null) summary.add('热量');
+        if (requirements.isNotEmpty) summary.add('${requirements.length}个必备项');
         if (ingredients.isNotEmpty) summary.add('${ingredients.length}个食材');
         if (steps.isNotEmpty) summary.add('${steps.length}个步骤');
         if (tools.isNotEmpty) summary.add('${tools.length}个工具');
@@ -1531,11 +1843,7 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
     } catch (e) {
       debugPrint('解析失败: $e');
       if (mounted) {
-        AppSnackBar.show(
-          context,
-          '解析失败: $e',
-          backgroundColor: AppColors.error,
-        );
+        AppSnackBar.show(context, '解析失败: $e', backgroundColor: AppColors.error);
       }
     } finally {
       setState(() => _isParsing = false);
@@ -1546,11 +1854,20 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
   String _matchCategory(String text) {
     final lower = text.toLowerCase();
     if (lower.contains('肉') || lower.contains('meat')) return 'meat_dish';
-    if (lower.contains('素') || lower.contains('vegetable')) return 'vegetable_dish';
-    if (lower.contains('水产') || lower.contains('海鲜') || lower.contains('鱼') || lower.contains('虾')) return 'aquatic';
+    if (lower.contains('素') || lower.contains('vegetable')) {
+      return 'vegetable_dish';
+    }
+    if (lower.contains('水产') ||
+        lower.contains('海鲜') ||
+        lower.contains('鱼') ||
+        lower.contains('虾')) {
+      return 'aquatic';
+    }
     if (lower.contains('早餐') || lower.contains('breakfast')) return 'breakfast';
     if (lower.contains('主食') || lower.contains('staple')) return 'staple';
-    if (lower.contains('汤') || lower.contains('羹') || lower.contains('soup')) return 'soup';
+    if (lower.contains('汤') || lower.contains('羹') || lower.contains('soup')) {
+      return 'soup';
+    }
     if (lower.contains('甜品') || lower.contains('dessert')) return 'dessert';
     if (lower.contains('饮') || lower.contains('drink')) return 'drink';
     return 'meat_dish'; // 默认
@@ -1563,7 +1880,11 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
       builder: (context) => AlertDialog(
         title: Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 28),
+            Icon(
+              Icons.warning_amber_rounded,
+              color: AppColors.warning,
+              size: 28,
+            ),
             const SizedBox(width: 12),
             Text(
               '发现同名食谱',
@@ -1600,7 +1921,9 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
               '• 覆盖：替换现有食谱\n• 重命名：输入新名称\n• 取消：放弃保存',
               style: TextStyle(
                 fontSize: 14,
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
           ],
@@ -1616,9 +1939,7 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, 'overwrite'),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.warning,
-            ),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.warning),
             child: const Text('覆盖'),
           ),
         ],
@@ -1654,11 +1975,15 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
               decoration: InputDecoration(
                 labelText: '新名称',
                 labelStyle: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
                 hintText: '请输入新的食谱名称',
                 hintStyle: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.5),
                 ),
                 border: const OutlineInputBorder(),
               ),
@@ -1701,7 +2026,7 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
     }
 
     if (_stepDescriptions.isEmpty) {
-      AppSnackBar.show(context, '请至少添加一个制作步骤');
+      AppSnackBar.show(context, '请至少添加一条操作');
       return;
     }
 
@@ -1709,7 +2034,9 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
     final recipeName = _nameController.text.trim();
     final repository = ref.read(recipeRepositoryProvider);
     final allRecipes = await repository.getAllRecipes();
-    final existingRecipe = allRecipes.where((r) => r.name == recipeName).firstOrNull;
+    final existingRecipe = allRecipes
+        .where((r) => r.name == recipeName)
+        .firstOrNull;
 
     if (existingRecipe != null) {
       // 发现同名食谱，询问用户
@@ -1743,18 +2070,15 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
         recipeId = existingRecipe.id;
         debugPrint('覆盖现有食谱，使用ID: $recipeId');
       } else {
-        // 生成新的菜谱ID
-        final timestamp = DateTime.now().millisecondsSinceEpoch;
-        final categoryPrefix = _selectedCategory;
-        final randomSuffix = timestamp.toRadixString(16).substring(0, 8);
-        recipeId = '${categoryPrefix}_$randomSuffix';
+        // V2 统一使用与路径无关的 UUID。
+        recipeId = const Uuid().v4();
         debugPrint('创建新食谱，生成ID: $recipeId');
       }
 
       // 转换食材文本为Ingredient对象
       final ingredients = _ingredientTexts.map((text) {
         final name = text.split(RegExp(r'\s+')).first;
-        return Ingredient(name: name, text: text);
+        return Ingredient(name: name, text: text, source: 'manual');
       }).toList();
 
       // 转换步骤描述为CookingStep对象
@@ -1762,18 +2086,48 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
         return CookingStep(description: desc);
       }).toList();
 
+      final requirements = <RecipeRequirement>[
+        ..._requirementTexts.map(
+          (text) =>
+              RecipeRequirement(text: text, markdown: text, kind: 'ingredient'),
+        ),
+        ..._tools.map(
+          (text) => RecipeRequirement(text: text, markdown: text, kind: 'tool'),
+        ),
+      ];
+      final requirementsMarkdown = requirements.isEmpty
+          ? null
+          : requirements.map((item) => '* ${item.text}').join('\n');
+      final calculationMarkdown = <String>[
+        ..._calculationNotes,
+        ..._ingredientTexts.map((text) => '* $text'),
+      ].join('\n');
+      final operationMarkdown = _stepDescriptions.join('\n');
+
       // 获取分类名称
       final categoryMap = await ref.read(categoryNameMapProvider.future);
       final categoryName = categoryMap[_selectedCategory] ?? _selectedCategory;
 
       final newRecipe = Recipe(
+        schemaVersion: 2,
         id: recipeId,
         name: _nameController.text.trim(),
+        description: _descriptionController.text.trim().isEmpty
+            ? null
+            : _descriptionController.text.trim(),
         category: _selectedCategory,
         categoryName: categoryName,
         difficulty: _selectedDifficulty,
+        estimatedCaloriesKcal: int.tryParse(_caloriesController.text.trim()),
+        requirements: requirements,
+        requirementsMarkdown: requirementsMarkdown,
         ingredients: ingredients,
+        calculationMarkdown: calculationMarkdown.isEmpty
+            ? null
+            : calculationMarkdown,
+        calculationNotes: _calculationNotes,
         steps: steps,
+        operationMarkdown: operationMarkdown,
         tools: _tools,
         tips: _tips?.trim().isEmpty == true ? null : _tips?.trim(),
         warnings: _warnings,

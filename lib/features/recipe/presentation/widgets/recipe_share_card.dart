@@ -13,11 +13,13 @@ import '../../../../core/theme/app_colors.dart';
 class RecipeShareCard extends StatelessWidget {
   final Recipe recipe;
   final String qrData; // 二维码内容（Custom Scheme）
+  final String qrNote;
 
   const RecipeShareCard({
     super.key,
     required this.recipe,
     required this.qrData,
+    required this.qrNote,
   });
 
   @override
@@ -30,53 +32,154 @@ class RecipeShareCard extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            AppColors.background,
-            AppColors.primaryLight,
-          ],
+          colors: [AppColors.background, AppColors.primaryLight],
         ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min, // 让Column自适应内容高度
         children: [
-            // 内容区域
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 标题和难度
-                  _buildHeader(),
+          // 内容区域
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 标题和难度
+                _buildHeader(),
+                const SizedBox(height: 16),
+
+                // 分类
+                _buildCategory(),
+                const SizedBox(height: 16),
+
+                if (recipe.description?.trim().isNotEmpty == true ||
+                    recipe.estimatedCaloriesKcal != null) ...[
+                  _buildOverviewSection(),
                   const SizedBox(height: 16),
-
-                  // 分类
-                  _buildCategory(),
-                  const SizedBox(height: 16),
-
-                  // 食材列表
-                  _buildIngredientsSection(),
-                  const SizedBox(height: 16),
-
-                  // 工具列表（如果有）
-                  if (recipe.tools.isNotEmpty) ...[
-                    _buildToolsSection(),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // 步骤列表
-                  _buildStepsSection(),
-
-                  // 小贴士（如果有）
-                  if (recipe.tips != null && recipe.tips!.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    _buildTipsSection(),
-                  ],
                 ],
+
+                if (recipe.requirements.isNotEmpty ||
+                    recipe.tools.isNotEmpty) ...[
+                  _buildRequirementsSection(),
+                  const SizedBox(height: 16),
+                ],
+
+                _buildIngredientsSection(),
+                const SizedBox(height: 16),
+
+                _buildStepsSection(),
+
+                // 小贴士（如果有）
+                if (recipe.tips != null && recipe.tips!.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  _buildTipsSection(),
+                ],
+                if (recipe.warnings.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  _buildWarningsSection(),
+                ],
+              ],
+            ),
+          ),
+
+          // 二维码区域
+          _buildQRSection(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOverviewSection() {
+    return _sectionCard(
+      title: '📖 菜谱简介',
+      children: [
+        if (recipe.estimatedCaloriesKcal != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              '估算总热量 ${recipe.estimatedCaloriesKcal} kcal',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primaryDark,
               ),
             ),
+          ),
+        if (recipe.description?.trim().isNotEmpty == true)
+          MarkdownBody(
+            data: recipe.description!.trim(),
+            shrinkWrap: true,
+            styleSheet: MarkdownStyleSheet(
+              p: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textPrimary,
+                height: 1.5,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
 
-            // 二维码区域
-            _buildQRSection(),
+  Widget _buildRequirementsSection() {
+    final entries = <String>[
+      ...recipe.requirements.map((item) => item.text),
+      ...recipe.tools.where(
+        (tool) => !recipe.requirements.any((item) => item.text == tool),
+      ),
+    ];
+    return _sectionCard(
+      title: '🧺 必备原料和工具',
+      children: entries
+          .map(
+            (entry) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(
+                '• $entry',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textPrimary,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  Widget _sectionCard({
+    required String title,
+    required List<Widget> children,
+    Color? color,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color ?? AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.cardShadow,
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...children,
         ],
       ),
     );
@@ -116,10 +219,7 @@ class RecipeShareCard extends StatelessWidget {
             children: [
               const Text(
                 '🔥 难度: ',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
-                ),
+                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
               ),
               Text(
                 '⭐' * recipe.difficulty,
@@ -170,7 +270,7 @@ class RecipeShareCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '📝 食材',
+            '🧮 用量与计算',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -178,75 +278,67 @@ class RecipeShareCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          // ✨ 显示所有食材（长截图）
-          ...recipe.ingredients.map((ingredient) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('• ', style: TextStyle(fontSize: 13, color: AppColors.textPrimary)),
-                    Expanded(
-                      child: MarkdownBody(
-                        data: ingredient.text,
-                        shrinkWrap: true,
-                        fitContent: true,
-                        styleSheet: MarkdownStyleSheet(
-                          p: const TextStyle(fontSize: 13, color: AppColors.textPrimary, height: 1.4),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              )),
-        ],
-      ),
-    );
-  }
-
-  /// 构建工具部分
-  Widget _buildToolsSection() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.cardShadow,
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '🔧 所需工具',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: recipe.tools.map((tool) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppColors.primaryLight,
-                borderRadius: BorderRadius.circular(16),
-              ),
+          ...recipe.calculationNotes.map(
+            (note) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
               child: Text(
-                tool,
-                style: TextStyle(
+                note,
+                style: const TextStyle(
                   fontSize: 13,
+                  fontWeight: FontWeight.w600,
                   color: AppColors.primaryDark,
                 ),
               ),
-            )).toList(),
+            ),
+          ),
+          // ✨ 显示所有食材（长截图）
+          ...recipe.ingredients.map(
+            (ingredient) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '• ',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        MarkdownBody(
+                          data:
+                              '${ingredient.text}${ingredient.optional ? ' （可选）' : ''}',
+                          shrinkWrap: true,
+                          fitContent: true,
+                          styleSheet: MarkdownStyleSheet(
+                            p: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textPrimary,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                        if (ingredient.table.isNotEmpty)
+                          Text(
+                            ingredient.table.entries
+                                .map((entry) => '${entry.key}: ${entry.value}')
+                                .join('  |  '),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                              height: 1.4,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -272,7 +364,7 @@ class RecipeShareCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '👨‍🍳 制作步骤',
+            '👨‍🍳 操作',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -290,65 +382,73 @@ class RecipeShareCard extends StatelessWidget {
 
   List<Widget> _buildStepItems() {
     final widgets = <Widget>[];
-    int stepNumber = 0;
     for (final step in recipe.steps) {
       final match = _headingPattern.firstMatch(step.description);
-      if (match != null) {
-        widgets.add(Padding(
-          padding: EdgeInsets.only(
-            top: widgets.isEmpty ? 0 : 8,
-            bottom: 4,
-          ),
-          child: Text(
-            match.group(1)!,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primaryDark,
+      if (step.kind == 'heading' || step.title != null || match != null) {
+        widgets.add(
+          Padding(
+            padding: EdgeInsets.only(top: widgets.isEmpty ? 0 : 8, bottom: 4),
+            child: Text(
+              step.title ?? match?.group(1) ?? step.description,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primaryDark,
+              ),
             ),
           ),
-        ));
+        );
       } else {
-        stepNumber++;
-        widgets.add(Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 24,
-                height: 24,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: AppColors.primaryLight,
-                  shape: BoxShape.circle,
-                ),
-                child: Text(
-                  '$stepNumber',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primaryDark,
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('• ', style: TextStyle(fontSize: 14)),
+                Expanded(
+                  child: MarkdownBody(
+                    data: step.description,
+                    shrinkWrap: true,
+                    fitContent: true,
+                    styleSheet: MarkdownStyleSheet(
+                      p: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textPrimary,
+                        height: 1.4,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: MarkdownBody(
-                  data: step.description,
-                  shrinkWrap: true,
-                  fitContent: true,
-                  styleSheet: MarkdownStyleSheet(
-                    p: const TextStyle(fontSize: 13, color: AppColors.textPrimary, height: 1.4),
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ));
+        );
       }
     }
     return widgets;
+  }
+
+  Widget _buildWarningsSection() {
+    return _sectionCard(
+      title: '⚠️ 注意事项',
+      color: AppColors.butter.withValues(alpha: 0.12),
+      children: recipe.warnings
+          .map(
+            (warning) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(
+                '• $warning',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textPrimary,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          )
+          .toList(),
+    );
   }
 
   /// 构建小贴士部分
@@ -379,7 +479,11 @@ class RecipeShareCard extends StatelessWidget {
             data: recipe.tips!,
             shrinkWrap: true,
             styleSheet: MarkdownStyleSheet(
-              p: const TextStyle(fontSize: 12, color: AppColors.textPrimary, height: 1.4),
+              p: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textPrimary,
+                height: 1.4,
+              ),
             ),
           ),
         ],
@@ -391,7 +495,10 @@ class RecipeShareCard extends StatelessWidget {
   Widget _buildQRSection() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20), // 20 → 16
+      padding: const EdgeInsets.symmetric(
+        vertical: 16,
+        horizontal: 20,
+      ), // 20 → 16
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: const BorderRadius.only(
@@ -414,10 +521,7 @@ class RecipeShareCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: AppColors.textPrimary,
-                width: 3,
-              ),
+              border: Border.all(color: AppColors.textPrimary, width: 3),
             ),
             child: QrImageView(
               data: qrData,
@@ -448,11 +552,9 @@ class RecipeShareCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '可添加/更新到我的食谱',
-            style: TextStyle(
-              fontSize: 11,
-              color: AppColors.textSecondary,
-            ),
+            qrNote,
+            style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
 
@@ -462,10 +564,7 @@ class RecipeShareCard extends StatelessWidget {
             children: [
               Text(
                 '分享自 ',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textDisabled,
-                ),
+                style: TextStyle(fontSize: 11, color: AppColors.textDisabled),
               ),
               Text(
                 '智能菜谱助手',

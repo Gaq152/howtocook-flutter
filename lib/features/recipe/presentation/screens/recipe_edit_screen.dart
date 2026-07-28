@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -19,10 +20,7 @@ import '../../../../core/widgets/app_snack_bar.dart';
 class RecipeEditScreen extends ConsumerStatefulWidget {
   final String recipeId;
 
-  const RecipeEditScreen({
-    super.key,
-    required this.recipeId,
-  });
+  const RecipeEditScreen({super.key, required this.recipeId});
 
   @override
   ConsumerState<RecipeEditScreen> createState() => _RecipeEditScreenState();
@@ -33,6 +31,8 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
 
   // 表单控制器
   late TextEditingController _nameController;
+  late TextEditingController _descriptionController;
+  late TextEditingController _caloriesController;
 
   // 数据
   Recipe? _originalRecipe;
@@ -43,7 +43,9 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
   // 编辑状态
   String _selectedCategory = '';
   int _selectedDifficulty = 1;
-  List<String> _ingredientTexts = [];  // 简化存储，保存时转换
+  List<String> _requirementTexts = [];
+  List<String> _ingredientTexts = []; // 简化存储，保存时转换
+  List<String> _calculationNotes = [];
   List<String> _stepDescriptions = []; // 简化存储，保存时转换
   List<String> _tools = [];
   String? _tips;
@@ -54,7 +56,11 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
   String _originalName = '';
   String _originalCategory = '';
   int _originalDifficulty = 1;
+  String _originalDescription = '';
+  String _originalCalories = '';
+  List<String> _originalRequirementTexts = [];
   List<String> _originalIngredientTexts = [];
+  List<String> _originalCalculationNotes = [];
   List<String> _originalStepDescriptions = [];
   List<String> _originalTools = [];
   String? _originalTips;
@@ -65,12 +71,16 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
   void initState() {
     super.initState();
     _nameController = TextEditingController();
+    _descriptionController = TextEditingController();
+    _caloriesController = TextEditingController();
     _loadRecipe();
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _descriptionController.dispose();
+    _caloriesController.dispose();
     super.dispose();
   }
 
@@ -82,21 +92,42 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
         setState(() {
           _originalRecipe = recipe;
           _nameController.text = recipe.name;
+          _descriptionController.text = recipe.description ?? '';
+          _caloriesController.text =
+              recipe.estimatedCaloriesKcal?.toString() ?? '';
           _selectedCategory = recipe.category;
           _selectedDifficulty = recipe.difficulty;
+          _requirementTexts = recipe.requirements
+              .where((item) => item.kind != 'tool')
+              .map((item) => item.text)
+              .toList();
           _ingredientTexts = recipe.ingredients.map((i) => i.text).toList();
+          _calculationNotes = List.from(recipe.calculationNotes);
           _stepDescriptions = recipe.steps.map((s) => s.description).toList();
-          _tools = List.from(recipe.tools);
+          _tools = {
+            ...recipe.tools,
+            ...recipe.requirements
+                .where((item) => item.kind == 'tool')
+                .map((item) => item.text),
+          }.toList();
           _tips = recipe.tips;
           _warnings = List.from(recipe.warnings);
           _images = List.from(recipe.images);
 
           // 保存原始数据副本，用于重置
           _originalName = recipe.name;
+          _originalDescription = recipe.description ?? '';
+          _originalCalories = recipe.estimatedCaloriesKcal?.toString() ?? '';
           _originalCategory = recipe.category;
           _originalDifficulty = recipe.difficulty;
-          _originalIngredientTexts = recipe.ingredients.map((i) => i.text).toList();
-          _originalStepDescriptions = recipe.steps.map((s) => s.description).toList();
+          _originalRequirementTexts = List.from(_requirementTexts);
+          _originalIngredientTexts = recipe.ingredients
+              .map((i) => i.text)
+              .toList();
+          _originalCalculationNotes = List.from(recipe.calculationNotes);
+          _originalStepDescriptions = recipe.steps
+              .map((s) => s.description)
+              .toList();
           _originalTools = List.from(recipe.tools);
           _originalTips = recipe.tips;
           _originalWarnings = List.from(recipe.warnings);
@@ -158,11 +189,15 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
           children: [
             _buildBasicInfoSection(),
             const SizedBox(height: 24),
-            _buildIngredientsSection(),
-            const SizedBox(height: 24),
-            _buildStepsSection(),
+            _buildRequirementsSection(),
             const SizedBox(height: 24),
             _buildToolsSection(),
+            const SizedBox(height: 24),
+            _buildIngredientsSection(),
+            const SizedBox(height: 24),
+            _buildCalculationNotesSection(),
+            const SizedBox(height: 24),
+            _buildStepsSection(),
             const SizedBox(height: 24),
             _buildTipsSection(),
             const SizedBox(height: 24),
@@ -205,6 +240,59 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
             ),
             const SizedBox(height: 16),
 
+            TextFormField(
+              controller: _descriptionController,
+              decoration: const InputDecoration(
+                labelText: '菜谱简介（可选）',
+                hintText: '简要介绍风味、营养、难度和预计耗时',
+                border: OutlineInputBorder(),
+              ),
+              minLines: 2,
+              maxLines: 5,
+            ),
+            const SizedBox(height: 16),
+
+            TextFormField(
+              controller: _caloriesController,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: const InputDecoration(
+                labelText: '估算总热量（kcal，可选）',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            ref
+                .watch(categoryNameMapProvider)
+                .when(
+                  data: (categoryMap) => DropdownButtonFormField<String>(
+                    initialValue: categoryMap.containsKey(_selectedCategory)
+                        ? _selectedCategory
+                        : null,
+                    decoration: const InputDecoration(
+                      labelText: '分类',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: categoryMap.entries
+                        .map(
+                          (entry) => DropdownMenuItem(
+                            value: entry.key,
+                            child: Text(entry.value),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => _selectedCategory = value);
+                      }
+                    },
+                  ),
+                  loading: () => const LinearProgressIndicator(),
+                  error: (_, __) => const Text('分类加载失败'),
+                ),
+            const SizedBox(height: 16),
+
             // 难度选择 - 五颗星
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -241,16 +329,38 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
     );
   }
 
+  Widget _buildRequirementsSection() {
+    return _buildListSection(
+      title: '必备原料',
+      items: _requirementTexts,
+      onAdd: () => _addListItem(_requirementTexts, '新必备原料'),
+      onEdit: (index) => _editListItem(_requirementTexts, index, '编辑必备原料'),
+      onDelete: (index) => _deleteListItem(_requirementTexts, index),
+      onClear: () => _confirmAndClearList(_requirementTexts, '必备原料'),
+    );
+  }
+
   /// 食材部分
   Widget _buildIngredientsSection() {
     return _buildListSection(
-      title: '食材',
+      title: '用量与计算（食材用量）',
       items: _ingredientTexts,
       onAdd: () => _addListItem(_ingredientTexts, '新食材'),
       onEdit: (index) => _editListItem(_ingredientTexts, index, '编辑食材'),
       onDelete: (index) => _deleteListItem(_ingredientTexts, index),
       onClear: () => _confirmAndClearList(_ingredientTexts, '食材'),
       validator: (value) => value.trim().isEmpty ? '食材不能为空' : null,
+    );
+  }
+
+  Widget _buildCalculationNotesSection() {
+    return _buildListSection(
+      title: '用量计算说明（可选）',
+      items: _calculationNotes,
+      onAdd: () => _addListItem(_calculationNotes, '例如：每人每顿 200 g'),
+      onEdit: (index) => _editListItem(_calculationNotes, index, '编辑计算说明'),
+      onDelete: (index) => _deleteListItem(_calculationNotes, index),
+      onClear: () => _confirmAndClearList(_calculationNotes, '用量计算说明'),
     );
   }
 
@@ -264,11 +374,12 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
           children: [
             Row(
               children: [
-                Text('制作步骤', style: AppTextStyles.h3),
+                Text('操作', style: AppTextStyles.h3),
                 const Spacer(),
                 if (_stepDescriptions.isNotEmpty)
                   IconButton(
-                    onPressed: () => _confirmAndClearList(_stepDescriptions, '制作步骤'),
+                    onPressed: () =>
+                        _confirmAndClearList(_stepDescriptions, '操作'),
                     icon: const Icon(Icons.clear_all, size: 20),
                     color: AppColors.error,
                     tooltip: '清空',
@@ -285,7 +396,10 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
               const Padding(
                 padding: EdgeInsets.all(16),
                 child: Center(
-                  child: Text('暂无制作步骤', style: TextStyle(color: AppColors.textDisabled)),
+                  child: Text(
+                    '暂无操作内容',
+                    style: TextStyle(color: AppColors.textDisabled),
+                  ),
                 ),
               )
             else
@@ -319,15 +433,13 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
                           children: [
                             ReorderableDragStartListener(
                               index: index,
-                              child: const Icon(Icons.drag_handle, color: AppColors.textDisabled, size: 20),
+                              child: const Icon(
+                                Icons.drag_handle,
+                                color: AppColors.textDisabled,
+                                size: 20,
+                              ),
                             ),
                             const SizedBox(width: 8),
-                            CircleAvatar(
-                              radius: 14,
-                              backgroundColor: AppColors.primary,
-                              child: Text('${index + 1}', style: const TextStyle(fontSize: 12, color: AppColors.surface)),
-                            ),
-                            const SizedBox(width: 12),
                             Expanded(child: Text(step)),
                           ],
                         ),
@@ -340,14 +452,19 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
                           children: [
                             IconButton(
                               icon: const Icon(Icons.edit, size: 16),
-                              onPressed: () => _editListItem(_stepDescriptions, index, '编辑步骤'),
+                              onPressed: () => _editListItem(
+                                _stepDescriptions,
+                                index,
+                                '编辑步骤',
+                              ),
                               padding: const EdgeInsets.all(6),
                               constraints: const BoxConstraints(),
                             ),
                             IconButton(
                               icon: const Icon(Icons.close, size: 16),
                               color: AppColors.error,
-                              onPressed: () => _deleteListItem(_stepDescriptions, index),
+                              onPressed: () =>
+                                  _deleteListItem(_stepDescriptions, index),
                               padding: const EdgeInsets.all(6),
                               constraints: const BoxConstraints(),
                             ),
@@ -367,7 +484,7 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
   /// 工具部分
   Widget _buildToolsSection() {
     return _buildListSection(
-      title: '所需工具（可选）',
+      title: '必备工具（可选）',
       items: _tools,
       onAdd: () => _addListItem(_tools, '新工具'),
       onEdit: (index) => _editListItem(_tools, index, '编辑工具'),
@@ -414,7 +531,12 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
   }
 
   /// 构建图片预览组件
-  Widget _buildImagePreview(String imagePath, {double? width, double? height, BoxFit fit = BoxFit.cover}) {
+  Widget _buildImagePreview(
+    String imagePath, {
+    double? width,
+    double? height,
+    BoxFit fit = BoxFit.cover,
+  }) {
     final isBase64 = imagePath.startsWith('data:image/');
     final isUrl = imagePath.startsWith('http');
     final isAsset = imagePath.startsWith('assets/');
@@ -424,19 +546,39 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
       try {
         final base64String = imagePath.split(',')[1];
         final bytes = base64Decode(base64String);
-        return Image.memory(bytes, width: width, height: height, fit: fit,
-          errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 48));
+        return Image.memory(
+          bytes,
+          width: width,
+          height: height,
+          fit: fit,
+          errorBuilder: (_, __, ___) =>
+              const Icon(Icons.broken_image, size: 48),
+        );
       } catch (_) {
         return const Icon(Icons.broken_image, size: 48);
       }
     } else if (isLocalFile && !kIsWeb && File(imagePath).existsSync()) {
-      return Image.file(File(imagePath), width: width, height: height, fit: fit,
-        errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 48));
+      return Image.file(
+        File(imagePath),
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 48),
+      );
     } else if (isUrl) {
-      return Image.network(imagePath, width: width, height: height, fit: fit,
-        errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 48));
+      return Image.network(
+        imagePath,
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 48),
+      );
     }
-    return Icon(Icons.image, size: height != null ? height * 0.4 : 48, color: AppColors.textDisabled);
+    return Icon(
+      Icons.image,
+      size: height != null ? height * 0.4 : 48,
+      color: AppColors.textDisabled,
+    );
   }
 
   /// 封面图片部分
@@ -502,14 +644,24 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
                   decoration: BoxDecoration(
                     color: AppColors.surfaceAlt,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.textDisabled.withValues(alpha: 0.3), width: 1),
+                    border: Border.all(
+                      color: AppColors.textDisabled.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
                   ),
                   child: const Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.add_photo_alternate, size: 48, color: AppColors.textDisabled),
+                      Icon(
+                        Icons.add_photo_alternate,
+                        size: 48,
+                        color: AppColors.textDisabled,
+                      ),
                       SizedBox(height: 8),
-                      Text('点击添加封面图片', style: TextStyle(color: AppColors.textDisabled)),
+                      Text(
+                        '点击添加封面图片',
+                        style: TextStyle(color: AppColors.textDisabled),
+                      ),
                     ],
                   ),
                 ),
@@ -584,7 +736,13 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
               children: [
                 Text('详情图片', style: AppTextStyles.h3),
                 const SizedBox(width: 8),
-                Text('(${detailImages.length})', style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                Text(
+                  '(${detailImages.length})',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
+                  ),
+                ),
                 const Spacer(),
                 IconButton(
                   onPressed: () => _addImageUrl(isCover: false),
@@ -603,7 +761,10 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
               const Padding(
                 padding: EdgeInsets.all(16),
                 child: Center(
-                  child: Text('暂无详情图片', style: TextStyle(color: AppColors.textDisabled)),
+                  child: Text(
+                    '暂无详情图片',
+                    style: TextStyle(color: AppColors.textDisabled),
+                  ),
                 ),
               )
             else
@@ -635,10 +796,18 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
                     child: SizedBox(
                       width: 40,
                       height: 40,
-                      child: _buildImagePreview(imagePath, width: 40, height: 40),
+                      child: _buildImagePreview(
+                        imagePath,
+                        width: 40,
+                        height: 40,
+                      ),
                     ),
                   ),
-                  title: Text(displayText, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  title: Text(
+                    displayText,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   subtitle: subtitle != null
                       ? Text(subtitle, style: const TextStyle(fontSize: 12))
                       : null,
@@ -704,7 +873,10 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Center(
-                  child: Text('暂无$title', style: const TextStyle(color: AppColors.textDisabled)),
+                  child: Text(
+                    '暂无$title',
+                    style: const TextStyle(color: AppColors.textDisabled),
+                  ),
                 ),
               )
             else
@@ -713,7 +885,10 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
                 final item = entry.value;
                 return Container(
                   margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.surfaceAlt,
                     borderRadius: BorderRadius.circular(10),
@@ -724,10 +899,20 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
                         CircleAvatar(
                           radius: 13,
                           backgroundColor: AppColors.primary,
-                          child: Text('${index + 1}', style: const TextStyle(fontSize: 11, color: AppColors.surface)),
+                          child: Text(
+                            '${index + 1}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.surface,
+                            ),
+                          ),
                         )
                       else
-                        const Icon(Icons.circle, size: 8, color: AppColors.textSecondary),
+                        const Icon(
+                          Icons.circle,
+                          size: 8,
+                          color: AppColors.textSecondary,
+                        ),
                       const SizedBox(width: 10),
                       Expanded(child: Text(item)),
                       IconButton(
@@ -908,7 +1093,9 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
       );
 
       final originalSizeKB = (bytes.length / 1024).toStringAsFixed(1);
-      final compressedSizeKB = (compressedBytes.length / 1024).toStringAsFixed(1);
+      final compressedSizeKB = (compressedBytes.length / 1024).toStringAsFixed(
+        1,
+      );
 
       String imagePath;
 
@@ -1018,10 +1205,7 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
               children: [
                 const CircularProgressIndicator(),
                 const SizedBox(height: 16),
-                Text(
-                  message,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
+                Text(message, style: Theme.of(context).textTheme.bodyMedium),
               ],
             ),
           ),
@@ -1042,7 +1226,7 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
     }
 
     if (_stepDescriptions.isEmpty) {
-      AppSnackBar.show(context, '请至少添加一个制作步骤');
+      AppSnackBar.show(context, '请至少添加一条操作');
       return;
     }
 
@@ -1050,23 +1234,67 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
 
     try {
       // 转换食材文本为Ingredient对象
-      final ingredients = _ingredientTexts.map((text) {
-        // 简单提取食材名称（取第一个词或前几个字）
+      final ingredients = _ingredientTexts.asMap().entries.map((entry) {
+        final index = entry.key;
+        final text = entry.value;
         final name = text.split(RegExp(r'\s+')).first;
-        return Ingredient(name: name, text: text);
+        if (index < _originalRecipe!.ingredients.length) {
+          return _originalRecipe!.ingredients[index].copyWith(
+            name: name,
+            text: text,
+          );
+        }
+        return Ingredient(name: name, text: text, source: 'manual');
       }).toList();
 
       // 转换步骤描述为CookingStep对象
-      final steps = _stepDescriptions.map((desc) {
-        return CookingStep(description: desc);
+      final steps = _stepDescriptions.asMap().entries.map((entry) {
+        if (entry.key < _originalRecipe!.steps.length) {
+          return _originalRecipe!.steps[entry.key].copyWith(
+            description: entry.value,
+          );
+        }
+        return CookingStep(description: entry.value);
       }).toList();
 
+      final requirements = <RecipeRequirement>[
+        ..._requirementTexts.map(
+          (text) =>
+              RecipeRequirement(text: text, markdown: text, kind: 'ingredient'),
+        ),
+        ..._tools.map(
+          (text) => RecipeRequirement(text: text, markdown: text, kind: 'tool'),
+        ),
+      ];
+      final requirementsMarkdown = requirements.isEmpty
+          ? null
+          : requirements.map((item) => '* ${item.text}').join('\n');
+      final calculationMarkdown = <String>[
+        ..._calculationNotes,
+        ..._ingredientTexts.map((text) => '* $text'),
+      ].join('\n');
+      final categoryMap = await ref.read(categoryNameMapProvider.future);
+
       final updatedRecipe = _originalRecipe!.copyWith(
+        schemaVersion: 2,
         name: _nameController.text.trim(),
+        description: _descriptionController.text.trim().isEmpty
+            ? null
+            : _descriptionController.text.trim(),
         category: _selectedCategory,
+        categoryName:
+            categoryMap[_selectedCategory] ?? _originalRecipe!.categoryName,
         difficulty: _selectedDifficulty,
+        estimatedCaloriesKcal: int.tryParse(_caloriesController.text.trim()),
+        requirements: requirements,
+        requirementsMarkdown: requirementsMarkdown,
         ingredients: ingredients,
+        calculationMarkdown: calculationMarkdown.isEmpty
+            ? null
+            : calculationMarkdown,
+        calculationNotes: _calculationNotes,
         steps: steps,
+        operationMarkdown: _stepDescriptions.join('\n'),
         tools: _tools,
         tips: _tips?.trim().isEmpty == true ? null : _tips?.trim(),
         warnings: _warnings,
@@ -1104,9 +1332,13 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
 
     setState(() {
       _nameController.text = _originalName;
+      _descriptionController.text = _originalDescription;
+      _caloriesController.text = _originalCalories;
       _selectedCategory = _originalCategory;
       _selectedDifficulty = _originalDifficulty;
+      _requirementTexts = List.from(_originalRequirementTexts);
       _ingredientTexts = List.from(_originalIngredientTexts);
+      _calculationNotes = List.from(_originalCalculationNotes);
       _stepDescriptions = List.from(_originalStepDescriptions);
       _tools = List.from(_originalTools);
       _tips = _originalTips;
@@ -1152,9 +1384,7 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.warning,
-            ),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.warning),
             child: const Text('重置'),
           ),
         ],
@@ -1206,9 +1436,7 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.error,
-            ),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('清空'),
           ),
         ],
