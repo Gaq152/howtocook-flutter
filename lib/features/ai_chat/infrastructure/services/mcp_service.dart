@@ -9,8 +9,18 @@ import '../../../recipe/domain/entities/recipe.dart';
 /// 响应格式: SSE (Server-Sent Events) with JSON-RPC 2.0
 class MCPService {
   final Dio _dio;
+  final Dio _catalogDio = Dio();
   late final String baseUrl;
   int _requestId = 0;
+  Map<String, dynamic>? _v2Manifest;
+  String? _v2CatalogBaseUrl;
+
+  static const _v2CatalogCandidates = [
+    'https://gaq152.github.io/HowToCook-assets',
+    'https://cdn.jsdelivr.net/gh/Gaq152/HowToCook-assets@main',
+    'https://fastly.jsdelivr.net/gh/Gaq152/HowToCook-assets@main',
+    'https://ghfast.top/https://raw.githubusercontent.com/Gaq152/HowToCook-assets/refs/heads/main',
+  ];
 
   MCPService() : _dio = Dio() {
     baseUrl = dotenv.env['MCP_BASE_URL']!;
@@ -21,6 +31,84 @@ class MCPService {
       'Content-Type': 'application/json',
       'Accept': 'application/json, text/event-stream',
     };
+    _catalogDio.options.connectTimeout = const Duration(seconds: 8);
+    _catalogDio.options.receiveTimeout = const Duration(seconds: 12);
+  }
+
+  Map<String, dynamic> _asJsonMap(dynamic value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) return Map<String, dynamic>.from(value);
+    if (value is String) {
+      return jsonDecode(value) as Map<String, dynamic>;
+    }
+    throw const FormatException('Unexpected JSON response');
+  }
+
+  /// App 端 MCP 查询直读与静态仓库同源的 V2 稳定通道。
+  /// 这样线上 MCP 容器延迟部署时，索引和详情不会停留在 322 份旧数据。
+  Future<Map<String, dynamic>?> _loadV2Manifest() async {
+    if (_v2Manifest != null) return _v2Manifest;
+    for (final base in _v2CatalogCandidates) {
+      try {
+        final channelResponse = await _catalogDio.get(
+          '$base/channels/v2-stable.json',
+          queryParameters: {'t': DateTime.now().millisecondsSinceEpoch},
+        );
+        final channel = _asJsonMap(channelResponse.data);
+        if (channel['schemaVersion'] != 2 || channel['channel'] != 'stable') {
+          continue;
+        }
+        final manifestPath = channel['manifestPath']?.toString();
+        if (manifestPath == null || manifestPath.isEmpty) continue;
+        final manifestResponse = await _catalogDio.get('$base/$manifestPath');
+        final manifest = _asJsonMap(manifestResponse.data);
+        if (manifest['schemaVersion'] != 2 || manifest['recipes'] is! List) {
+          continue;
+        }
+        _v2CatalogBaseUrl = base;
+        return _v2Manifest = manifest;
+      } catch (_) {
+        continue;
+      }
+    }
+    return null;
+  }
+
+  Future<Recipe?> _getV2Recipe(String query) async {
+    final manifest = await _loadV2Manifest();
+    if (manifest == null) return null;
+    final recipes = (manifest['recipes'] as List)
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+    final normalized = query.trim().toLowerCase();
+    Map<String, dynamic>? target;
+    for (final item in recipes) {
+      final legacyIds = (item['legacyIds'] as List? ?? const []).map(
+        (id) => id.toString(),
+      );
+      if (item['id'] == query ||
+          legacyIds.contains(query) ||
+          item['name']?.toString().toLowerCase() == normalized) {
+        target = item;
+        break;
+      }
+    }
+    target ??= recipes.where((item) {
+      return item['name']?.toString().toLowerCase().contains(normalized) ==
+          true;
+    }).firstOrNull;
+    if (target == null || _v2CatalogBaseUrl == null) return null;
+    final basePath = manifest['basePath']?.toString();
+    if (basePath == null || basePath.isEmpty) return null;
+    try {
+      final response = await _catalogDio.get(
+        '$_v2CatalogBaseUrl/$basePath/recipes/${target['category']}/${target['id']}.json',
+      );
+      return _mcpToRecipe(_asJsonMap(response.data));
+    } catch (_) {
+      return null;
+    }
   }
 
   /// 调用 MCP 工具（JSON-RPC 2.0 格式）
@@ -249,6 +337,19 @@ class MCPService {
   /// 对应 MCP 工具: mcp_howtocook_getAllRecipes
   Future<List<Recipe>> getAllRecipes() async {
     try {
+      final manifest = await _loadV2Manifest();
+      if (manifest != null) {
+        return (manifest['recipes'] as List<dynamic>).map((item) {
+          final index = Map<String, dynamic>.from(item as Map);
+          return _mcpToRecipe({
+            ...index,
+            'schemaVersion': 2,
+            'ingredients': const [],
+            'steps': const [],
+            'source': 'cloud',
+          });
+        }).toList();
+      }
       final result = await _callTool('getAllRecipes', {
         'no_param': '', // 工具要求的无参数标记
       });
@@ -271,6 +372,37 @@ class MCPService {
   /// 对应 MCP 工具: mcp_howtocook_getRecipesByCategory
   Future<List<Recipe>> getRecipesByCategory(String category) async {
     try {
+      final manifest = await _loadV2Manifest();
+      if (manifest != null) {
+        final categories = Map<String, dynamic>.from(
+          manifest['categories'] as Map,
+        );
+        final categoryId = categories.containsKey(category)
+            ? category
+            : categories.entries
+                  .where((entry) {
+                    final value = entry.value;
+                    return value is Map && value['name'] == category;
+                  })
+                  .map((entry) => entry.key)
+                  .firstOrNull;
+        return (manifest['recipes'] as List<dynamic>)
+            .where(
+              (item) =>
+                  item is Map && item['category'] == (categoryId ?? category),
+            )
+            .map((item) {
+              final index = Map<String, dynamic>.from(item as Map);
+              return _mcpToRecipe({
+                ...index,
+                'schemaVersion': 2,
+                'ingredients': const [],
+                'steps': const [],
+                'source': 'cloud',
+              });
+            })
+            .toList();
+      }
       final result = await _callTool('getRecipesByCategory', {
         'category': category,
       });
@@ -295,6 +427,8 @@ class MCPService {
   /// 返回 [Recipe]（精确匹配）或 [Map]（模糊匹配/错误建议，直接透传给 AI）
   Future<dynamic> getRecipeById(String query) async {
     try {
+      final v2Recipe = await _getV2Recipe(query);
+      if (v2Recipe != null) return v2Recipe;
       final result = await _callTool('getRecipeById', {'query': query});
 
       if (result is Map<String, dynamic>) {

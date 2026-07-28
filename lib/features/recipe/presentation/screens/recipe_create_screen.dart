@@ -842,8 +842,14 @@ class _RecipeCreateScreenState extends ConsumerState<RecipeCreateScreen> {
           children: [
             Row(
               children: [
-                Text(title, style: AppTextStyles.h3),
-                const Spacer(),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: AppTextStyles.h3,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
                 if (items.isNotEmpty)
                   IconButton(
                     onPressed: onClear,

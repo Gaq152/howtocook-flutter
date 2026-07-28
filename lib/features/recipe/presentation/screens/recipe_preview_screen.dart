@@ -16,13 +16,11 @@ import '../../../../core/theme/app_text_styles.dart';
 class RecipePreviewScreen extends ConsumerStatefulWidget {
   final Recipe recipe;
 
-  const RecipePreviewScreen({
-    super.key,
-    required this.recipe,
-  });
+  const RecipePreviewScreen({super.key, required this.recipe});
 
   @override
-  ConsumerState<RecipePreviewScreen> createState() => _RecipePreviewScreenState();
+  ConsumerState<RecipePreviewScreen> createState() =>
+      _RecipePreviewScreenState();
 }
 
 class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
@@ -112,7 +110,19 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
                   _buildHeader(),
                   const SizedBox(height: 24),
 
-                  // 食材列表
+                  if (widget.recipe.description?.trim().isNotEmpty == true ||
+                      widget.recipe.estimatedCaloriesKcal != null) ...[
+                    _buildOverviewSection(),
+                    const SizedBox(height: 24),
+                  ],
+
+                  if (widget.recipe.requirements.isNotEmpty ||
+                      widget.recipe.tools.isNotEmpty) ...[
+                    _buildRequirementsSection(),
+                    const SizedBox(height: 24),
+                  ],
+
+                  // 用量与计算
                   _buildIngredientsSection(),
                   const SizedBox(height: 24),
 
@@ -121,7 +131,8 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
                   const SizedBox(height: 24),
 
                   // 小贴士（如果有）
-                  if (widget.recipe.tips != null && widget.recipe.tips!.isNotEmpty) ...[
+                  if (widget.recipe.tips != null &&
+                      widget.recipe.tips!.isNotEmpty) ...[
                     _buildTipsSection(),
                     const SizedBox(height: 24),
                   ],
@@ -152,10 +163,7 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 标题
-            Text(
-              widget.recipe.name,
-              style: AppTextStyles.h1,
-            ),
+            Text(widget.recipe.name, style: AppTextStyles.h1),
             const SizedBox(height: 12),
 
             // 元信息
@@ -165,7 +173,11 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
               children: [
                 // 分类
                 Chip(
-                  avatar: Icon(Icons.category, size: 16, color: AppColors.secondary),
+                  avatar: Icon(
+                    Icons.category,
+                    size: 16,
+                    color: AppColors.secondary,
+                  ),
                   label: Text(
                     widget.recipe.categoryName,
                     style: TextStyle(
@@ -174,7 +186,9 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
                     ),
                   ),
                   backgroundColor: AppColors.secondary.withValues(alpha: 0.1),
-                  side: BorderSide(color: AppColors.secondary.withValues(alpha: 0.3)),
+                  side: BorderSide(
+                    color: AppColors.secondary.withValues(alpha: 0.3),
+                  ),
                 ),
 
                 // 难度
@@ -191,7 +205,9 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
                     ),
                   ),
                   backgroundColor: AppColors.warning.withValues(alpha: 0.1),
-                  side: BorderSide(color: AppColors.warning.withValues(alpha: 0.3)),
+                  side: BorderSide(
+                    color: AppColors.warning.withValues(alpha: 0.3),
+                  ),
                 ),
 
                 // 来源标记（根据食谱来源显示不同的徽章）
@@ -204,16 +220,64 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
     );
   }
 
-  /// 构建食材部分
-  Widget _buildIngredientsSection() {
+  /// 构建简介与热量信息
+  Widget _buildOverviewSection() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.menu_book_outlined, color: AppColors.primary),
+                const SizedBox(width: 8),
+                Expanded(child: Text('菜谱简介', style: AppTextStyles.h3)),
+                if (widget.recipe.estimatedCaloriesKcal case final calories?)
+                  Chip(
+                    avatar: const Icon(Icons.local_fire_department, size: 16),
+                    label: Text('约 $calories 千卡'),
+                    visualDensity: VisualDensity.compact,
+                  ),
+              ],
+            ),
+            if (widget.recipe.description?.trim().isNotEmpty == true) ...[
+              const SizedBox(height: 12),
+              MarkdownBody(
+                data: widget.recipe.description!.trim(),
+                shrinkWrap: true,
+                fitContent: true,
+                styleSheet: MarkdownStyleSheet(p: AppTextStyles.bodyMedium),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 构建 V2 的必备原料和工具
+  Widget _buildRequirementsSection() {
+    final requirements = [...widget.recipe.requirements];
+    for (final tool in widget.recipe.tools) {
+      if (!requirements.any((item) => item.text.trim() == tool.trim())) {
+        requirements.add(
+          RecipeRequirement(text: tool, markdown: tool, kind: 'tool'),
+        );
+      }
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Icon(Icons.restaurant, color: AppColors.primary, size: 24),
+            Icon(
+              Icons.inventory_2_outlined,
+              color: AppColors.primary,
+              size: 24,
+            ),
             const SizedBox(width: 8),
-            Text('食材清单', style: AppTextStyles.h2),
+            Expanded(child: Text('必备原料和工具', style: AppTextStyles.h2)),
           ],
         ),
         const SizedBox(height: 16),
@@ -222,21 +286,23 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: widget.recipe.ingredients.map((ingredient) {
+              children: requirements.map((requirement) {
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Icon(
-                        Icons.check_circle_outline,
+                        requirement.kind == 'tool'
+                            ? Icons.kitchen_outlined
+                            : Icons.check_circle_outline,
                         size: 20,
                         color: AppColors.primary,
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: MarkdownBody(
-                          data: ingredient.text,
+                          data: requirement.markdown,
                           shrinkWrap: true,
                           fitContent: true,
                           styleSheet: MarkdownStyleSheet(
@@ -255,6 +321,143 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
     );
   }
 
+  /// 构建食材用量与计算
+  Widget _buildIngredientsSection() {
+    final listIngredients = widget.recipe.ingredients
+        .where((ingredient) => ingredient.table.isEmpty)
+        .toList();
+    final tableIngredients = widget.recipe.ingredients
+        .where((ingredient) => ingredient.table.isNotEmpty)
+        .toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.restaurant, color: AppColors.primary, size: 24),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                widget.recipe.schemaVersion >= 2 ? '用量与计算' : '食材清单',
+                style: AppTextStyles.h2,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (widget.recipe.calculationNotes.isNotEmpty) ...[
+                  ...widget.recipe.calculationNotes.map(
+                    (note) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.calculate_outlined,
+                            size: 20,
+                            color: AppColors.info,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: MarkdownBody(
+                              data: note,
+                              shrinkWrap: true,
+                              fitContent: true,
+                              styleSheet: MarkdownStyleSheet(
+                                p: AppTextStyles.bodyMedium,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (listIngredients.isNotEmpty || tableIngredients.isNotEmpty)
+                    const Divider(height: 24),
+                ],
+                ...listIngredients.map((ingredient) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.check_circle_outline,
+                          size: 20,
+                          color: AppColors.primary,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: MarkdownBody(
+                            data: ingredient.text,
+                            shrinkWrap: true,
+                            fitContent: true,
+                            styleSheet: MarkdownStyleSheet(
+                              p: AppTextStyles.ingredient,
+                            ),
+                          ),
+                        ),
+                        if (ingredient.optional)
+                          const Padding(
+                            padding: EdgeInsets.only(left: 8),
+                            child: Chip(
+                              label: Text('可选'),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                }),
+                if (tableIngredients.isNotEmpty) ...[
+                  if (listIngredients.isNotEmpty) const SizedBox(height: 12),
+                  _buildIngredientTable(tableIngredients),
+                ],
+                if (widget.recipe.ingredients.isEmpty &&
+                    widget.recipe.calculationNotes.isEmpty)
+                  const Text(
+                    '暂无用量信息',
+                    style: TextStyle(color: AppColors.textDisabled),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildIngredientTable(List<Ingredient> ingredients) {
+    final columns = <String>[];
+    for (final ingredient in ingredients) {
+      for (final key in ingredient.table.keys) {
+        if (!columns.contains(key)) columns.add(key);
+      }
+    }
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        headingRowHeight: 44,
+        dataRowMinHeight: 44,
+        dataRowMaxHeight: 72,
+        columns: columns.map((key) => DataColumn(label: Text(key))).toList(),
+        rows: ingredients.map((ingredient) {
+          return DataRow(
+            cells: columns
+                .map((key) => DataCell(Text(ingredient.table[key] ?? '')))
+                .toList(),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   /// 构建步骤部分
   Widget _buildStepsSection() {
     return Column(
@@ -262,9 +465,16 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
       children: [
         Row(
           children: [
-            Icon(Icons.format_list_numbered, color: AppColors.primary, size: 24),
+            Icon(
+              Icons.format_list_numbered,
+              color: AppColors.primary,
+              size: 24,
+            ),
             const SizedBox(width: 8),
-            Text('制作步骤', style: AppTextStyles.h2),
+            Text(
+              widget.recipe.schemaVersion >= 2 ? '操作' : '制作步骤',
+              style: AppTextStyles.h2,
+            ),
           ],
         ),
         const SizedBox(height: 16),
@@ -280,63 +490,84 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
     int stepNumber = 0;
     for (final step in widget.recipe.steps) {
       final match = _headingPattern.firstMatch(step.description);
-      if (match != null) {
-        widgets.add(Padding(
-          padding: EdgeInsets.only(
-            top: widgets.isEmpty ? 0 : 12,
-            bottom: 4,
-          ),
-          child: Text(
-            match.group(1)!,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primary,
+      final isHeading =
+          step.kind == 'heading' ||
+          step.kind == 'section' ||
+          step.title?.trim().isNotEmpty == true ||
+          match != null;
+      if (isHeading) {
+        widgets.add(
+          Padding(
+            padding: EdgeInsets.only(top: widgets.isEmpty ? 0 : 12, bottom: 4),
+            child: Text(
+              step.title?.trim().isNotEmpty == true
+                  ? step.title!.trim()
+                  : match?.group(1) ?? step.description,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primary,
+              ),
             ),
           ),
-        ));
+        );
       } else {
         stepNumber++;
-        widgets.add(Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '$stepNumber',
-                      style: const TextStyle(
-                        color: AppColors.surface,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+        widgets.add(
+          Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (widget.recipe.schemaVersion >= 2)
+                    const SizedBox(
+                      width: 32,
+                      height: 32,
+                      child: Center(
+                        child: Icon(
+                          Icons.circle,
+                          size: 8,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    )
+                  else
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '$stepNumber',
+                          style: const TextStyle(
+                            color: AppColors.surface,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: MarkdownBody(
+                      data: step.description,
+                      shrinkWrap: true,
+                      fitContent: true,
+                      styleSheet: MarkdownStyleSheet(
+                        p: AppTextStyles.cookingStep,
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: MarkdownBody(
-                    data: step.description,
-                    shrinkWrap: true,
-                    fitContent: true,
-                    styleSheet: MarkdownStyleSheet(
-                      p: AppTextStyles.cookingStep,
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ));
+        );
       }
     }
     return widgets;
@@ -370,7 +601,9 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
               onTapLink: (text, href, title) {
                 if (href == null) return;
                 final uri = Uri.tryParse(href);
-                if (uri != null) launchUrl(uri, mode: LaunchMode.externalApplication);
+                if (uri != null) {
+                  launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
               },
             ),
           ],
@@ -402,11 +635,7 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      Icons.circle,
-                      size: 6,
-                      color: AppColors.warning,
-                    ),
+                    Icon(Icons.circle, size: 6, color: AppColors.warning),
                     const SizedBox(width: 8),
                     Expanded(
                       child: MarkdownBody(
@@ -467,10 +696,7 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
       avatar: Icon(icon, size: 16, color: color),
       label: Text(
         label,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.bold,
-        ),
+        style: TextStyle(color: color, fontWeight: FontWeight.bold),
       ),
       backgroundColor: color.withValues(alpha: 0.1),
       side: BorderSide(color: color.withValues(alpha: 0.3)),
@@ -520,11 +746,13 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
                         ),
                       )
                     : const Icon(Icons.save),
-                label: Text(_isSaving
-                    ? '保存中...'
-                    : widget.recipe.source == RecipeSource.userModified
-                        ? '更新到我的食谱'
-                        : '保存到我的食谱'),
+                label: Text(
+                  _isSaving
+                      ? '保存中...'
+                      : widget.recipe.source == RecipeSource.userModified
+                      ? '更新到我的食谱'
+                      : '保存到我的食谱',
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: AppColors.surface,
@@ -558,10 +786,13 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
       debugPrint('  - ID 非空: ${widget.recipe.id.isNotEmpty}');
       debugPrint('  - 是否临时 ID: ${widget.recipe.id.startsWith('preview_')}');
 
-      if (widget.recipe.id.isNotEmpty && !widget.recipe.id.startsWith('preview_')) {
+      if (widget.recipe.id.isNotEmpty &&
+          !widget.recipe.id.startsWith('preview_')) {
         try {
           debugPrint('📡 查询现有食谱: ${widget.recipe.id}');
-          final recipeAsync = await ref.read(recipeByIdProvider(widget.recipe.id).future);
+          final recipeAsync = await ref.read(
+            recipeByIdProvider(widget.recipe.id).future,
+          );
           existingRecipe = recipeAsync;
           debugPrint('✅ 找到现有食谱: ${existingRecipe?.name}');
         } catch (e) {
@@ -580,7 +811,8 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
 
           // 生成新的 ID
           final timestamp = DateTime.now().millisecondsSinceEpoch;
-          final newId = 'scanned_${widget.recipe.category}_${timestamp.toRadixString(16)}';
+          final newId =
+              'scanned_${widget.recipe.category}_${timestamp.toRadixString(16)}';
 
           // 创建副本（保留扫码来源标记）
           final copiedRecipe = widget.recipe.copyWith(
@@ -647,7 +879,8 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
         }
       } else {
         // 新食谱，确保有正确的 source 标记
-        final recipeToSave = widget.recipe.source == RecipeSource.bundled ||
+        final recipeToSave =
+            widget.recipe.source == RecipeSource.bundled ||
                 widget.recipe.source == RecipeSource.cloud
             ? widget.recipe.copyWith(source: RecipeSource.scanned)
             : widget.recipe;
@@ -676,10 +909,7 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
       debugPrint('保存食谱失败: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('保存失败: $e'),
-            backgroundColor: AppColors.error,
-          ),
+          SnackBar(content: Text('保存失败: $e'), backgroundColor: AppColors.error),
         );
       }
     } finally {
