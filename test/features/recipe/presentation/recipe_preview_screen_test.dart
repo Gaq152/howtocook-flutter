@@ -30,12 +30,8 @@ void main() {
         RecipeRequirement(text: '炒锅', markdown: '炒锅', kind: 'tool'),
       ],
       ingredients: [
-        Ingredient(name: '鸡蛋', text: '鸡蛋 3 个'),
-        Ingredient(
-          name: '表格用量',
-          text: '按人数计算',
-          table: {'人数': '2 人', '番茄': '400 克', '鸡蛋': '3 个'},
-        ),
+        Ingredient(name: '鸡蛋', text: '3 个', optional: true),
+        Ingredient(name: '番茄', text: '400 克', table: {'用量': '400 克'}),
       ],
       calculationNotes: ['每增加 1 人，番茄约增加 200 克。'],
       steps: [
@@ -55,6 +51,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('菜谱简介'), findsOneWidget);
+    _expectChipContrast(tester, '荤菜');
+    _expectChipContrast(tester, 'AI 生成');
+    _expectChipContrast(tester, '约 480 千卡');
     expect(tester.takeException(), isNull);
 
     final scrollable = find.byType(Scrollable).first;
@@ -65,6 +64,11 @@ void main() {
     }
 
     expect(find.text('操作'), findsOneWidget);
+    expect(find.text('鸡蛋 3 个'), findsOneWidget);
+    expect(find.text('食材'), findsOneWidget);
+    expect(find.text('番茄'), findsOneWidget);
+    expect(find.text('400 克'), findsOneWidget);
+    _expectChipContrast(tester, '可选');
     expect(find.text('3'), findsNothing);
   });
 
@@ -101,4 +105,28 @@ void main() {
     expect(find.text('添加'), findsOneWidget);
     expect(find.text('新食材'), findsOneWidget);
   });
+}
+
+void _expectChipContrast(WidgetTester tester, String label) {
+  final labelText = tester.widget<Text>(find.text(label));
+  final chip = tester.widget<Chip>(
+    find.ancestor(of: find.text(label), matching: find.byType(Chip)),
+  );
+  expect(labelText.style?.color, isNotNull);
+  expect(chip.backgroundColor, isNotNull);
+  expect(
+    _contrastRatio(labelText.style!.color!, chip.backgroundColor!),
+    greaterThanOrEqualTo(4.5),
+    reason: '$label 徽章文本对比度不足',
+  );
+}
+
+double _contrastRatio(Color foreground, Color background) {
+  final lighter = foreground.computeLuminance() > background.computeLuminance()
+      ? foreground.computeLuminance()
+      : background.computeLuminance();
+  final darker = foreground.computeLuminance() > background.computeLuminance()
+      ? background.computeLuminance()
+      : foreground.computeLuminance();
+  return (lighter + 0.05) / (darker + 0.05);
 }

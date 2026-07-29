@@ -79,10 +79,28 @@ List<Ingredient> _ingredientsFromJson(dynamic json) {
       return Ingredient(name: name, text: text);
     } else if (item is Map) {
       // 兼容对象格式
-      return Ingredient.fromJson(Map<String, dynamic>.from(item));
+      final ingredient = Ingredient.fromJson(Map<String, dynamic>.from(item));
+      return ingredient.copyWith(
+        text: completeIngredientText(ingredient.name, ingredient.text),
+      );
     }
     return Ingredient(name: '', text: item.toString());
   }).toList();
+}
+
+/// 确保食材展示文本同时包含名称和用量。
+///
+/// AI 工具有时会返回 `{name: 鸡蛋, text: 3颗}`。`text` 在领域模型中的
+/// 含义是“完整原始文本”，因此在入口统一补全，避免预览、保存、分享等不同
+/// 消费端只显示数量。
+String completeIngredientText(String name, String text) {
+  final normalizedName = name.trim();
+  final normalizedText = text.trim();
+  if (normalizedName.isEmpty) return normalizedText;
+  if (normalizedText.isEmpty) return normalizedName;
+  if (normalizedText.contains(normalizedName)) return normalizedText;
+  if (normalizedName.contains(normalizedText)) return normalizedName;
+  return '$normalizedName $normalizedText';
 }
 
 /// 从 JSON 字符串数组转换为 CookingStep 列表
@@ -127,6 +145,37 @@ class Ingredient with _$Ingredient {
 
   factory Ingredient.fromJson(Map<String, dynamic> json) =>
       _$IngredientFromJson(json);
+}
+
+extension IngredientDisplay on Ingredient {
+  /// 即使对象由代码直接构造，也提供包含“名称 + 用量”的安全展示文本。
+  String get displayText => completeIngredientText(name, text);
+}
+
+const _ingredientNameColumns = {'食材', '原料', '材料', '配料', '名称'};
+
+/// 返回食材表格列；AI 只给“用量”等列时自动补充“食材”列。
+List<String> ingredientTableColumns(List<Ingredient> ingredients) {
+  final columns = <String>[];
+  for (final ingredient in ingredients) {
+    for (final key in ingredient.table.keys) {
+      if (!columns.contains(key)) columns.add(key);
+    }
+  }
+  final hasNameColumn = columns.any(_ingredientNameColumns.contains);
+  if (!hasNameColumn &&
+      ingredients.any((item) => item.name.trim().isNotEmpty)) {
+    columns.insert(0, '食材');
+  }
+  return columns;
+}
+
+/// 获取食材表格单元格；名称列缺值时回退到结构化 `name` 字段。
+String ingredientTableCell(Ingredient ingredient, String column) {
+  final value = ingredient.table[column]?.trim();
+  if (value?.isNotEmpty == true) return value!;
+  if (_ingredientNameColumns.contains(column)) return ingredient.name.trim();
+  return '';
 }
 
 /// 烹饪步骤实体（简化版本）

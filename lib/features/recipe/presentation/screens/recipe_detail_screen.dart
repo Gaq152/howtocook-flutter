@@ -911,10 +911,18 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen>
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        isTool ? Icons.kitchen_outlined : Icons.circle,
-                        size: isTool ? 19 : 7,
-                        color: isTool ? AppColors.secondary : AppColors.primary,
+                      SizedBox(
+                        width: 20,
+                        height: 21,
+                        child: Center(
+                          child: Icon(
+                            isTool ? Icons.kitchen_outlined : Icons.circle,
+                            size: isTool ? 19 : 7,
+                            color: isTool
+                                ? Theme.of(context).colorScheme.secondary
+                                : Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -929,10 +937,25 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen>
                         ),
                       ),
                       if (isTool)
-                        Text(
-                          '工具',
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: AppColors.secondary,
+                        Container(
+                          margin: const EdgeInsets.only(left: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.secondaryContainer,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            '工具',
+                            style: AppTextStyles.badge.copyWith(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSecondaryContainer,
+                            ),
                           ),
                         ),
                     ],
@@ -994,15 +1017,21 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen>
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          Icons.check_circle_outline,
-                          size: 20,
-                          color: AppColors.primary,
+                        SizedBox(
+                          width: 20,
+                          height: 25.2,
+                          child: Center(
+                            child: Icon(
+                              Icons.check_circle_outline,
+                              size: 20,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: MarkdownBody(
-                            data: ingredient.text,
+                            data: ingredient.displayText,
                             shrinkWrap: true,
                             selectable: true,
                             fitContent: true,
@@ -1048,12 +1077,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen>
   }
 
   Widget _buildIngredientTable(List<Ingredient> ingredients) {
-    final headers = <String>[];
-    for (final ingredient in ingredients) {
-      for (final key in ingredient.table.keys) {
-        if (!headers.contains(key)) headers.add(key);
-      }
-    }
+    final headers = ingredientTableColumns(ingredients);
     if (headers.isEmpty) return const SizedBox.shrink();
 
     return SingleChildScrollView(
@@ -1085,7 +1109,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen>
                         ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 220),
                           child: Text(
-                            ingredient.table[header] ?? '',
+                            ingredientTableCell(ingredient, header),
                             softWrap: true,
                           ),
                         ),

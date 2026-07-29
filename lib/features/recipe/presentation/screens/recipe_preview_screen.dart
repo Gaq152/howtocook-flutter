@@ -75,22 +75,28 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
               margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.info.withValues(alpha: 0.1),
+                color: Theme.of(context).colorScheme.secondaryContainer,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: AppColors.info.withValues(alpha: 0.3),
+                  color: Theme.of(context).colorScheme.secondary,
                   width: 1,
                 ),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, color: AppColors.info, size: 24),
+                  Icon(
+                    Icons.info_outline,
+                    color: Theme.of(context).colorScheme.onSecondaryContainer,
+                    size: 24,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       _getPreviewHint(),
                       style: AppTextStyles.bodyMedium.copyWith(
-                        color: AppColors.info,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSecondaryContainer,
                       ),
                     ),
                   ),
@@ -156,6 +162,7 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
 
   /// 构建标题和元信息
   Widget _buildHeader() {
+    final colors = Theme.of(context).colorScheme;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -176,19 +183,17 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
                   avatar: Icon(
                     Icons.category,
                     size: 16,
-                    color: AppColors.secondary,
+                    color: colors.onSecondaryContainer,
                   ),
                   label: Text(
                     widget.recipe.categoryName,
                     style: TextStyle(
-                      color: AppColors.secondary,
+                      color: colors.onSecondaryContainer,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  backgroundColor: AppColors.secondary.withValues(alpha: 0.1),
-                  side: BorderSide(
-                    color: AppColors.secondary.withValues(alpha: 0.3),
-                  ),
+                  backgroundColor: colors.secondaryContainer,
+                  side: BorderSide(color: colors.secondary),
                 ),
 
                 // 难度
@@ -222,6 +227,7 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
 
   /// 构建简介与热量信息
   Widget _buildOverviewSection() {
+    final colors = Theme.of(context).colorScheme;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -235,8 +241,19 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
                 Expanded(child: Text('菜谱简介', style: AppTextStyles.h3)),
                 if (widget.recipe.estimatedCaloriesKcal case final calories?)
                   Chip(
-                    avatar: const Icon(Icons.local_fire_department, size: 16),
-                    label: Text('约 $calories 千卡'),
+                    avatar: Icon(
+                      Icons.local_fire_department,
+                      size: 16,
+                      color: colors.onPrimaryContainer,
+                    ),
+                    label: Text(
+                      '约 $calories 千卡',
+                      style: AppTextStyles.badge.copyWith(
+                        color: colors.onPrimaryContainer,
+                      ),
+                    ),
+                    backgroundColor: colors.primaryContainer,
+                    side: BorderSide(color: colors.primary),
                     visualDensity: VisualDensity.compact,
                   ),
               ],
@@ -292,12 +309,18 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        requirement.kind == 'tool'
-                            ? Icons.kitchen_outlined
-                            : Icons.check_circle_outline,
-                        size: 20,
-                        color: AppColors.primary,
+                      SizedBox(
+                        width: 20,
+                        height: 25.2,
+                        child: Center(
+                          child: Icon(
+                            requirement.kind == 'tool'
+                                ? Icons.kitchen_outlined
+                                : Icons.check_circle_outline,
+                            size: 20,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -358,10 +381,16 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
-                            Icons.calculate_outlined,
-                            size: 20,
-                            color: AppColors.info,
+                          SizedBox(
+                            width: 20,
+                            height: 21,
+                            child: Center(
+                              child: Icon(
+                                Icons.calculate_outlined,
+                                size: 20,
+                                color: Theme.of(context).colorScheme.secondary,
+                              ),
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -387,15 +416,21 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          Icons.check_circle_outline,
-                          size: 20,
-                          color: AppColors.primary,
+                        SizedBox(
+                          width: 20,
+                          height: 25.2,
+                          child: Center(
+                            child: Icon(
+                              Icons.check_circle_outline,
+                              size: 20,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: MarkdownBody(
-                            data: ingredient.text,
+                            data: ingredient.displayText,
                             shrinkWrap: true,
                             fitContent: true,
                             styleSheet: MarkdownStyleSheet(
@@ -404,10 +439,23 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
                           ),
                         ),
                         if (ingredient.optional)
-                          const Padding(
-                            padding: EdgeInsets.only(left: 8),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8),
                             child: Chip(
-                              label: Text('可选'),
+                              label: Text(
+                                '可选',
+                                style: AppTextStyles.badge.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onTertiaryContainer,
+                                ),
+                              ),
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.tertiaryContainer,
+                              side: BorderSide(
+                                color: Theme.of(context).colorScheme.tertiary,
+                              ),
                               visualDensity: VisualDensity.compact,
                             ),
                           ),
@@ -434,12 +482,7 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
   }
 
   Widget _buildIngredientTable(List<Ingredient> ingredients) {
-    final columns = <String>[];
-    for (final ingredient in ingredients) {
-      for (final key in ingredient.table.keys) {
-        if (!columns.contains(key)) columns.add(key);
-      }
-    }
+    final columns = ingredientTableColumns(ingredients);
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: DataTable(
@@ -450,7 +493,9 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
         rows: ingredients.map((ingredient) {
           return DataRow(
             cells: columns
-                .map((key) => DataCell(Text(ingredient.table[key] ?? '')))
+                .map(
+                  (key) => DataCell(Text(ingredientTableCell(ingredient, key))),
+                )
                 .toList(),
           );
         }).toList(),
@@ -663,43 +708,56 @@ class _RecipePreviewScreenState extends ConsumerState<RecipePreviewScreen> {
   Widget _buildSourceChip() {
     IconData icon;
     String label;
-    Color color;
+    late Color foregroundColor;
+    late Color backgroundColor;
+    late Color borderColor;
+    final colors = Theme.of(context).colorScheme;
 
     switch (widget.recipe.source) {
       case RecipeSource.userModified:
         icon = Icons.edit;
         label = '修改版';
-        color = AppColors.plum;
+        foregroundColor = colors.onTertiaryContainer;
+        backgroundColor = colors.tertiaryContainer;
+        borderColor = colors.tertiary;
         break;
       case RecipeSource.userCreated:
         icon = Icons.person;
         label = '用户创建';
-        color = AppColors.primary;
+        foregroundColor = colors.onPrimaryContainer;
+        backgroundColor = colors.primaryContainer;
+        borderColor = colors.primary;
         break;
       case RecipeSource.aiGenerated:
         icon = Icons.auto_awesome;
         label = 'AI 生成';
-        color = AppColors.success;
+        foregroundColor = colors.onSecondaryContainer;
+        backgroundColor = colors.secondaryContainer;
+        borderColor = colors.secondary;
         break;
       case RecipeSource.scanned:
         icon = Icons.qr_code_scanner;
         label = '扫码导入';
-        color = AppColors.primary;
+        foregroundColor = colors.onPrimaryContainer;
+        backgroundColor = colors.primaryContainer;
+        borderColor = colors.primary;
         break;
       default:
         icon = Icons.restaurant;
         label = '外部导入';
-        color = AppColors.primary;
+        foregroundColor = colors.onPrimaryContainer;
+        backgroundColor = colors.primaryContainer;
+        borderColor = colors.primary;
     }
 
     return Chip(
-      avatar: Icon(icon, size: 16, color: color),
+      avatar: Icon(icon, size: 16, color: foregroundColor),
       label: Text(
         label,
-        style: TextStyle(color: color, fontWeight: FontWeight.bold),
+        style: TextStyle(color: foregroundColor, fontWeight: FontWeight.bold),
       ),
-      backgroundColor: color.withValues(alpha: 0.1),
-      side: BorderSide(color: color.withValues(alpha: 0.3)),
+      backgroundColor: backgroundColor,
+      side: BorderSide(color: borderColor),
     );
   }
 

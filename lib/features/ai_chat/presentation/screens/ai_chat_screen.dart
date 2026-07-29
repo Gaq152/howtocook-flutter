@@ -172,6 +172,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
 - 优先传入 recipe 结构化对象；recipeText 只用于兼容旧文本模板
 - recipe 必须尽可能包含：name、description、category/categoryName、difficulty、estimatedCaloriesKcal、requirements、ingredients、tools、calculationNotes、steps、tips、warnings
 - requirements 是“必备原料和工具”；ingredients 是“用量与计算”，使用到的水、油等基础材料也要在 ingredients 中写明用量
+- ingredients 每项的 text 必须是“食材名 + 用量”的完整可读文本，例如“鸡蛋 3 颗”“食用油 30 克”，不能只写“3 颗”“30 克”
 - steps 是“操作”，description 里不要再写 1. 2. 等序号，客户端负责排版
 - 若表格对用量有意义，可在 ingredient.table 保留原列名与单元格，同时 text 必须提供可读文本
 - checkDuplicate 默认 true，similarityThreshold 默认 0.75
@@ -263,7 +264,10 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                   'type': 'object',
                   'properties': {
                     'name': {'type': 'string'},
-                    'text': {'type': 'string'},
+                    'text': {
+                      'type': 'string',
+                      'description': '包含食材名和用量的完整文本，例如“鸡蛋 3 颗”，不能只写“3 颗”',
+                    },
                     'optional': {'type': 'boolean'},
                     'source': {'type': 'string'},
                     'table': {
@@ -2087,16 +2091,19 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
             ) {
               if (item is Map) {
                 final value = Map<String, dynamic>.from(item);
-                final text =
+                final rawText =
                     (value['text'] ??
                             value['text_quantity'] ??
                             value['name'] ??
                             '')
                         .toString();
+                final name =
+                    (value['name'] ?? rawText.split(RegExp(r'\s+')).first)
+                        .toString();
                 return {
                   ...value,
-                  'name': value['name'] ?? text.split(RegExp(r'\s+')).first,
-                  'text': text,
+                  'name': name,
+                  'text': completeIngredientText(name, rawText),
                   'optional': value['optional'] == true,
                 };
               }
@@ -2128,6 +2135,9 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
               'category': _normalizeRecipeCategory(recipeData),
               'categoryName': _normalizeRecipeCategoryName(recipeData),
               'difficulty': recipeData['difficulty'] ?? 3,
+              'estimatedCaloriesKcal': _parsePositiveIntOrNull(
+                recipeData['estimatedCaloriesKcal'],
+              ),
               'requirements': recipeData['requirements'] ?? const [],
               'ingredients': ingredients,
               'tools': recipeData['tools'] ?? const [],
@@ -2211,8 +2221,10 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   String _legacyCompatibleRecipeText(Map<String, dynamic> recipe) {
     String itemText(dynamic item) {
       if (item is Map) {
-        return (item['text'] ?? item['description'] ?? item['name'] ?? '')
+        final name = (item['name'] ?? '').toString();
+        final text = (item['text'] ?? item['description'] ?? item['name'] ?? '')
             .toString();
+        return completeIngredientText(name, text);
       }
       return item.toString();
     }
@@ -2310,6 +2322,21 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
       'Warning: Could not parse int from $value, using default $defaultValue',
     );
     return defaultValue;
+  }
+
+  int? _parsePositiveIntOrNull(dynamic value) {
+    if (value == null) return null;
+    final parsed = switch (value) {
+      int number => number,
+      num number => number.round(),
+      _ => int.tryParse(
+        RegExp(
+              r'\d+',
+            ).firstMatch(value.toString().replaceAll(',', ''))?.group(0) ??
+            '',
+      ),
+    };
+    return parsed != null && parsed > 0 ? parsed : null;
   }
 
   /// 滚动到底部

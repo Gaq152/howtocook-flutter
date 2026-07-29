@@ -261,13 +261,14 @@ class MCPService {
       ) {
         if (item is Map) {
           final map = Map<String, dynamic>.from(item);
-          final text =
+          final rawText =
               (map['text'] ?? map['text_quantity'] ?? map['name'] ?? '')
                   .toString();
+          final name = (map['name'] ?? rawText.split(RegExp(r'\s+')).first)
+              .toString();
           return {
-            'name': (map['name'] ?? text.split(RegExp(r'\s+')).first)
-                .toString(),
-            'text': text,
+            'name': name,
+            'text': completeIngredientText(name, rawText),
             'optional': map['optional'] == true,
             if (map['source'] != null) 'source': map['source'],
             if (map['table'] is Map) 'table': map['table'],

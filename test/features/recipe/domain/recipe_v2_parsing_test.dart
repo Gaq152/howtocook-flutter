@@ -87,6 +87,31 @@ void main() {
       expect(recipe.steps.single.kind, 'step');
       expect(recipe.source, RecipeSource.bundled);
     });
+
+    test('AI ingredients keep names when text only contains quantities', () {
+      final recipe = Recipe.fromJson({
+        'id': 'ai-recipe',
+        'name': 'AI 测试菜',
+        'category': 'meat_dish',
+        'categoryName': '荤菜',
+        'difficulty': 2,
+        'ingredients': [
+          {'name': '鸡蛋', 'text': '3 颗'},
+          {
+            'name': '食用油',
+            'text': '30 克',
+            'table': {'用量': '30 克'},
+          },
+        ],
+        'steps': ['搅拌均匀'],
+        'hash': 'ai-hash',
+      });
+
+      expect(recipe.ingredients.first.text, '鸡蛋 3 颗');
+      expect(recipe.ingredients.last.displayText, '食用油 30 克');
+      expect(ingredientTableColumns([recipe.ingredients.last]), ['食材', '用量']);
+      expect(ingredientTableCell(recipe.ingredients.last, '食材'), '食用油');
+    });
   });
 
   test('V2 manifest derives version and image availability', () {
