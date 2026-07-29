@@ -1,3 +1,5 @@
+// ignore_for_file: invalid_annotation_target
+
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'tip.freezed.dart';
@@ -23,13 +25,29 @@ class Tip with _$Tip {
     @Default(<TipSection>[]) List<TipSection> sections, // 分节内容
     required String hash, // 数据哈希
     @Default(false) bool isFavorite, // 是否收藏
-    @Default(TipSource.bundled) TipSource source, // 数据来源
+    @JsonKey(fromJson: _tipSourceFromJson, toJson: _tipSourceToJson)
+    @Default(TipSource.bundled)
+    TipSource source, // 数据来源
     DateTime? createdAt, // 创建时间
     DateTime? updatedAt, // 更新时间
   }) = _Tip;
 
   factory Tip.fromJson(Map<String, dynamic> json) => _$TipFromJson(json);
 }
+
+/// V2 静态数据的 source 是上游仓库来源对象，本地教程的 source 才是枚举字符串。
+TipSource _tipSourceFromJson(dynamic json) {
+  if (json is Map) return TipSource.bundled;
+  if (json is String) {
+    return TipSource.values.firstWhere(
+      (value) => value.name == json,
+      orElse: () => TipSource.bundled,
+    );
+  }
+  return TipSource.bundled;
+}
+
+String _tipSourceToJson(TipSource source) => source.name;
 
 /// 教程分节
 @freezed

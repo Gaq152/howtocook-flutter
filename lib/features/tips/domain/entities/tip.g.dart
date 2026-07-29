@@ -18,8 +18,9 @@ _$TipImpl _$$TipImplFromJson(Map<String, dynamic> json) => _$TipImpl(
           const <TipSection>[],
       hash: json['hash'] as String,
       isFavorite: json['isFavorite'] as bool? ?? false,
-      source: $enumDecodeNullable(_$TipSourceEnumMap, json['source']) ??
-          TipSource.bundled,
+      source: json['source'] == null
+          ? TipSource.bundled
+          : _tipSourceFromJson(json['source']),
       createdAt: json['createdAt'] == null
           ? null
           : DateTime.parse(json['createdAt'] as String),
@@ -37,17 +38,10 @@ Map<String, dynamic> _$$TipImplToJson(_$TipImpl instance) => <String, dynamic>{
       'sections': instance.sections,
       'hash': instance.hash,
       'isFavorite': instance.isFavorite,
-      'source': _$TipSourceEnumMap[instance.source]!,
+      'source': _tipSourceToJson(instance.source),
       'createdAt': instance.createdAt?.toIso8601String(),
       'updatedAt': instance.updatedAt?.toIso8601String(),
     };
-
-const _$TipSourceEnumMap = {
-  TipSource.bundled: 'bundled',
-  TipSource.userCreated: 'userCreated',
-  TipSource.userModified: 'userModified',
-  TipSource.scanned: 'scanned',
-};
 
 _$TipSectionImpl _$$TipSectionImplFromJson(Map<String, dynamic> json) =>
     _$TipSectionImpl(

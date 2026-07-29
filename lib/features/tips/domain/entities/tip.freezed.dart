@@ -28,6 +28,7 @@ mixin _$Tip {
   List<TipSection> get sections => throw _privateConstructorUsedError; // 分节内容
   String get hash => throw _privateConstructorUsedError; // 数据哈希
   bool get isFavorite => throw _privateConstructorUsedError; // 是否收藏
+  @JsonKey(fromJson: _tipSourceFromJson, toJson: _tipSourceToJson)
   TipSource get source => throw _privateConstructorUsedError; // 数据来源
   DateTime? get createdAt => throw _privateConstructorUsedError; // 创建时间
   DateTime? get updatedAt => throw _privateConstructorUsedError;
@@ -51,6 +52,7 @@ abstract class $TipCopyWith<$Res> {
       List<TipSection> sections,
       String hash,
       bool isFavorite,
+      @JsonKey(fromJson: _tipSourceFromJson, toJson: _tipSourceToJson)
       TipSource source,
       DateTime? createdAt,
       DateTime? updatedAt});
@@ -144,6 +146,7 @@ abstract class _$$TipImplCopyWith<$Res> implements $TipCopyWith<$Res> {
       List<TipSection> sections,
       String hash,
       bool isFavorite,
+      @JsonKey(fromJson: _tipSourceFromJson, toJson: _tipSourceToJson)
       TipSource source,
       DateTime? createdAt,
       DateTime? updatedAt});
@@ -231,6 +234,7 @@ class _$TipImpl implements _Tip {
       final List<TipSection> sections = const <TipSection>[],
       required this.hash,
       this.isFavorite = false,
+      @JsonKey(fromJson: _tipSourceFromJson, toJson: _tipSourceToJson)
       this.source = TipSource.bundled,
       this.createdAt,
       this.updatedAt})
@@ -274,7 +278,7 @@ class _$TipImpl implements _Tip {
   final bool isFavorite;
 // 是否收藏
   @override
-  @JsonKey()
+  @JsonKey(fromJson: _tipSourceFromJson, toJson: _tipSourceToJson)
   final TipSource source;
 // 数据来源
   @override
@@ -351,6 +355,7 @@ abstract class _Tip implements Tip {
       final List<TipSection> sections,
       required final String hash,
       final bool isFavorite,
+      @JsonKey(fromJson: _tipSourceFromJson, toJson: _tipSourceToJson)
       final TipSource source,
       final DateTime? createdAt,
       final DateTime? updatedAt}) = _$TipImpl;
@@ -374,6 +379,7 @@ abstract class _Tip implements Tip {
   @override // 数据哈希
   bool get isFavorite;
   @override // 是否收藏
+  @JsonKey(fromJson: _tipSourceFromJson, toJson: _tipSourceToJson)
   TipSource get source;
   @override // 数据来源
   DateTime? get createdAt;
