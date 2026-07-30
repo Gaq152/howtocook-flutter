@@ -61,6 +61,12 @@ class SyncItemInfo {
       icon: Icons.description,
     ),
     SyncItemInfo(
+      type: SyncItemType.coverImages,
+      title: 'AI 封面图',
+      description: '按版本更新；仅替换已有新封面的菜谱',
+      icon: Icons.auto_awesome,
+    ),
+    SyncItemInfo(
       type: SyncItemType.fullDetailImages,
       title: '离线详情图',
       description: '可选下载；未下载时使用网络图片',

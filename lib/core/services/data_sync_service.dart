@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:howtocook/core/services/cover_manifest_service.dart';
 import 'package:howtocook/core/services/image_download_manager.dart';
 import 'package:howtocook/core/services/recipe_id_migration_service.dart';
 import 'package:howtocook/core/storage/hive_service.dart';
@@ -302,6 +303,98 @@ class DataSyncService extends _$DataSyncService {
 
     debugPrint('❌ 所有数据源均无法连接');
     return null;
+  }
+
+  /// 下载独立于菜谱数据版本的 AI 封面快照清单。
+  Future<CoverManifest?> downloadRemoteCoverManifest() async {
+    for (final baseUrl in _candidateBaseUrls) {
+      try {
+        final nonce = DateTime.now().millisecondsSinceEpoch;
+        final channelUrl = '$baseUrl/channels/v2-covers-stable.json?t=$nonce';
+        debugPrint('🌐 正在下载封面稳定通道: $channelUrl');
+        final channelResponse = await _dio.get(
+          channelUrl,
+          options: Options(receiveTimeout: const Duration(seconds: 10)),
+        );
+        if (channelResponse.statusCode != 200) continue;
+
+        final channel = _asJsonMap(channelResponse.data);
+        if (channel['schemaVersion'] != 2 ||
+            channel['channel'] != 'stable' ||
+            channel['mediaType'] != 'recipe-cover-snapshot') {
+          throw const FormatException('不受支持的封面稳定通道格式');
+        }
+        final manifestPath = channel['manifestPath'] as String?;
+        if (manifestPath == null ||
+            manifestPath.isEmpty ||
+            manifestPath.contains('..') ||
+            manifestPath.contains('://')) {
+          throw const FormatException('封面通道缺少安全的 manifestPath');
+        }
+
+        final manifestUrl = '$baseUrl/$manifestPath?t=$nonce';
+        final manifestResponse = await _dio.get(
+          manifestUrl,
+          options: Options(receiveTimeout: const Duration(seconds: 15)),
+        );
+        if (manifestResponse.statusCode != 200) continue;
+        final manifest = CoverManifest.fromJson(
+          _asJsonMap(manifestResponse.data),
+        );
+        if (manifest.coverVersion != channel['coverVersion']) {
+          throw const FormatException('封面通道与清单版本不一致');
+        }
+        _remoteBaseUrl = baseUrl;
+        debugPrint(
+          '✅ 封面清单下载成功: ${manifest.coverVersion} '
+          '(${manifest.covers.where((item) => item.aiGenerated).length} 张 AI 封面)',
+        );
+        return manifest;
+      } on DioException catch (error) {
+        debugPrint('⚠️ 封面源 $baseUrl 失败: ${error.type} - ${error.message}');
+      } catch (error) {
+        debugPrint('⚠️ 封面源 $baseUrl 失败: $error');
+      }
+    }
+    debugPrint('❌ 所有封面数据源均无法连接');
+    return null;
+  }
+
+  /// 比较远端、内置资源和本地缓存，只生成确实需要替换的 AI 封面任务。
+  Future<CoverSyncPlan> prepareCoverSync() async {
+    final remote = await downloadRemoteCoverManifest();
+    if (remote == null) throw StateError('无法下载远程封面清单');
+    final updatePlan = await CoverManifestService().prepareRemoteUpdates(
+      remote,
+    );
+    final tasks = updatePlan.downloads
+        .map((candidate) {
+          final entry = candidate.entry;
+          final encodedPath = entry.path
+              .split('/')
+              .map(Uri.encodeComponent)
+              .join('/');
+          return DownloadTask(
+            id: 'cover_${remote.coverVersion}_${entry.recipeId}',
+            category: entry.category,
+            recipeId: entry.recipeId,
+            imageUrl:
+                '$_remoteBaseUrl/$encodedPath?v=${Uri.encodeQueryComponent(remote.coverVersion)}',
+            localPath: candidate.localPath,
+            priority: 0,
+            replaceExisting: true,
+            expectedSha256: entry.sha256,
+            coverVersion: remote.coverVersion,
+            coverEntry: entry,
+          );
+        })
+        .toList(growable: false);
+    return CoverSyncPlan(
+      coverVersion: remote.coverVersion,
+      totalAiCovers: remote.covers.where((item) => item.aiGenerated).length,
+      removedStaleCaches: updatePlan.removedStaleCaches,
+      tasks: tasks,
+    );
   }
 
   Map<String, dynamic> _asJsonMap(dynamic data) {
@@ -714,7 +807,7 @@ class DataSyncService extends _$DataSyncService {
   /// 提取封面图下载任务（按菜名）
   Future<DownloadTask?> extractCoverImageTask(RecipeUpdate update) async {
     try {
-      // V2 本轮不发布 AI 封面，仅使用菜谱正文中的真实图片。
+      // V2 封面使用独立快照清单，由 prepareCoverSync 统一按哈希更新。
       if (_remoteSchemaVersion == 2) return null;
 
       final cacheDir = await getApplicationDocumentsDirectory();
@@ -1143,6 +1236,20 @@ class TipUpdate {
     required this.tipId,
     required this.hash,
     required this.isNew,
+  });
+}
+
+class CoverSyncPlan {
+  final String coverVersion;
+  final int totalAiCovers;
+  final int removedStaleCaches;
+  final List<DownloadTask> tasks;
+
+  const CoverSyncPlan({
+    required this.coverVersion,
+    required this.totalAiCovers,
+    required this.removedStaleCaches,
+    required this.tasks,
   });
 }
 

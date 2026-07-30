@@ -4,11 +4,13 @@ import 'package:howtocook/features/settings/domain/models/sync_item_state.dart';
 import 'package:howtocook/features/settings/presentation/widgets/modern_data_sync_widget.dart';
 
 void main() {
-  test('V2 sync page exposes only JSON and optional offline images', () {
+  test('V2 sync page exposes JSON, AI covers and optional offline images', () {
     expect(SyncItemInfo.items.map((item) => item.type), [
       SyncItemType.json,
+      SyncItemType.coverImages,
       SyncItemType.fullDetailImages,
     ]);
+    expect(SyncItemInfo.items[1].description, contains('仅替换'));
     expect(SyncItemInfo.items.last.description, contains('可选下载'));
   });
 

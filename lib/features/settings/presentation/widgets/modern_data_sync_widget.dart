@@ -48,6 +48,7 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
 
   // 缓存更新信息
   List<RecipeUpdate>? _pendingUpdates;
+  List<DownloadTask>? _pendingCoverTasks;
 
   // 存储大小
   String _storageSize = '计算中...';
@@ -73,10 +74,16 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
     final downloadState = ref.read(imageDownloadManagerProvider);
     if (downloadState.status == DownloadStatus.downloading ||
         downloadState.status == DownloadStatus.paused) {
-      _currentImageDownloadType = SyncItemType.fullDetailImages;
+      final isCoverDownload = ref
+          .read(imageDownloadManagerProvider.notifier)
+          .getAllTasks()
+          .any((task) => task.coverEntry != null);
+      _currentImageDownloadType = isCoverDownload
+          ? SyncItemType.coverImages
+          : SyncItemType.fullDetailImages;
       _currentTotalTasks = downloadState.totalTasks;
-      _itemStates[SyncItemType.fullDetailImages] =
-          _itemStates[SyncItemType.fullDetailImages]!.copyWith(
+      _itemStates[_currentImageDownloadType!] =
+          _itemStates[_currentImageDownloadType!]!.copyWith(
             status: downloadState.status == DownloadStatus.paused
                 ? SyncItemStatus.paused
                 : SyncItemStatus.downloading,
@@ -86,11 +93,17 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
           );
     } else if (downloadState.status == DownloadStatus.completed &&
         downloadState.totalTasks > 0) {
-      _itemStates[SyncItemType.fullDetailImages] =
-          _itemStates[SyncItemType.fullDetailImages]!.copyWith(
-            status: SyncItemStatus.completed,
-            message: '图片下载完成',
-          );
+      final isCoverDownload = ref
+          .read(imageDownloadManagerProvider.notifier)
+          .getAllTasks()
+          .any((task) => task.coverEntry != null);
+      final type = isCoverDownload
+          ? SyncItemType.coverImages
+          : SyncItemType.fullDetailImages;
+      _itemStates[type] = _itemStates[type]!.copyWith(
+        status: SyncItemStatus.completed,
+        message: isCoverDownload ? 'AI 封面更新完成' : '图片下载完成',
+      );
     }
   }
 
@@ -102,6 +115,7 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
       return;
     }
     _handleCheckUpdate(SyncItemType.json);
+    _handleCheckUpdate(SyncItemType.coverImages);
   }
 
   /// 计算本地存储大小
@@ -175,8 +189,11 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
           _itemStates[type] = _itemStates[type]!.copyWith(
             status: SyncItemStatus.completed,
             completedItems: totalTasks,
-            message: '图片下载完成',
+            message: type == SyncItemType.coverImages
+                ? 'AI 封面更新完成（$totalTasks 张）'
+                : '图片下载完成',
           );
+          if (type == SyncItemType.coverImages) _pendingCoverTasks = null;
           _currentImageDownloadType = null;
         });
         _calculateStorageSize();
@@ -254,7 +271,7 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '同步 V2 菜谱数据，可选缓存详情图',
+                    '同步 V2 菜谱数据、AI 封面，可选缓存详情图',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -451,6 +468,16 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
         );
 
       case SyncItemStatus.completed:
+        if (type == SyncItemType.coverImages) {
+          return FilledButton.tonalIcon(
+            onPressed: () => _handleCheckUpdate(type),
+            icon: const Icon(Icons.refresh, size: 20),
+            label: const Text('检查'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            ),
+          );
+        }
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -725,6 +752,24 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
             );
           });
         }
+      } else if (type == SyncItemType.coverImages) {
+        final plan = await dataSyncService.prepareCoverSync();
+        _pendingCoverTasks = plan.tasks;
+        final removedMessage = plan.removedStaleCaches > 0
+            ? '，已清理 ${plan.removedStaleCaches} 张旧缓存'
+            : '';
+        setState(() {
+          _itemStates[type] = _itemStates[type]!.copyWith(
+            status: plan.tasks.isNotEmpty
+                ? SyncItemStatus.updateAvailable
+                : SyncItemStatus.completed,
+            message: plan.tasks.isNotEmpty
+                ? '发现 ${plan.tasks.length} 张新 AI 封面$removedMessage'
+                : 'AI 封面已是最新（${plan.totalAiCovers} 张）$removedMessage',
+            totalItems: plan.tasks.length,
+            error: null,
+          );
+        });
       } else if (type == SyncItemType.fullDetailImages) {
         // 完整详情图下载：计算准确的图片数量
         final localIndex = await dataSyncService.loadLocalIndex();
@@ -873,7 +918,8 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
 
   void _handleStartDownload(SyncItemType type) async {
     // 对于完整详情图下载，不需要检查 _pendingUpdates
-    if (type != SyncItemType.fullDetailImages) {
+    if (type != SyncItemType.fullDetailImages &&
+        type != SyncItemType.coverImages) {
       if (_pendingUpdates == null || _pendingUpdates!.isEmpty) {
         setState(() {
           _itemStates[type] = _itemStates[type]!.copyWith(
@@ -931,16 +977,16 @@ class _ModernDataSyncWidgetState extends ConsumerState<ModernDataSyncWidget> {
         _calculateStorageSize();
         _handleCheckUpdate(SyncItemType.fullDetailImages);
       } else if (type == SyncItemType.coverImages) {
-        // 下载封面图
-        final imageTasks = <DownloadTask>[];
-        for (final update in _pendingUpdates!) {
-          final task = await dataSyncService.extractCoverImageTask(update);
-          if (task != null) {
-            imageTasks.add(task);
-          }
-        }
-
-        if (imageTasks.isNotEmpty) {
+        // 封面独立于菜谱 JSON，按快照清单哈希下载并替换。
+        final imageTasks = _pendingCoverTasks ?? const <DownloadTask>[];
+        if (imageTasks.isEmpty) {
+          setState(() {
+            _itemStates[type] = _itemStates[type]!.copyWith(
+              status: SyncItemStatus.completed,
+              message: 'AI 封面已是最新',
+            );
+          });
+        } else {
           await _downloadImages(type, imageTasks);
         }
       } else if (type == SyncItemType.detailImages) {

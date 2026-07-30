@@ -4,6 +4,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/services/app_notification_service.dart';
+import 'core/services/cover_manifest_service.dart';
 import 'core/services/data_sync_service.dart';
 import 'core/services/update_download_service.dart';
 import 'core/services/update_service.dart';
@@ -23,11 +24,7 @@ void main() async {
   await _initializeServices();
 
   // 运行应用
-  runApp(
-    const ProviderScope(
-      child: HowToCookApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: HowToCookApp()));
 }
 
 /// 初始化所有服务
@@ -38,6 +35,15 @@ Future<void> _initializeServices() async {
 
     // 2. 初始化 Hive
     await HiveService.init();
+
+    if (!kIsWeb) {
+      // 只清理已被当前安装包内置 AI 封面替代的旧缓存；其余封面保留。
+      try {
+        await CoverManifestService().reconcileBundledAiCoverCache();
+      } catch (error) {
+        debugPrint('⚠️ 封面缓存迁移失败，已保留现有缓存: $error');
+      }
+    }
 
     // 3. 初始化 Sqflite（仅在非 Web 平台）
     if (!kIsWeb) {
@@ -79,9 +85,7 @@ class _HowToCookAppState extends ConsumerState<HowToCookApp> {
   void initState() {
     super.initState();
 
-    AppNotificationService.instance.initialize(
-      onTap: _handleNotificationTap,
-    );
+    AppNotificationService.instance.initialize(onTap: _handleNotificationTap);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_startupChecksScheduled) return;
@@ -108,7 +112,8 @@ class _HowToCookAppState extends ConsumerState<HowToCookApp> {
       if (!mounted || !result.hasUpdate || result.info == null) return;
 
       final router = ref.read(routerProvider);
-      final navigatorContext = router.routerDelegate.navigatorKey.currentContext;
+      final navigatorContext =
+          router.routerDelegate.navigatorKey.currentContext;
       if (navigatorContext == null || !navigatorContext.mounted) return;
 
       await showUpdateDialog(
@@ -132,8 +137,14 @@ class _HowToCookAppState extends ConsumerState<HowToCookApp> {
 
       final localIndex = await syncService.loadLocalIndex();
 
-      final recipeUpdates = syncService.identifyUpdates(localIndex, remoteIndex);
-      final tipUpdates = syncService.identifyTipUpdates(localIndex, remoteIndex);
+      final recipeUpdates = syncService.identifyUpdates(
+        localIndex,
+        remoteIndex,
+      );
+      final tipUpdates = syncService.identifyTipUpdates(
+        localIndex,
+        remoteIndex,
+      );
 
       final newRecipes = recipeUpdates.where((u) => u.isNew).length;
       final updatedRecipes = recipeUpdates.where((u) => !u.isNew).length;

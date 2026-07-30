@@ -1,7 +1,7 @@
 name: howtocook
 description: "智能菜谱助手 - 基于 AI 的跨平台菜谱管理和推荐应用"
 publish_to: 'none'
-version: 0.4.3+16
+version: 0.4.4+17
 
 environment:
   sdk: ^3.9.2
@@ -105,6 +105,7 @@ flutter:
     - CHANGELOG.md
     - assets/icon/
     - assets/manifest.json
+    - assets/covers/manifest.json
     # WeChat QRCode models
     - assets/models/wechat_qrcode/
     # covers 封面图（AI 生成，打包到 APK）

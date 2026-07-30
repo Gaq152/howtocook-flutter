@@ -1,24 +1,22 @@
 import 'dart:io';
+import 'package:crypto/crypto.dart';
 import 'package:background_downloader/background_downloader.dart'
     hide DownloadTask;
 import 'package:background_downloader/background_downloader.dart'
-    as bd show DownloadTask;
+    as bd
+    show DownloadTask;
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'app_notification_service.dart';
+import 'cover_manifest_service.dart';
 
 part 'image_download_manager.g.dart';
 part 'image_download_manager.freezed.dart';
 
-enum DownloadStatus {
-  idle,
-  downloading,
-  paused,
-  completed,
-  error,
-}
+enum DownloadStatus { idle, downloading, paused, completed, error }
 
 class DownloadTask {
   final String id;
@@ -27,6 +25,10 @@ class DownloadTask {
   final String imageUrl;
   final String localPath;
   final int priority;
+  final bool replaceExisting;
+  final String? expectedSha256;
+  final String? coverVersion;
+  final CoverManifestEntry? coverEntry;
   DownloadStatus status;
   int progress;
   String? error;
@@ -38,6 +40,10 @@ class DownloadTask {
     required this.imageUrl,
     required this.localPath,
     this.priority = 0,
+    this.replaceExisting = false,
+    this.expectedSha256,
+    this.coverVersion,
+    this.coverEntry,
     this.status = DownloadStatus.idle,
     this.progress = 0,
     this.error,
@@ -63,6 +69,10 @@ class ImageDownloadManager extends _$ImageDownloadManager {
   }
 
   void addDownloadTasks(List<DownloadTask> tasks) {
+    if (state.status != DownloadStatus.downloading &&
+        state.status != DownloadStatus.paused) {
+      _tasks.clear();
+    }
     for (final task in tasks) {
       _tasks[task.id] = task;
     }
@@ -79,16 +89,15 @@ class ImageDownloadManager extends _$ImageDownloadManager {
 
   Future<void> _startBatchDownload() async {
     final pendingTasks = _tasks.values
-        .where((t) =>
-            t.status == DownloadStatus.idle ||
-            t.status == DownloadStatus.error)
+        .where(
+          (t) =>
+              t.status == DownloadStatus.idle ||
+              t.status == DownloadStatus.error,
+        )
         .toList();
 
     if (pendingTasks.isEmpty) {
-      state = state.copyWith(
-        status: DownloadStatus.completed,
-        progress: 100,
-      );
+      state = state.copyWith(status: DownloadStatus.completed, progress: 100);
       return;
     }
 
@@ -97,20 +106,27 @@ class ImageDownloadManager extends _$ImageDownloadManager {
 
     final bdTasks = <bd.DownloadTask>[];
     for (final task in pendingTasks) {
-      final file = File(task.localPath);
+      if (task.replaceExisting) await _recoverPreviousFile(task);
+      final file = File(_downloadPath(task));
       final dir = file.parent.path;
       final filename = file.uri.pathSegments.last;
+      await file.parent.create(recursive: true);
+      if (task.replaceExisting && await file.exists()) {
+        await file.delete();
+      }
 
-      bdTasks.add(bd.DownloadTask(
-        url: task.imageUrl,
-        filename: filename,
-        directory: dir,
-        baseDirectory: BaseDirectory.root,
-        group: _taskGroup,
-        updates: Updates.status,
-        retries: 1,
-        priority: task.priority,
-      ));
+      bdTasks.add(
+        bd.DownloadTask(
+          url: task.imageUrl,
+          filename: filename,
+          directory: dir,
+          baseDirectory: BaseDirectory.root,
+          group: _taskGroup,
+          updates: Updates.status,
+          retries: 1,
+          priority: task.priority,
+        ),
+      );
 
       task.status = DownloadStatus.downloading;
     }
@@ -165,14 +181,31 @@ class ImageDownloadManager extends _$ImageDownloadManager {
         },
       );
 
-      final allCompleted =
-          _tasks.values.every((t) => t.status == DownloadStatus.completed);
+      for (final task in pendingTasks.where(
+        (item) => item.status == DownloadStatus.completed,
+      )) {
+        try {
+          await _finalizeDownloadedTask(task);
+        } catch (error) {
+          task.status = DownloadStatus.error;
+          task.error = error.toString();
+          debugPrint('❌ 图片替换失败 ${task.localPath}: $error');
+        }
+      }
+
+      final allCompleted = _tasks.values.every(
+        (t) => t.status == DownloadStatus.completed,
+      );
 
       state = state.copyWith(
         status: allCompleted ? DownloadStatus.completed : DownloadStatus.error,
         progress: allCompleted ? 100 : state.progress,
         completedTasks: _getCompletedCount(),
-        error: batch.numFailed > 0 ? '${batch.numFailed} 张图片下载失败' : null,
+        error: batch.numFailed > 0
+            ? '${batch.numFailed} 张图片下载失败'
+            : allCompleted
+            ? null
+            : '${_tasks.length - _getCompletedCount()} 张图片校验或替换失败',
       );
 
       notif.showDownloadComplete(
@@ -181,16 +214,70 @@ class ImageDownloadManager extends _$ImageDownloadManager {
       );
     } catch (e) {
       debugPrint('❌ 批量下载异常: $e');
-      state = state.copyWith(
-        status: DownloadStatus.error,
-        error: e.toString(),
-      );
+      state = state.copyWith(status: DownloadStatus.error, error: e.toString());
       notif.cancelDownloadNotification();
     }
   }
 
   DownloadTask? _findTaskByUrl(String url) {
     return _tasks.values.where((t) => t.imageUrl == url).firstOrNull;
+  }
+
+  String _downloadPath(DownloadTask task) =>
+      task.replaceExisting ? '${task.localPath}.download' : task.localPath;
+
+  Future<void> _recoverPreviousFile(DownloadTask task) async {
+    final target = File(task.localPath);
+    final backup = File('${task.localPath}.previous');
+    if (!await backup.exists()) return;
+    if (await target.exists()) {
+      await backup.delete();
+    } else {
+      await backup.rename(target.path);
+    }
+  }
+
+  Future<void> _finalizeDownloadedTask(DownloadTask task) async {
+    if (!task.replaceExisting) return;
+    final temporary = File(_downloadPath(task));
+    if (!await temporary.exists()) throw const FileSystemException('下载临时文件不存在');
+
+    final expectedHash = task.expectedSha256;
+    if (expectedHash != null) {
+      final actualHash = (await sha256.bind(temporary.openRead()).first)
+          .toString();
+      if (actualHash != expectedHash) {
+        await temporary.delete();
+        throw StateError('封面哈希校验失败');
+      }
+    }
+
+    final target = File(task.localPath);
+    final backup = File('${task.localPath}.previous');
+    await target.parent.create(recursive: true);
+    if (await backup.exists()) await backup.delete();
+    if (await target.exists()) {
+      PaintingBinding.instance.imageCache.evict(FileImage(target));
+      await target.rename(backup.path);
+    }
+
+    try {
+      await temporary.rename(target.path);
+      final entry = task.coverEntry;
+      final coverVersion = task.coverVersion;
+      if (entry != null && coverVersion != null) {
+        await CoverManifestService().recordDownloadedCover(
+          coverVersion: coverVersion,
+          entry: entry,
+        );
+      }
+      if (await backup.exists()) await backup.delete();
+      PaintingBinding.instance.imageCache.evict(FileImage(target));
+    } catch (_) {
+      if (await target.exists()) await target.delete();
+      if (await backup.exists()) await backup.rename(target.path);
+      rethrow;
+    }
   }
 
   void pauseDownload() async {
